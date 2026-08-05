@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
-import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { Link, NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { ErrorBoundary } from './ErrorBoundary';
 import {
   BarChart3, Bell, Calendar, CalendarPlus, Clock, Layers, type LucideIcon,
   LayoutDashboard, LogOut, Moon, Search, ShieldCheck, SlidersHorizontal, Sun, UserCog, Users, Zap,
 } from 'lucide-react';
 import { useAuth } from './current-employee';
-import { api, type Me } from './api';
+import { api, type Me, type Role } from './api';
 import { Pulpit } from './screens/Pulpit';
 import { Wpis } from './screens/Wpis';
 import { Historia } from './screens/Historia';
@@ -34,10 +34,17 @@ const SCREENS: Record<string, () => JSX.Element> = {
   '/audyt': Audyt,
 };
 
+// Widoczność pozycji menu odwzorowuje @Roles kontrolerów — użytkownik ma widzieć tylko to, z czego
+// realnie skorzysta. Backend pozostaje źródłem prawdy (odpowie 403); przy rozbieżności poprawiamy tutaj.
+const isAdmin = (me: Me) => me.role === 'ADMIN';
 // FR-A5 — ekran „Zespół" widoczny dla osób mogących korygować cudze wpisy (lider/admin/MODIFY_ABSENCE).
 const canManageTeam = (me: Me) => me.role === 'LEADER' || me.role === 'ADMIN' || me.permissions.includes('MODIFY_ABSENCE');
 // FR-D2/C4 — capacity i heatmapa pokrycia tylko dla ról planujących (jak RBAC endpointu /capacity).
-const canSeeCapacity = (me: Me) => ['PO', 'LEADER', 'DIRECTOR', 'ADMIN'].includes(me.role);
+const canSeeCapacity = (me: Me) => (['PO', 'LEADER', 'DIRECTOR', 'ADMIN'] as Role[]).includes(me.role);
+// FR-F2 — raporty jak @Roles kontrolera /reports (PO nie, PMO tak).
+const canSeeReports = (me: Me) => (['LEADER', 'DIRECTOR', 'ADMIN', 'PMO'] as Role[]).includes(me.role);
+// Konfiguracja to panel administratora; PMO wchodzi wyłącznie po analitykę adopcji (/analytics/adoption).
+const canSeeConfig = (me: Me) => me.role === 'ADMIN' || me.role === 'PMO';
 
 const ROLE_LABEL: Record<string, string> = {
   EMPLOYEE: 'Pracownik', LEADER: 'Lider', PO: 'Product Owner', DIRECTOR: 'Dyrektor', PMO: 'PMO', ADMIN: 'Administrator',
@@ -54,17 +61,17 @@ const NAV: NavGroup[] = [
     { to: '/historia', label: 'Moja historia', tag: 'Pracownik', icon: Clock },
   ] },
   { group: 'Planowanie', items: [
-    { to: '/capacity', label: 'Capacity sprintu', tag: 'PO · Agile PM', icon: Zap },
+    { to: '/capacity', label: 'Capacity sprintu', tag: 'PO · Agile PM', icon: Zap, can: canSeeCapacity },
     { to: '/zespol', label: 'Zespół', tag: 'Lider', icon: UserCog, can: canManageTeam },
   ] },
   { group: 'Dyrektor', items: [
-    { to: '/raporty', label: 'Raporty i analizy', tag: 'Dyrektor', icon: BarChart3 },
+    { to: '/raporty', label: 'Raporty i analizy', tag: 'Dyrektor', icon: BarChart3, can: canSeeReports },
     { to: '/heatmapa', label: 'Heatmapa pokrycia', tag: 'Dyrektor', icon: Layers, can: canSeeCapacity },
   ] },
   { group: 'Administracja', items: [
-    { to: '/pracownicy', label: 'Pracownicy i struktura', tag: 'Administrator', icon: Users },
-    { to: '/konfiguracja', label: 'Konfiguracja', tag: 'Administrator', icon: SlidersHorizontal },
-    { to: '/audyt', label: 'Audyt i RODO', tag: 'Administrator · IOD', icon: ShieldCheck },
+    { to: '/pracownicy', label: 'Pracownicy i struktura', tag: 'Administrator', icon: Users, can: isAdmin },
+    { to: '/konfiguracja', label: 'Konfiguracja', tag: 'Administrator', icon: SlidersHorizontal, can: canSeeConfig },
+    { to: '/audyt', label: 'Audyt i RODO', tag: 'Administrator · IOD', icon: ShieldCheck, can: isAdmin },
   ] },
 ];
 const visibleGroups = (me: Me | undefined): NavGroup[] =>
@@ -77,6 +84,26 @@ function Placeholder({ title }: { title: string }) {
       <p style={{ fontFamily: 'var(--font-sans)', color: 'var(--muted)', fontSize: 14 }}>
         {title} — ekran zostanie zbudowany w kolejnym kroku planu.
       </p>
+    </div>
+  );
+}
+
+// Wejście z adresu na ekran ukryty przed rolą: trasa nie istnieje, więc trafia tu. Rozróżniamy brak
+// uprawnień od literówki w adresie — „nie znaleziono" dla istniejącej sekcji byłoby nieprawdą.
+function NotAvailable() {
+  const location = useLocation();
+  const known = allItems.some((n) => n.to === location.pathname);
+  return (
+    <div style={{ animation: 'fu .2s ease' }}>
+      <p style={{ fontFamily: 'var(--font-sans)', color: 'var(--ink)', fontSize: 15, fontWeight: 600, marginBottom: 6 }}>
+        {known ? 'Nie masz dostępu do tej sekcji' : 'Nie znaleziono strony'}
+      </p>
+      <p style={{ fontFamily: 'var(--font-sans)', color: 'var(--muted)', fontSize: 13.5, marginBottom: 14 }}>
+        {known
+          ? 'Ta część aplikacji jest dostępna dla innych ról. W menu po lewej widzisz wszystko, do czego masz uprawnienia.'
+          : 'Sprawdź adres lub wróć na pulpit.'}
+      </p>
+      <Link to="/pulpit" style={{ fontFamily: 'var(--font-sans)', fontSize: 13.5, fontWeight: 600, color: 'var(--brand)' }}>Wróć na pulpit</Link>
     </div>
   );
 }
@@ -125,7 +152,10 @@ function Sidebar() {
 
 function Topbar({ dark, onToggleTheme }: { dark: boolean; onToggleTheme: () => void }) {
   const location = useLocation();
-  const meta = allItems.find((n) => n.to === location.pathname);
+  const { current } = useAuth();
+  // Tytuł tylko z pozycji widocznych dla zalogowanego — inaczej ekran bez dostępu dostałby
+  // nagłówek „Konfiguracja · Administrator" nad komunikatem o braku uprawnień.
+  const meta = visibleGroups(current).flatMap((g) => g.items).find((n) => n.to === location.pathname);
   const [notifOpen, setNotifOpen] = useState(false);
   const [notif, setNotif] = useState<{ items: { kind: string; text: string; severity: string }[]; count: number }>({ items: [], count: 0 });
   useEffect(() => { api.notificationsFeed().then(setNotif).catch(() => {}); }, [location.pathname]);
@@ -199,7 +229,7 @@ export function App() {
                 const Screen = SCREENS[to];
                 return <Route key={to} path={to} element={Screen ? <Screen /> : <Placeholder title={label} />} />;
               })}
-              <Route path="*" element={<Placeholder title="Nie znaleziono" />} />
+              <Route path="*" element={<NotAvailable />} />
             </Routes>
           </ErrorBoundary>
         </main>

@@ -35,7 +35,10 @@ async function req<T>(path: string, opts?: RequestInit): Promise<T> {
   return res.status === 204 ? (null as T) : ((await res.json()) as T);
 }
 
-export interface Me { id: string; firstName: string; lastName: string; role: string; employmentType: string; permissions: string[] }
+// Role zgodne z `enum Role` w prisma/schema.prisma — unia zamiast string, żeby literówka
+// w predykacie widoczności menu była błędem kompilacji, a nie cicho ukrytą pozycją.
+export type Role = 'EMPLOYEE' | 'LEADER' | 'PO' | 'DIRECTOR' | 'ADMIN' | 'PMO';
+export interface Me { id: string; firstName: string; lastName: string; role: Role; employmentType: string; permissions: string[] }
 export interface Employee { id: string; firstName: string; lastName: string; email?: string; login?: string; employmentType: string; role?: string; permissions?: { scope: string }[] }
 export interface AbsenceType { id: string; name: string; affectsPool: boolean; specialCategory: boolean }
 export interface Balance {

@@ -304,6 +304,9 @@ function Analityka() {
 
 export function Konfiguracja() {
   const { current } = useAuth();
+  // PMO wchodzi tu wyłącznie po analitykę adopcji — jedyny panel, do którego dopuszcza go API
+  // (/analytics/adoption = ADMIN + PMO). Reszta konfiguracji jest administracyjna.
+  if (current?.role === 'PMO') return <div><Analityka /></div>;
   return (
     <div>
       <AdminOnly ok={current?.role === 'ADMIN'}>
