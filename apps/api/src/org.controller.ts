@@ -14,9 +14,11 @@ export class OrgController {
     private readonly org: OrgService,
   ) {}
 
+  // Tylko jednostki w zasięgu pytającego — lista musi zgadzać się z assertUnitInScope,
+  // inaczej picker w UI oferuje wybory kończące się 403 (FR-H1/H2).
   @Get('units')
-  units() {
-    return this.prisma.orgUnit.findMany({ orderBy: { name: 'asc' } });
+  units(@CurrentUser() user: AuthUser) {
+    return this.org.visibleUnits(user);
   }
 
   // FR-A5 — „mój zespół": osoby, których nieobecności bieżący użytkownik może edytować.
@@ -35,13 +37,10 @@ export class OrgController {
     });
   }
 
-  // Drzewo do poziomu squadu/zespołu: Pion›Departament›Tribe›Chapter›Squad (root + 4 poziomy).
+  // Drzewo Pion›Departament›Tribe›Chapter›Squad, przycięte do zasięgu pytającego.
   @Get('tree')
-  tree() {
-    return this.prisma.orgUnit.findMany({
-      where: { parentId: null },
-      include: { children: { include: { children: { include: { children: { include: { children: true } } } } } } },
-    });
+  tree(@CurrentUser() user: AuthUser) {
+    return this.org.visibleTree(user);
   }
 
   @Roles('ADMIN')

@@ -43,10 +43,40 @@ export class OrgService {
     return [...peers];
   }
 
+  // Role widzące całą organizację. Jedno miejsce, z którego korzysta i strażnik, i lista jednostek —
+  // inaczej pickery w UI pokazywałyby wybory kończące się 403.
+  private isOrgWide(user: AuthUser): boolean {
+    return user.role === 'DIRECTOR' || user.role === 'ADMIN' || user.role === 'PMO';
+  }
+
+  // Jednostki, o które użytkownik może pytać — dokładnie te, które przepuści assertUnitInScope.
+  async visibleUnits(user: AuthUser) {
+    const all = await this.prisma.orgUnit.findMany({ orderBy: { name: 'asc' } });
+    if (this.isOrgWide(user)) return all;
+    const scope = await this.scopeUnitIds(user.sub);
+    return all.filter((u) => scope.has(u.id));
+  }
+
+  // To samo drzewem. Korzeniem jest jednostka, której rodzic jest poza zasięgiem — dzięki temu
+  // lider dostaje swój Tribe jako korzeń, bez ujawniania Departamentu i Pionu nad nim.
+  async visibleTree(user: AuthUser) {
+    const units = await this.visibleUnits(user);
+    const ids = new Set(units.map((u) => u.id));
+    type Node = (typeof units)[number] & { children: Node[] };
+    const nodes = new Map<string, Node>(units.map((u) => [u.id, { ...u, children: [] }]));
+    const roots: Node[] = [];
+    for (const n of nodes.values()) {
+      const parent = n.parentId ? nodes.get(n.parentId) : undefined;
+      if (parent && ids.has(n.parentId!)) parent.children.push(n);
+      else roots.push(n);
+    }
+    return roots;
+  }
+
   // H2 — autoryzacja pozioma raportów/capacity: role org-wide widzą wszystko;
   // lider/PO tylko jednostki w poddrzewie swojego Tribe.
   async assertUnitInScope(user: AuthUser, unitId: string): Promise<void> {
-    if (user.role === 'DIRECTOR' || user.role === 'ADMIN' || user.role === 'PMO') return;
+    if (this.isOrgWide(user)) return;
     const scope = await this.scopeUnitIds(user.sub);
     if (!scope.has(unitId)) throw new ForbiddenException('Brak dostępu do tej jednostki organizacyjnej.');
   }

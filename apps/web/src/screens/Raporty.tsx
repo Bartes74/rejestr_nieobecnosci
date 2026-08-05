@@ -78,11 +78,15 @@ export function Raporty() {
   }, [tree, pool]);
 
   const exportXlsx = async () => {
-    const blob = await api.exportUsage(unitId);
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'raport-urlopy.xlsx'; a.click();
-    URL.revokeObjectURL(url);
+    try {
+      const blob = await api.exportUsage(unitId);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'raport-urlopy.xlsx'; a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setErr((e as Error).message); // bez tego błąd eksportu ginął jako nieobsłużone odrzucenie
+    }
   };
 
   return (

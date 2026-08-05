@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Calendar, Info, Lock, User } from 'lucide-react';
 import { useAuth } from '../current-employee';
 
@@ -14,6 +15,7 @@ const labelEl = { display: 'block', fontFamily: 'var(--font-sans)', fontSize: 12
 
 export function Login() {
   const { login } = useAuth();
+  const navigate = useNavigate();
   const [l, setL] = useState('');
   const [p, setP] = useState('');
   const [err, setErr] = useState('');
@@ -25,6 +27,10 @@ export function Login() {
     setErr('');
     try {
       await login(l, p);
+      // Zawsze na pulpit: adres przeżywa wylogowanie, więc bez tego kolejny użytkownik
+      // ląduje na ekranie poprzednika (często poza swoimi uprawnieniami). `replace` —
+      // żeby „wstecz" nie wracało do sesji poprzednika.
+      navigate('/pulpit', { replace: true });
     } catch {
       setErr('Błędny login lub hasło.');
     } finally {

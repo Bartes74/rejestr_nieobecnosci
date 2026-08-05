@@ -41,7 +41,8 @@ export function Capacity() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, border: '1px solid var(--border-2)', background: 'var(--surface)', borderRadius: 10, padding: '4px 6px 4px 14px' }}>
           <Zap size={16} color="var(--brand)" />
           <select value={sprintId} onChange={(e) => setSprintId(e.target.value)} aria-label="Sprint" style={{ ...select, border: 'none', padding: '6px 8px' }}>
-            {sprints.length === 0 && <option value="">Brak sprintów — zaimportuj w Konfiguracji</option>}
+            {/* bez wskazywania Konfiguracji — PO nie ma do niej dostępu */}
+            {sprints.length === 0 && <option value="">Brak zdefiniowanych sprintów</option>}
             {sprints.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </div>

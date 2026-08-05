@@ -50,28 +50,28 @@ const ROLE_LABEL: Record<string, string> = {
   EMPLOYEE: 'Pracownik', LEADER: 'Lider', PO: 'Product Owner', DIRECTOR: 'Dyrektor', PMO: 'PMO', ADMIN: 'Administrator',
 };
 
-// Nawigacja pogrupowana wg odbiorcy (wg prototypu): tytuł w topbarze = label, `tag` = rola-odbiorca ekranu.
-type NavItem = { to: string; label: string; tag: string; icon: LucideIcon; can?: (me: Me) => boolean };
+// Nawigacja pogrupowana wg odbiorcy (wg prototypu); tytuł w topbarze = label.
+type NavItem = { to: string; label: string; icon: LucideIcon; can?: (me: Me) => boolean };
 type NavGroup = { group: string; items: NavItem[] };
 const NAV: NavGroup[] = [
   { group: 'Pracownik', items: [
-    { to: '/pulpit', label: 'Pulpit', tag: 'Pracownik', icon: LayoutDashboard },
-    { to: '/wpis', label: 'Nowa nieobecność', tag: 'Pracownik', icon: CalendarPlus },
-    { to: '/kalendarz', label: 'Kalendarz zespołu', tag: 'Pracownik · Lider', icon: Calendar },
-    { to: '/historia', label: 'Moja historia', tag: 'Pracownik', icon: Clock },
+    { to: '/pulpit', label: 'Pulpit', icon: LayoutDashboard },
+    { to: '/wpis', label: 'Nowa nieobecność', icon: CalendarPlus },
+    { to: '/kalendarz', label: 'Kalendarz zespołu', icon: Calendar },
+    { to: '/historia', label: 'Moja historia', icon: Clock },
   ] },
   { group: 'Planowanie', items: [
-    { to: '/capacity', label: 'Capacity sprintu', tag: 'PO · Agile PM', icon: Zap, can: canSeeCapacity },
-    { to: '/zespol', label: 'Zespół', tag: 'Lider', icon: UserCog, can: canManageTeam },
+    { to: '/capacity', label: 'Capacity sprintu', icon: Zap, can: canSeeCapacity },
+    { to: '/zespol', label: 'Zespół', icon: UserCog, can: canManageTeam },
   ] },
   { group: 'Dyrektor', items: [
-    { to: '/raporty', label: 'Raporty i analizy', tag: 'Dyrektor', icon: BarChart3, can: canSeeReports },
-    { to: '/heatmapa', label: 'Heatmapa pokrycia', tag: 'Dyrektor', icon: Layers, can: canSeeCapacity },
+    { to: '/raporty', label: 'Raporty i analizy', icon: BarChart3, can: canSeeReports },
+    { to: '/heatmapa', label: 'Heatmapa pokrycia', icon: Layers, can: canSeeCapacity },
   ] },
   { group: 'Administracja', items: [
-    { to: '/pracownicy', label: 'Pracownicy i struktura', tag: 'Administrator', icon: Users, can: isAdmin },
-    { to: '/konfiguracja', label: 'Konfiguracja', tag: 'Administrator', icon: SlidersHorizontal, can: canSeeConfig },
-    { to: '/audyt', label: 'Audyt i RODO', tag: 'Administrator · IOD', icon: ShieldCheck, can: isAdmin },
+    { to: '/pracownicy', label: 'Pracownicy i struktura', icon: Users, can: isAdmin },
+    { to: '/konfiguracja', label: 'Konfiguracja', icon: SlidersHorizontal, can: canSeeConfig },
+    { to: '/audyt', label: 'Audyt i RODO', icon: ShieldCheck, can: isAdmin },
   ] },
 ];
 const visibleGroups = (me: Me | undefined): NavGroup[] =>
@@ -165,7 +165,6 @@ function Topbar({ dark, onToggleTheme }: { dark: boolean; onToggleTheme: () => v
       <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 11, minWidth: 0 }}>
           <h1 style={{ fontFamily: 'var(--font-sans)', fontSize: 19, fontWeight: 700, margin: 0, letterSpacing: '-.01em', whiteSpace: 'nowrap', color: 'var(--ink)' }}>{meta?.label ?? 'Nieobecności'}</h1>
-          {meta?.tag && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, color: 'var(--brand)', background: 'var(--brand-tint)', padding: '3px 8px', borderRadius: 6, whiteSpace: 'nowrap', flex: 'none' }}>{meta.tag}</span>}
         </div>
       </div>
       {/* ponytail: wyszukiwarka wizualna wg prototypu; filtrowanie dołożymy, gdy będzie potrzebne */}
