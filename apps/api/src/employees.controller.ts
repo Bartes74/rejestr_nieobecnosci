@@ -5,6 +5,7 @@ import type { PermissionScope } from '@prisma/client';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { PrismaService } from './prisma.service';
 import { EmployeesService } from './employees.service';
+import { OrgService } from './org.service';
 import { ChangeEmploymentTypeDto, ChangeRoleDto, CreateEmployeeDto, GrantPermissionDto, SetPasswordDto } from './dto';
 import { parseMapping } from './import-mapping';
 import { Roles } from './auth/decorators';
@@ -15,12 +16,15 @@ export class EmployeesController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly employees: EmployeesService,
+    private readonly org: OrgService,
   ) {}
 
   // M3 — pełny katalog (e-mail/login/rola/uprawnienia) tylko dla zarządzających; pozostali dostają
   // minimalny zestaw (id+imię+nazwisko+forma), bez ujawniania kontaktów i kto ma jakie uprawnienia.
+  // Zawężenie dotyczy też WIERSZY: nieuprawnieni widzą wyłącznie swój Tribe (FR-H1), tak jak
+  // w kalendarzu i „moim zespole" — inaczej każdy zalogowany pobierał spis całej firmy.
   @Get()
-  list(@CurrentUser() user: AuthUser) {
+  async list(@CurrentUser() user: AuthUser) {
     const privileged = ['ADMIN', 'DIRECTOR', 'PMO'].includes(user.role)
       || user.permissions.includes('MODIFY_ABSENCE') || user.permissions.includes('VIEW_L4');
     if (privileged) {
@@ -31,6 +35,7 @@ export class EmployeesController {
       });
     }
     return this.prisma.employee.findMany({
+      where: { id: { in: await this.org.tribePeers(user.sub) } },
       orderBy: { lastName: 'asc' },
       select: { id: true, firstName: true, lastName: true, employmentType: true },
     });

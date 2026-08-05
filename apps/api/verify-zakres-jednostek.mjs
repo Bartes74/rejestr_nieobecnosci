@@ -71,6 +71,23 @@ drzewo.forEach(zbierz);
 ok(drzewo.length === 1 && drzewo[0].name === 'Tribe ZJ-A', 'drzewo lidera ma korzeń w jego Tribe (bez Pionu/Departamentu nad nim)');
 ok(!plaskie.includes('Tribe ZJ-B') && plaskie.includes('Squad ZJ-A2'), 'drzewo lidera zawiera jego squady i nie zawiera obcego Tribe');
 
+// ── 5. Katalog pracowników zawężony tak samo (wiersze, nie tylko pola) ────────
+// obsada: lider + jedna osoba w jego Tribe, jedna w obcym
+const swoj = await mk('zjswoj', 'EMPLOYEE');
+const obcy = await mk('zjobcy', 'EMPLOYEE');
+await prisma.orgUnitMembership.create({ data: { employeeId: swoj.id, orgUnitId: squadA2.id } });
+await prisma.orgUnitMembership.create({ data: { employeeId: obcy.id, orgUnitId: squadB1.id } });
+
+const katalogLidera = await j(await aLider('/employees'));
+ok(katalogLidera.some((e) => e.id === swoj.id), 'lider widzi w katalogu osobę ze swojego Tribe');
+ok(!katalogLidera.some((e) => e.id === obcy.id), 'lider NIE widzi w katalogu osoby z obcego Tribe');
+ok(katalogLidera.every((e) => e.email === undefined && e.login === undefined),
+  'lider dostaje minimalny zestaw pól (bez e-maili i loginów)');
+
+const katalogAdmina = await j(await aAdmin('/employees'));
+ok(katalogAdmina.some((e) => e.id === obcy.id) && katalogAdmina.some((e) => e.id === swoj.id),
+  'admin nadal widzi cały katalog');
+
 await prisma.$disconnect();
 console.log(failures === 0 ? '\nZAKRES JEDNOSTEK OK ✅' : `\n${failures} ASERCJI NIE PRZESZŁO ❌`);
 process.exit(failures === 0 ? 0 : 1);
