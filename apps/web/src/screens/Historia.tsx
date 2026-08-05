@@ -8,15 +8,8 @@ const today = () => new Date().toISOString().slice(0, 10);
 const field = { padding: '6px 9px', borderRadius: 8, border: '1px solid var(--border-2)', background: 'var(--surface)', color: 'var(--ink)', fontFamily: 'var(--font-sans)', fontSize: 12.5 } as const;
 const COLS = '1.6fr .6fr 1.6fr 1.1fr 1fr .9fr';
 
-// ponytail: liczba dni roboczych bez świąt (przybliżenie po stronie klienta — pomija kalendarz świąt);
-// dokładne liczenie robi silnik `core`/preview. Wystarcza do informacyjnej kolumny „DNI".
-function workdays(from: string, to: string, dayPart: string): string {
-  if (dayPart === 'AM' || dayPart === 'PM') return '0,5';
-  if (dayPart === 'HOURS') return 'godz.';
-  let t = Date.parse(from + 'T00:00:00Z'); const end = Date.parse(to + 'T00:00:00Z'); let n = 0;
-  while (t <= end) { const day = new Date(t).getUTCDay(); if (day !== 0 && day !== 6) n++; t += 86_400_000; }
-  return String(n);
-}
+// Dni robocze liczy serwer (z kalendarzem świąt osoby) — ta sama liczba, którą widzi balans.
+const workdays = (n: number) => String(n).replace('.', ','); // ułamki po polsku (0,5)
 const rangeLabel = (a: Absence) => {
   const f = d(a.dateFrom), t = d(a.dateTo);
   if (f === t) return dm(f);
@@ -107,7 +100,7 @@ export function Historia() {
           return (
             <div key={a.id} style={{ display: 'grid', gridTemplateColumns: COLS, padding: '15px 20px', borderTop: i === 0 ? 'none' : '1px solid var(--border)', alignItems: 'center', fontFamily: 'var(--font-sans)', fontSize: 13 }}>
               <div style={{ fontWeight: 600, color: 'var(--ink)' }}>{rangeLabel(a)}<span style={{ color: 'var(--muted)', fontWeight: 400 }}>{part}</span></div>
-              <div style={{ fontFamily: 'var(--font-mono)', color: 'var(--ink-2)' }}>{workdays(d(a.dateFrom), d(a.dateTo), a.dayPart)}</div>
+              <div style={{ fontFamily: 'var(--font-mono)', color: 'var(--ink-2)' }}>{workdays(a.workingDays)}</div>
               <div style={{ color: 'var(--ink-2)' }}>
                 {a.type.name}
                 {a.type.specialCategory && <span style={{ fontSize: 10, color: 'var(--muted)', background: 'var(--surface-3)', padding: '1px 6px', borderRadius: 5, marginLeft: 6 }}>widoczne tylko dla Ciebie</span>}

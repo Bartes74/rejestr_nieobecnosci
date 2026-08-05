@@ -31,7 +31,7 @@ export class ReportsController {
   @Get('overdue')
   async overdue(@Query('unitId') unitId: string, @CurrentUser() user: AuthUser, @Query('threshold') threshold?: string) {
     await this.org.assertUnitInScope(user, unitId);
-    return this.reports.overdue(unitId, threshold ? Number(threshold) : 10);
+    return this.reports.overdue(unitId, threshold ? Number(threshold) : undefined);
   }
 
   // FR-F6 — stabilny, wersjonowany eksport dla płac/PMO (i jego schemat).

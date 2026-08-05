@@ -42,7 +42,8 @@ export interface Balance {
   period: { from: string; to: string; type: string; year: number };
   pool: number; carriedOver: number; used: number; remaining: number; minimumToLeave?: number;
 }
-export interface Absence { id: string; dateFrom: string; dateTo: string; dayPart: string; hourFrom?: string | null; hourTo?: string | null; type: AbsenceType; source?: string }
+export interface Absence { id: string; dateFrom: string; dateTo: string; dayPart: string; hourFrom?: string | null; hourTo?: string | null; type: AbsenceType; source?: string; workingDays: number }
+export interface AdminSetting { key: string; value: number; label: string; ref: string }
 export interface Preview { workingDays: number; remaining: number; remainingAfter: number; minimumToLeave?: number; collision?: boolean; collisionFrom?: string | null; collisionTo?: string | null }
 export interface CalEntry { employeeId: string; employee: string; dateFrom: string; dateTo: string; dayPart: string }
 export interface Sprint { id: string; name: string; dateFrom: string; dateTo: string; squad?: { id: string; name: string } | null }
@@ -129,6 +130,8 @@ export const api = {
   revokePermission: (id: string, scope: string) => req<string[]>(`/employees/${id}/permissions/${scope}`, { method: 'DELETE' }),
   anonymize: (id: string) => req<{ anonymized: boolean }>(`/employees/${id}/anonymize`, { method: 'POST' }),
   runRetention: () => req<{ months: number; anonymized: number }>('/retention/run', { method: 'POST' }),
+  settings: () => req<AdminSetting[]>('/settings'),
+  setSetting: (key: string, value: number) => req<{ key: string; value: number }>(`/settings/${key}`, { method: 'PUT', body: JSON.stringify({ value }) }),
   processingRegister: () => req<ProcessingActivity[]>('/processing-register'),
   adoption: () => req<Adoption>('/analytics/adoption'),
   createType: (b: Record<string, unknown>) => req<AbsenceType>('/absence-types', { method: 'POST', body: JSON.stringify(b) }),

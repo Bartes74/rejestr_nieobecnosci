@@ -4,6 +4,7 @@ import ExcelJS from 'exceljs';
 import { PrismaService } from './prisma.service';
 import { OrgService } from './org.service';
 import { BalanceService } from './balance.service';
+import { SettingsService } from './settings.service';
 import type { AuthUser } from './auth/current-user.decorator';
 import { canViewL4 } from './auth/rbac';
 
@@ -34,6 +35,7 @@ export class ReportsService {
     private readonly prisma: PrismaService,
     private readonly org: OrgService,
     private readonly balance: BalanceService,
+    private readonly settings: SettingsService,
   ) {}
 
   // FR-F2 — wykorzystanie urlopu per pracownik w jednostce (z poddrzewem).
@@ -79,7 +81,9 @@ export class ReportsService {
   }
 
   // FR-F5 — „kto zalega": osoby z zaległym urlopem lub dużym niewybranym saldem.
-  async overdue(unitId: string, threshold = 10) {
+  // Próg pochodzi z konfiguracji administratora; parametr pozwala go doraźnie nadpisać w raporcie.
+  async overdue(unitId: string, threshold?: number) {
+    if (threshold === undefined) threshold = await this.settings.getNumber('overdue.threshold');
     const { rows } = await this.usage(unitId);
     const flagged = rows
       .filter((r) => r.carriedOver > 0 || r.remaining >= threshold)

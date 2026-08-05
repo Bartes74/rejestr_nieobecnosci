@@ -3,6 +3,7 @@ import { isoDate } from '@nieobecnosci/core';
 import { PrismaService } from './prisma.service';
 import { OrgService } from './org.service';
 import { MailService } from './mail.service';
+import { SettingsService } from './settings.service';
 
 @Injectable()
 export class NotificationsService {
@@ -10,6 +11,7 @@ export class NotificationsService {
     private readonly prisma: PrismaService,
     private readonly org: OrgService,
     private readonly mail: MailService,
+    private readonly settings: SettingsService,
   ) {}
 
   // FR-E1 — lider dostaje informację o planowanej nieobecności współpracownika B2B/OUT.
@@ -28,9 +30,11 @@ export class NotificationsService {
     }
   }
 
-  // FR-E3 — przypomnienia o zaległym urlopie. Wyzwalane harmonogramem (cron → endpoint admina).
-  async sendOverdueReminders(): Promise<{ sent: number }> {
-    const allowances = await this.prisma.leaveAllowance.findMany({ where: { carriedOver: { gt: 0 } }, include: { employee: true } });
+  // FR-E3 — przypomnienia o zaległym urlopie wg reguły administratora (próg dni zaległych,
+  // konfigurowalny w /settings). Wyzwalane harmonogramem (cron → endpoint admina).
+  async sendOverdueReminders(): Promise<{ sent: number; minCarriedOver: number }> {
+    const minCarriedOver = await this.settings.getNumber('reminder.minCarriedOver');
+    const allowances = await this.prisma.leaveAllowance.findMany({ where: { carriedOver: { gte: minCarriedOver } }, include: { employee: true } });
     for (const a of allowances) {
       await this.mail.send(
         a.employee.email,
@@ -39,6 +43,6 @@ export class NotificationsService {
         a.employee.id,
       );
     }
-    return { sent: allowances.length };
+    return { sent: allowances.length, minCarriedOver };
   }
 }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { api, type AbsenceType, type Adoption, type Calendar, type Employee, type OrgUnit, type ProcessingActivity, type Sprint } from '../api';
+import { api, type AbsenceType, type Adoption, type Calendar, type Employee, type OrgUnit, type ProcessingActivity, type Sprint, type AdminSetting } from '../api';
 import { useAuth } from '../current-employee';
 import { Button } from '../design-system/components/core/Button';
 import { AdminOnly, Section, Notice, ColumnMap, field } from '../admin/ui';
@@ -196,6 +196,46 @@ function Przypomnienia() {
   );
 }
 
+// FR-E3/F5/J2 — reguły administratora (wcześniej wartości zaszyte w kodzie).
+function Reguly() {
+  const [items, setItems] = useState<AdminSetting[]>([]);
+  const [draft, setDraft] = useState<Record<string, string>>({});
+  const [msg, setMsg] = useState('');
+  const load = () => api.settings().then((s) => {
+    setItems(s);
+    setDraft(Object.fromEntries(s.map((x) => [x.key, String(x.value)])));
+  }).catch(() => {});
+  useEffect(() => { load(); }, []);
+
+  const save = async (key: string) => {
+    setMsg('Zapisywanie…');
+    try { const r = await api.setSetting(key, Number(draft[key])); setMsg(`Zapisano: ${key} = ${r.value}.`); load(); }
+    catch (e) { setMsg((e as Error).message); }
+  };
+
+  return (
+    <Section title="Reguły administratora">
+      <p style={{ fontFamily: 'var(--font-sans)', fontSize: 13.5, color: 'var(--ink-2)', marginBottom: 12 }}>
+        Progi sterujące przypomnieniami, raportem zalegania i retencją. Zmiana obowiązuje od razu.
+      </p>
+      {items.map((s) => (
+        <div key={s.key} style={{ display: 'grid', gridTemplateColumns: '1fr 110px auto', gap: 10, alignItems: 'center', padding: '10px 0', borderTop: '1px solid var(--border)' }}>
+          <div>
+            <div style={{ fontFamily: 'var(--font-sans)', fontSize: 13.5, color: 'var(--ink)' }}>{s.label}</div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--muted)' }}>{s.key} · {s.ref}</div>
+          </div>
+          <input
+            type="number" min={0} style={field} value={draft[s.key] ?? ''} aria-label={s.label}
+            onChange={(e) => setDraft({ ...draft, [s.key]: e.target.value })}
+          />
+          <Button variant="secondary" onClick={() => save(s.key)}>Zapisz</Button>
+        </div>
+      ))}
+      <Notice text={msg} />
+    </Section>
+  );
+}
+
 function Retencja() {
   const [msg, setMsg] = useState('');
   const run = async () => {
@@ -273,6 +313,7 @@ export function Konfiguracja() {
         <Swieta />
         <Sprinty />
         <Analityka />
+        <Reguly />
         <Przypomnienia />
         <Retencja />
         <RejestrRODO />

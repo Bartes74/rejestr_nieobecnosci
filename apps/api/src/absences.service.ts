@@ -25,9 +25,20 @@ export class AbsencesService {
 
   // FR-I2 — własna historia (z typami). Cudze typy (w tym L4) tylko dla uprawnionych — z audytem (FR-J1).
   // FR-A5 — lider widzi wpisy swojego Tribe, ale BEZ typu (L4 niewyróżniane, D2/H3) — by móc je korygować.
+  // Dni robocze liczy serwer (kalendarz świąt osoby), żeby lista pokazywała tę samą liczbę,
+  // którą zobaczył balans — klient nie zna świąt i wcześniej zawyżał wynik.
+  private async withWorkingDays<T extends { dateFrom: Date; dateTo: Date; dayPart: DayPart; hourFrom: string | null; hourTo: string | null }>(
+    employeeId: string,
+    rows: T[],
+  ): Promise<(T & { workingDays: number })[]> {
+    const holidays = await this.balance.holidaysFor(employeeId);
+    return rows.map((a) => ({ ...a, workingDays: countWorkingDays(a.dateFrom, a.dateTo, holidays) * fractionOf(a) }));
+  }
+
   async listForEmployee(employeeId: string, user: AuthUser) {
     if (employeeId === user.sub) {
-      return this.prisma.absence.findMany({ where: { employeeId }, include: { type: true }, orderBy: { dateFrom: 'desc' } });
+      const own = await this.prisma.absence.findMany({ where: { employeeId }, include: { type: true }, orderBy: { dateFrom: 'desc' } });
+      return this.withWorkingDays(employeeId, own);
     }
     const privileged = canViewL4(user); // admin / VIEW_L4 — widzi typy (z audytem)
     const leaderPeer = user.role === 'LEADER' && (await this.org.tribePeers(user.sub)).includes(employeeId);
@@ -40,13 +51,14 @@ export class AbsencesService {
         data: { entity: 'Absence', entityId: employeeId, action: 'VIEW_TYPES', userId: user.sub,
           description: 'Odczyt typów nieobecności (w tym znacznika L4) innego pracownika.' },
       });
-      return rows;
+      return this.withWorkingDays(employeeId, rows);
     }
     // Lider/MODIFY bez VIEW_L4 — typ zamaskowany; id typu NIE wychodzi na zewnątrz (inaczej dałoby się odgadnąć L4).
-    return rows.map((a) => ({
+    const masked = rows.map((a) => ({
       ...a, typeId: null,
       type: { id: null, name: 'Nieobecność', affectsPool: false, affectsCapacity: false, specialCategory: false },
     }));
+    return this.withWorkingDays(employeeId, masked);
   }
 
   async create(dto: CreateAbsenceDto, user: AuthUser) {
