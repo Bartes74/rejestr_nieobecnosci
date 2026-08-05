@@ -1,0 +1,27 @@
+<!-- @dsCard group="Components" viewport="700x340" name="Data — StatCard, ProgressBar, AbsencePill, Table" subtitle="Metrics, utilisation, uniform absence, tables" -->
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>
+  body{margin:0;font-family:var(--font-sans);background:var(--surface);color:var(--ink);padding:20px}
+  .seclbl{font-family:var(--font-mono);font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:0 0 9px}
+  .wrap{display:flex;flex-wrap:wrap;gap:14px;align-items:center}
+  .col{display:flex;flex-direction:column;gap:16px}
+</style></head><body><div id="root"></div>
+<script type="text/babel" data-presets="react">
+const NS = Object.values(window).find(o => o && typeof o === 'object' && o.Button && o.Card) || window;
+const { Button, Badge, Avatar, Card, Input, Select, SegmentedControl, Switch, Tabs, Breadcrumb, NavItem, Alert, StatCard, ProgressBar, AbsencePill, Table, Dialog, Toast, Tooltip } = NS;
+const I = ({d,w=16,sw=1.9})=>(<svg width={w} height={w} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">{d}</svg>);
+function Demo(){ return (<div className="col">
+  <div className="wrap" style={{alignItems:'stretch'}}>
+    <StatCard label="Pozostało" value="15" unit="/ 26 dni" sub="Rok kalendarzowy 2026" style={{width:210}}/>
+    <StatCard label="Zalega z urlopem" value="14" unit="osób" accent="var(--amber)" sub="powyżej progu" style={{width:210}}/>
+    <div style={{flex:1,minWidth:180}}><div className="seclbl">ProgressBar</div><ProgressBar segments={[{pct:42,color:'var(--brand)'},{pct:15,color:'var(--absence-border)'}]}/><div className="wrap" style={{marginTop:14,gap:8}}><AbsencePill>dziś–24.06</AbsencePill><AbsencePill>23–27.06</AbsencePill></div></div>
+  </div>
+  <Table columns={[{key:'o',label:'OSOBA',width:'1.7fr',bold:true},{key:'z',label:'ZALEGA',width:'.8fr',mono:true},{key:'d',label:'DEADLINE',width:'1fr'}]} rows={[{o:'Tomasz Lewandowski',z:'8 dni',d:'30.06.2026'},{o:'Katarzyna Zielińska',z:'6 dni',d:'30.09.2026'}]}/>
+ </div>); }
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo/>);
+</script></body></html>

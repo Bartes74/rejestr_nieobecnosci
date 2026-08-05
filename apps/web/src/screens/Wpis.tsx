@@ -1,0 +1,185 @@
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { CalendarDays, TriangleAlert } from 'lucide-react';
+import { api, type AbsenceType, type Balance, type Preview } from '../api';
+import { useAuth } from '../current-employee';
+
+const today = () => new Date().toISOString().slice(0, 10);
+const nf = (n: number) => String(n).replace('.', ','); // ułamki po polsku (0,5)
+const card = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, boxShadow: 'var(--shadow-sm)' } as const;
+const label = { display: 'block', fontFamily: 'var(--font-sans)', fontSize: 12.5, fontWeight: 600, color: 'var(--ink-2)', marginBottom: 7 } as const;
+const inputBox = { display: 'flex', alignItems: 'center', gap: 10, border: '1px solid var(--border-2)', background: 'var(--surface)', borderRadius: 10, padding: '11px 14px' } as const;
+const inputEl = { flex: 1, border: 'none', outline: 'none', background: 'transparent', color: 'var(--ink)', fontFamily: 'var(--font-sans)', fontSize: 14, minWidth: 0 } as const;
+
+const PARTS: [string, string][] = [['FULL', 'Cały dzień'], ['AM', 'Przed poł. (AM)'], ['PM', 'Po poł. (PM)'], ['HOURS', 'Godziny']];
+const WD = ['P', 'W', 'Ś', 'C', 'P', 'S', 'N'];
+const MONTHS = ['stycznia', 'lutego', 'marca', 'kwietnia', 'maja', 'czerwca', 'lipca', 'sierpnia', 'września', 'października', 'listopada', 'grudnia'];
+
+// mini-kalendarz miesiąca daty „od" z zaznaczonym zakresem (Pon-first)
+function MiniCal({ from, to }: { from: string; to: string }) {
+  const base = new Date(from + 'T00:00:00Z');
+  const y = base.getUTCFullYear(), m = base.getUTCMonth();
+  const first = new Date(Date.UTC(y, m, 1));
+  const offset = (first.getUTCDay() + 6) % 7; // Pon = 0
+  const cells: (Date | null)[] = [];
+  for (let i = 0; i < offset; i++) cells.push(null);
+  for (let dnum = 1; new Date(Date.UTC(y, m, dnum)).getUTCMonth() === m; dnum++) cells.push(new Date(Date.UTC(y, m, dnum)));
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  return (
+    <div style={{ ...card, padding: 16, borderRadius: 14 }}>
+      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 600, color: 'var(--muted)', letterSpacing: '.04em', textTransform: 'uppercase', marginBottom: 11 }}>{MONTHS[m]} {y}</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 4, fontFamily: 'var(--font-sans)', fontSize: 11.5 }}>
+        {WD.map((w, i) => <div key={i} style={{ textAlign: 'center', color: 'var(--muted)', paddingBottom: 3 }}>{w}</div>)}
+        {cells.map((d, i) => {
+          if (!d) return <div key={i} />;
+          const s = iso(d); const inRange = s >= from && s <= to;
+          const isStart = s === from, isEnd = s === to;
+          const weekend = d.getUTCDay() === 0 || d.getUTCDay() === 6;
+          let bg = 'transparent', col = weekend ? 'var(--muted)' : 'var(--ink)', radius = '0', weight = 400;
+          if (inRange) {
+            col = 'var(--brand)'; weight = 600;
+            bg = isStart || isEnd ? 'var(--brand)' : 'var(--brand-tint-2)';
+            if (isStart || isEnd) col = 'var(--on-brand)';
+            radius = isStart && isEnd ? '7px' : isStart ? '7px 0 0 7px' : isEnd ? '0 7px 7px 0' : '0';
+          } else if (weekend) { bg = 'var(--surface-3)'; radius = '7px'; }
+          return <div key={i} style={{ textAlign: 'center', padding: '6px 0', background: bg, color: col, borderRadius: radius, fontWeight: weight }}>{d.getUTCDate()}</div>;
+        })}
+      </div>
+    </div>
+  );
+}
+
+export function Wpis() {
+  const { current } = useAuth();
+  const navigate = useNavigate();
+  const [types, setTypes] = useState<AbsenceType[]>([]);
+  const [typeId, setTypeId] = useState('');
+  const [from, setFrom] = useState(today());
+  const [to, setTo] = useState(today());
+  const [dayPart, setDayPart] = useState('FULL');
+  const [hourFrom, setHourFrom] = useState('09:00');
+  const [hourTo, setHourTo] = useState('13:00');
+  const [preview, setPreview] = useState<Preview | null>(null);
+  const [bal, setBal] = useState<Balance | null>(null);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const partial = dayPart !== 'FULL';
+  const effTo = partial ? from : to;
+  const hf = dayPart === 'HOURS' ? hourFrom : undefined;
+  const ht = dayPart === 'HOURS' ? hourTo : undefined;
+
+  const loadBalance = () => { if (current) api.balance(current.id).then(setBal).catch(() => {}); };
+  useEffect(() => { api.types().then((t) => { setTypes(t); setTypeId((p) => p || t[0]?.id || ''); }); }, []);
+  useEffect(loadBalance, [current?.id]);
+  useEffect(() => {
+    if (current && from && effTo) api.preview(current.id, from, effTo, dayPart, hf, ht).then(setPreview).catch(() => setPreview(null));
+  }, [current?.id, from, effTo, dayPart, hf, ht]);
+
+  const skipped = useMemo(() => {
+    if (!preview || partial) return 0;
+    let t = Date.parse(from + 'T00:00:00Z'); const end = Date.parse(effTo + 'T00:00:00Z'); let total = 0;
+    while (t <= end) { total++; t += 86_400_000; }
+    return Math.max(0, total - preview.workingDays);
+  }, [preview, from, effTo, partial]);
+
+  const save = async () => {
+    if (!current || !typeId) return;
+    setSaving(true); setMsg(null);
+    try {
+      await api.createAbsence({ employeeId: current.id, typeId, dateFrom: from, dateTo: effTo, dayPart, hourFrom: hf, hourTo: ht });
+      setMsg({ ok: true, text: 'Zapisano nieobecność.' }); loadBalance();
+    } catch (e) { setMsg({ ok: false, text: (e as Error).message }); } finally { setSaving(false); }
+  };
+
+  return (
+    <div style={{ maxWidth: 1080, animation: 'fu .2s ease' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1.25fr .95fr', gap: 18, alignItems: 'start' }}>
+        {/* FORMULARZ */}
+        <div style={{ ...card, padding: 24 }}>
+          <h2 style={{ fontFamily: 'var(--font-sans)', fontSize: 18, fontWeight: 700, margin: '0 0 20px', color: 'var(--ink)' }}>Zgłoś nieobecność</h2>
+
+          <div style={label}>Typ nieobecności</div>
+          <div style={{ ...inputBox, marginBottom: 20 }}>
+            <select aria-label="Typ nieobecności" value={typeId} onChange={(e) => setTypeId(e.target.value)} style={{ ...inputEl, fontWeight: 500, cursor: 'pointer' }}>
+              {types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 20 }}>
+            <div>
+              <div style={label}>{partial ? 'Data' : 'Data od'}</div>
+              <div style={inputBox}><CalendarDays size={16} color="var(--brand)" style={{ flex: 'none' }} /><input type="date" aria-label="Data od" value={from} onChange={(e) => setFrom(e.target.value)} style={inputEl} /></div>
+            </div>
+            <div>
+              <div style={label}>Data do</div>
+              <div style={{ ...inputBox, opacity: partial ? 0.5 : 1 }}><CalendarDays size={16} color="var(--brand)" style={{ flex: 'none' }} /><input type="date" aria-label="Data do" value={effTo} min={from} disabled={partial} onChange={(e) => setTo(e.target.value)} style={inputEl} /></div>
+            </div>
+          </div>
+
+          <div style={label}>Wymiar dnia</div>
+          <div style={{ display: 'flex', gap: 8, marginBottom: dayPart === 'HOURS' ? 14 : 24 }}>
+            {PARTS.map(([k, lbl]) => {
+              const active = dayPart === k;
+              return <button key={k} type="button" onClick={() => setDayPart(k)} style={{
+                flex: 1, textAlign: 'center', borderRadius: 9, padding: 10, cursor: 'pointer', fontFamily: 'var(--font-sans)', fontSize: 12.5, fontWeight: 600,
+                border: active ? '1.5px solid var(--brand)' : '1px solid var(--border-2)', background: active ? 'var(--brand-tint)' : 'var(--surface)', color: active ? 'var(--brand)' : 'var(--ink-2)',
+              }}>{lbl}</button>;
+            })}
+          </div>
+          {dayPart === 'HOURS' && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 24 }}>
+              <div><div style={label}>Od godz.</div><div style={inputBox}><input type="time" aria-label="Godzina od" value={hourFrom} onChange={(e) => setHourFrom(e.target.value)} style={inputEl} /></div></div>
+              <div><div style={label}>Do godz.</div><div style={inputBox}><input type="time" aria-label="Godzina do" value={hourTo} onChange={(e) => setHourTo(e.target.value)} style={inputEl} /></div></div>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button type="button" onClick={save} disabled={saving || !typeId || preview?.collision} style={{ border: 'none', cursor: 'pointer', background: 'var(--brand)', color: 'var(--on-brand)', fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 14, padding: '12px 22px', borderRadius: 10, boxShadow: 'var(--shadow-sm)', opacity: saving || preview?.collision ? 0.6 : 1 }}>{saving ? 'Zapisywanie…' : 'Zapisz nieobecność'}</button>
+            <button type="button" onClick={() => navigate('/pulpit')} style={{ border: '1px solid var(--border-2)', cursor: 'pointer', background: 'var(--surface)', color: 'var(--ink-2)', fontFamily: 'var(--font-sans)', fontWeight: 600, fontSize: 14, padding: '12px 22px', borderRadius: 10 }}>Anuluj</button>
+          </div>
+          {msg && (
+            <div style={{ marginTop: 14, padding: '10px 14px', borderRadius: 10, fontFamily: 'var(--font-sans)', fontSize: 13.5, background: msg.ok ? 'var(--brand-tint)' : 'var(--danger-tint)', color: msg.ok ? 'var(--brand-dark)' : 'var(--danger)', border: `1px solid ${msg.ok ? 'var(--brand)' : 'var(--danger)'}` }}>{msg.text}</div>
+          )}
+        </div>
+
+        {/* PODGLĄD NA ŻYWO */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ ...card, padding: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--brand)' }} />
+              <span style={{ fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 13.5, color: 'var(--ink)' }}>Podgląd na żywo</span>
+            </div>
+            <Row label="Dni robocze w zakresie" value={preview ? nf(preview.workingDays) : '—'} />
+            <Row label="Pominięto (weekend / święta)" value={partial ? '—' : String(skipped)} muted />
+            <Row label="Balans po zapisie" value={preview ? `${nf(preview.remaining)} → ${nf(preview.remainingAfter)}` : '—'} accent last />
+            {preview && preview.minimumToLeave && preview.remainingAfter >= 0 && preview.remainingAfter < preview.minimumToLeave && (
+              <div style={{ background: 'var(--surface-3)', borderRadius: 9, padding: '10px 12px', marginTop: 10, fontFamily: 'var(--font-sans)', fontSize: 11.5, color: 'var(--amber)', lineHeight: 1.5 }}>Zejdziesz poniżej minimum do pozostawienia ({preview.minimumToLeave} dni).</div>
+            )}
+          </div>
+
+          {preview?.collision && (
+            <div style={{ background: 'var(--amber-tint)', border: '1px solid var(--amber)', borderRadius: 14, padding: 16, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <TriangleAlert size={18} color="var(--amber)" style={{ flex: 'none', marginTop: 1 }} />
+              <div>
+                <div style={{ fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 13, color: 'var(--ink)', marginBottom: 3 }}>Kolizja z istniejącym wpisem</div>
+                <div style={{ fontFamily: 'var(--font-sans)', fontSize: 12.5, lineHeight: 1.5, color: 'var(--ink-2)' }}>Masz już nieobecność w terminie {preview.collisionFrom} – {preview.collisionTo}. Zmień daty, aby zapisać.</div>
+              </div>
+            </div>
+          )}
+
+          <MiniCal from={from} to={effTo} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Row({ label, value, muted, accent, last }: { label: string; value: string; muted?: boolean; accent?: boolean; last?: boolean }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 0', borderBottom: last ? 'none' : '1px solid var(--border)' }}>
+      <span style={{ fontFamily: 'var(--font-sans)', fontSize: 13, color: 'var(--ink-2)' }}>{label}</span>
+      <span style={{ fontFamily: 'var(--font-mono)', fontWeight: accent ? 700 : 600, fontSize: 14, color: accent ? 'var(--brand)' : muted ? 'var(--muted)' : 'var(--ink)' }}>{value}</span>
+    </div>
+  );
+}

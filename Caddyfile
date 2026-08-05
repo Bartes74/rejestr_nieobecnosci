@@ -1,0 +1,12 @@
+# Caddy: terminuje TLS, serwuje SPA i proxuje /api do kontenera api (same-origin, więc web używa względnego BASE='/api').
+# SITE_ADDRESS: domena z automatycznym TLS (ACME), albo "localhost"/wewn. host (Caddy użyje certyfikatu internal).
+{$SITE_ADDRESS:localhost} {
+	handle /api/* {
+		reverse_proxy api:3000
+	}
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}

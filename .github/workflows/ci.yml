@@ -1,0 +1,38 @@
+# A6 — CI. Przykład dla GitHub Actions; łatwo przenieść na GitLab CI / Jenkins (te same kroki).
+# Reużywa istniejącą inwestycję testową: packages/core (vitest) + apps/api/verify-*.mjs.
+name: CI
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: nieobecnosci
+          POSTGRES_PASSWORD: nieobecnosci
+          POSTGRES_DB: nieobecnosci
+        ports: ["5440:5432"]
+        options: >-
+          --health-cmd "pg_isready -U nieobecnosci"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://nieobecnosci:nieobecnosci@localhost:5440/nieobecnosci?schema=public
+      JWT_SECRET: ci-test-secret
+      API: http://localhost:3100/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec prisma generate
+      # build + typecheck + testy rdzenia (offline)
+      - run: pnpm run verify:offline
+      # migracje, API w tle, suity integracyjne (czyszczą bazę i sprawdzają API end-to-end)
+      - run: |
+          pnpm exec prisma migrate deploy
+          PORT=3100 node apps/api/dist/main.js &
+          pnpm run verify:suites

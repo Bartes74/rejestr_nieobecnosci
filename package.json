@@ -1,0 +1,27 @@
+{
+  "name": "nieobecnosci",
+  "private": true,
+  "packageManager": "pnpm@10.33.0",
+  "pnpm": {
+    "overrides": {
+      "multer": "^2.2.0"
+    }
+  },
+  "scripts": {
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "verify:offline": "pnpm -r build && pnpm -r typecheck && pnpm -F @nieobecnosci/core test",
+    "verify:suites": "node apps/api/run-verify.mjs",
+    "db:up": "docker compose up -d db",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:seed": "node prisma/seed.mjs"
+  },
+  "devDependencies": {
+    "prisma": "^6.1.0",
+    "typescript": "^5.6.3"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.1.0"
+  }
+}

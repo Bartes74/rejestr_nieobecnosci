@@ -1,0 +1,12 @@
+# NFR-4 — codzienny backup o 02:00. Patrz nieobecnosci-backup.service po instrukcję instalacji.
+# RPO ≈ odstęp (dzienny → ~24h). Test odtworzenia rób kwartalnie: restore najnowszego dumpu do
+# tymczasowej bazy i uruchom apps/api/verify-krok1.mjs (dowód, że dump jest odtwarzalny).
+[Unit]
+Description=Codzienny backup „Nieobecności" o 02:00
+
+[Timer]
+OnCalendar=*-*-* 02:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

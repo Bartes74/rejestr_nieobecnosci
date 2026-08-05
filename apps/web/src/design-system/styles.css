@@ -1,0 +1,14 @@
+/* Nieobecności Design System — global entry point.
+   Consumers link ONLY this file. It is a list of @imports. */
+@import "./tokens/fonts.css";
+@import "./tokens/colors.css";
+@import "./tokens/typography.css";
+@import "./tokens/spacing.css";
+
+/* Globalne podstawy: body dziedziczy markę (Archivo), wejściowa animacja ekranów, responsywne hero logowania. */
+html, body, #root { height: 100%; }
+body { margin: 0; font-family: var(--font-sans); color: var(--ink); background: var(--canvas); -webkit-font-smoothing: antialiased; }
+@keyframes fu { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media (max-width: 860px) { .login-hero { display: none !important; } }
+/* WCAG 2.4.7 — widoczny focus z klawiatury (brak takiego stylu był realną luką). */
+:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 2px; }

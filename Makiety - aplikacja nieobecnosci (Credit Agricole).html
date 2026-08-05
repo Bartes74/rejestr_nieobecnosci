@@ -1,0 +1,475 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Makiety — Aplikacja Nieobecności (Credit Agricole)</title>
+<style>
+/* ===== Credit Agricole – oficjalna paleta ===== */
+:root{
+  --p342:#006A4E; --p341:#007A53; --p321:#009597; --p431:#5B6770; --p485:#ED1B2F;
+  --p340:#00965E; --p346:#71CC98;
+  /* light theme */
+  --bg:#EEF2F1; --surface:#FFFFFF; --surface2:#F3F6F5; --card-br:#E2E8E5;
+  --text:#16221D; --muted:#5B6770; --border:#E2E8E5;
+  --brand:#006A4E; --brand2:#007A53; --teal:#009597; --accent:#ED1B2F;
+  --brand-soft:#E4F1EB; --teal-soft:#E1F1F1; --warn-soft:#FCE7E9;
+  --sidebar1:#006A4E; --sidebar2:#00513B; --on-brand:#FFFFFF;
+  --shadow:0 1px 2px rgba(16,34,29,.06),0 6px 20px rgba(16,34,29,.06);
+  --radius:14px;
+}
+[data-theme="dark"]{
+  --bg:#0D1311; --surface:#15201C; --surface2:#1B2622; --card-br:#26332E;
+  --text:#E9F1EE; --muted:#9DAAA4; --border:#26332E;
+  --brand:#00965E; --brand2:#1FA877; --teal:#2BBFC1; --accent:#FF5765;
+  --brand-soft:#143028; --teal-soft:#10302F; --warn-soft:#3A1B20;
+  --sidebar1:#0A5A41; --sidebar2:#063E2D; --on-brand:#EAFBF4;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+  background:var(--bg); color:var(--text); -webkit-font-smoothing:antialiased;
+  transition:background .25s,color .25s;
+}
+.app{display:grid; grid-template-columns:248px 1fr; min-height:100vh}
+
+/* ===== Sidebar ===== */
+.sidebar{
+  background:linear-gradient(170deg,var(--sidebar1),var(--sidebar2));
+  color:#fff; padding:20px 14px; display:flex; flex-direction:column; gap:6px;
+  position:sticky; top:0; height:100vh;
+}
+.brand{display:flex; align-items:center; gap:11px; padding:6px 8px 18px}
+.logo{
+  width:42px; height:30px; border-radius:16px/14px; background:#fff;
+  display:flex; align-items:center; justify-content:center; font-weight:800;
+  color:var(--p342); letter-spacing:.5px; font-size:15px;
+  box-shadow:inset 0 0 0 2px var(--p485);
+}
+.brand b{font-size:15px; font-weight:700; line-height:1.1}
+.brand small{display:block; font-size:11px; opacity:.8; font-weight:500}
+.nav{display:flex; flex-direction:column; gap:3px; margin-top:4px}
+.nav a{
+  display:flex; align-items:center; gap:11px; padding:10px 12px; border-radius:10px;
+  color:#eafff7; text-decoration:none; font-size:13.5px; cursor:pointer; opacity:.92;
+  transition:background .15s,opacity .15s;
+}
+.nav a:hover{background:rgba(255,255,255,.10); opacity:1}
+.nav a.active{background:rgba(255,255,255,.16); opacity:1; font-weight:600}
+.nav a .ic{width:18px; text-align:center; font-size:15px}
+.side-foot{margin-top:auto; font-size:11px; opacity:.7; padding:10px 8px; line-height:1.5}
+
+/* ===== Topbar ===== */
+.main{display:flex; flex-direction:column; min-width:0}
+.topbar{
+  display:flex; align-items:center; gap:16px; padding:14px 26px;
+  background:var(--surface); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:5;
+}
+.topbar h1{font-size:18px; margin:0; font-weight:700; flex:1}
+.search{
+  background:var(--surface2); border:1px solid var(--border); border-radius:10px;
+  padding:8px 12px; font-size:13px; color:var(--text); width:240px;
+}
+.toggle{
+  display:inline-flex; align-items:center; gap:8px; background:var(--surface2);
+  border:1px solid var(--border); border-radius:30px; padding:6px 12px; cursor:pointer;
+  font-size:12.5px; color:var(--text); font-weight:600;
+}
+.toggle .dot{width:14px;height:14px;border-radius:50%;background:var(--brand)}
+.avatar{width:34px;height:34px;border-radius:50%;background:var(--teal);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px}
+
+/* ===== Content ===== */
+.content{padding:26px; display:none}
+.content.active{display:block}
+.row{display:grid; gap:18px}
+.cols-3{grid-template-columns:repeat(3,1fr)}
+.cols-2{grid-template-columns:1.6fr 1fr}
+.card{
+  background:var(--surface); border:1px solid var(--card-br); border-radius:var(--radius);
+  padding:18px; box-shadow:var(--shadow);
+}
+.card h3{margin:0 0 14px; font-size:14px; font-weight:700; display:flex; align-items:center; gap:8px}
+.card h3 .tag{margin-left:auto; font-size:11px; font-weight:600; color:var(--muted)}
+.muted{color:var(--muted)}
+.kpi{font-size:34px; font-weight:800; line-height:1; letter-spacing:-.5px}
+.kpi.green{color:var(--brand)} .kpi.teal{color:var(--teal)} .kpi.red{color:var(--accent)}
+.kpi-sub{font-size:12px; color:var(--muted); margin-top:6px}
+.bar{height:9px; border-radius:6px; background:var(--surface2); overflow:hidden; margin-top:14px}
+.bar > span{display:block; height:100%; background:linear-gradient(90deg,var(--brand),var(--teal))}
+.pill{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600}
+.pill.soft{background:var(--brand-soft); color:var(--brand)}
+.pill.tealp{background:var(--teal-soft); color:var(--teal)}
+.pill.warn{background:var(--warn-soft); color:var(--accent)}
+.pill.grey{background:var(--surface2); color:var(--muted)}
+
+.people{display:flex;flex-direction:column;gap:2px}
+.person{display:flex;align-items:center;gap:11px;padding:9px 6px;border-radius:9px}
+.person:hover{background:var(--surface2)}
+.pa{width:30px;height:30px;border-radius:50%;background:var(--brand-soft);color:var(--brand);
+  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0}
+.person .nm{font-size:13px;font-weight:600}
+.person .rl{font-size:11px;color:var(--muted)}
+.person .end{margin-left:auto}
+
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;color:var(--muted);font-weight:600;padding:9px 10px;border-bottom:1px solid var(--border);font-size:11.5px;text-transform:uppercase;letter-spacing:.3px}
+td{padding:10px;border-bottom:1px solid var(--border)}
+tr:last-child td{border-bottom:none}
+.tcenter{text-align:center}
+
+/* form */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+label.f{display:block;font-size:12px;font-weight:600;margin-bottom:6px;color:var(--muted)}
+.inp,select.inp{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;
+  background:var(--surface2);color:var(--text);font-size:13px;font-family:inherit}
+.seg{display:flex;gap:6px}
+.seg button{flex:1;padding:8px;border:1px solid var(--border);background:var(--surface2);border-radius:9px;
+  font-size:12px;color:var(--text);cursor:pointer;font-weight:600}
+.seg button.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+.btn{padding:11px 18px;border-radius:10px;border:none;font-weight:700;font-size:13px;cursor:pointer}
+.btn.primary{background:var(--brand);color:#fff}
+.btn.ghost{background:transparent;border:1px solid var(--border);color:var(--text)}
+.assist{background:var(--brand-soft);border:1px solid transparent;border-radius:12px;padding:16px}
+.assist .big{font-size:26px;font-weight:800;color:var(--brand)}
+.assist-row{display:flex;justify-content:space-between;font-size:12.5px;padding:6px 0;border-bottom:1px dashed rgba(91,103,112,.3)}
+.assist-row:last-child{border-bottom:none}
+.alert{display:flex;gap:11px;align-items:flex-start;background:var(--warn-soft);border-radius:11px;padding:12px 14px;margin-top:14px}
+.alert .ai{color:var(--accent);font-weight:800;font-size:16px}
+.alert .at{font-size:12.5px}
+.note-good{display:flex;gap:10px;align-items:center;background:var(--teal-soft);border-radius:11px;padding:11px 14px;font-size:12.5px;margin-top:14px}
+
+/* calendar roster */
+.legend{display:flex;gap:16px;align-items:center;font-size:12px;color:var(--muted);margin-bottom:14px;flex-wrap:wrap}
+.swatch{display:inline-block;width:22px;height:11px;border-radius:3px;vertical-align:middle;margin-right:6px}
+.sw-abs{background:var(--brand-soft);box-shadow:inset 3px 0 0 var(--brand)}
+.sw-half{background:repeating-linear-gradient(135deg,var(--brand-soft),var(--brand-soft) 4px,transparent 4px,transparent 8px);box-shadow:inset 3px 0 0 var(--brand)}
+.sw-hol{background:var(--surface2);box-shadow:inset 0 0 0 1px var(--border)}
+.roster{overflow-x:auto}
+.rgrid{border-collapse:separate;border-spacing:0;font-size:11px;min-width:760px;width:100%}
+.rgrid th.day{font-weight:600;color:var(--muted);padding:6px 0;text-align:center;width:24px;font-size:10.5px;text-transform:none;letter-spacing:0;border:none}
+.rgrid th.we{color:var(--accent);opacity:.7}
+.rgrid td.name{padding:7px 10px;border-bottom:1px solid var(--border);white-space:nowrap}
+.rgrid td.name b{font-size:12px;font-weight:600}
+.rgrid td.name small{display:block;color:var(--muted);font-size:10.5px}
+.rgrid td.cell{border-bottom:1px solid var(--border);border-left:1px solid var(--surface2);height:34px;position:relative;padding:0}
+.rgrid td.we{background:var(--surface2)}
+.rgrid td.hol{background:var(--surface2)}
+.absbar{position:absolute;inset:7px 2px;background:var(--brand-soft);border-left:3px solid var(--brand);border-radius:5px}
+.absbar.half{background:repeating-linear-gradient(135deg,var(--brand-soft),var(--brand-soft) 4px,transparent 4px,transparent 8px)}
+.absbar.span{border-radius:5px}
+
+/* capacity */
+.cap-head{display:flex;gap:14px;align-items:center;margin-bottom:6px;flex-wrap:wrap}
+.sprint-sel{display:inline-flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:13px;font-weight:600}
+.capbar{height:26px;border-radius:8px;background:var(--surface2);overflow:hidden;display:flex}
+.capbar .avail{background:linear-gradient(90deg,var(--brand),var(--brand2));display:flex;align-items:center;padding-left:10px;color:#fff;font-size:11px;font-weight:700}
+.capbar .gone{background:repeating-linear-gradient(135deg,transparent,transparent 5px,rgba(91,103,112,.18) 5px,rgba(91,103,112,.18) 10px)}
+.mini{font-size:11px;color:var(--muted)}
+
+/* admin */
+.tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.tabs button{padding:8px 14px;border-radius:9px;border:1px solid var(--border);background:var(--surface);font-size:12.5px;font-weight:600;color:var(--text);cursor:pointer}
+.tabs button.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+.flag{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--accent);font-weight:600}
+.switch{width:36px;height:20px;border-radius:20px;background:var(--brand);position:relative;display:inline-block}
+.switch.off{background:var(--border)}
+.switch::after{content:"";position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;top:2px;right:2px}
+.switch.off::after{right:auto;left:2px}
+
+/* breadcrumb */
+.crumb{display:flex;gap:8px;align-items:center;font-size:12.5px;margin-bottom:16px;flex-wrap:wrap}
+.crumb a{color:var(--brand);text-decoration:none;font-weight:600;cursor:pointer}
+.crumb span{color:var(--muted)}
+.bar-mini{height:7px;border-radius:5px;background:var(--surface2);overflow:hidden;width:90px;display:inline-block;vertical-align:middle}
+.bar-mini>span{display:block;height:100%;background:var(--brand)}
+.toolbar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+.spacer{flex:1}
+h2.sec{font-size:13px;margin:22px 0 12px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+
+@media(max-width:860px){.app{grid-template-columns:1fr}.sidebar{display:none}.cols-3,.cols-2{grid-template-columns:1fr}}
+</style>
+
+<div class="app">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo">CA</div>
+      <div><b>Nieobecności</b><small>Credit Agricole</small></div>
+    </div>
+    <nav class="nav" id="nav">
+      <a data-s="pulpit" class="active"><span class="ic">▦</span> Pulpit</a>
+      <a data-s="wpis"><span class="ic">＋</span> Nowy wpis</a>
+      <a data-s="kalendarz"><span class="ic">▤</span> Kalendarz zespołu</a>
+      <a data-s="sprint"><span class="ic">◧</span> Sprinty i capacity</a>
+      <a data-s="admin"><span class="ic">⚙</span> Administracja</a>
+      <a data-s="raporty"><span class="ic">▥</span> Raporty</a>
+    </nav>
+    <div class="side-foot">MVP · v2.0<br>Makieta poglądowa</div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar">
+      <h1 id="title">Pulpit</h1>
+      <input class="search" placeholder="Szukaj osoby lub zespołu…">
+      <div class="toggle" id="themeBtn"><span class="dot"></span><span id="themeLbl">Tryb ciemny</span></div>
+      <div class="avatar">BD</div>
+    </div>
+
+    <!-- ===== PULPIT ===== -->
+    <section class="content active" id="pulpit">
+      <div class="row cols-3" style="margin-bottom:18px">
+        <div class="card"><h3>Pula urlopu <span class="tag">rok 2026</span></h3>
+          <div class="kpi green">26</div><div class="kpi-sub">dni przysługujących (UoP)</div></div>
+        <div class="card"><h3>Wykorzystano</h3>
+          <div class="kpi teal">11</div><div class="kpi-sub">w tym 2 dni zaplanowane</div></div>
+        <div class="card"><h3>Do rozplanowania</h3>
+          <div class="kpi red">15</div><div class="kpi-sub">w tym 4 dni zaległe — wykorzystaj do 30.09</div>
+          <div class="bar"><span style="width:42%"></span></div></div>
+      </div>
+      <div class="row cols-2">
+        <div class="card"><h3>Kto dziś nieobecny <span class="tag">Tribe Detal · 22 cze</span></h3>
+          <div class="people">
+            <div class="person"><div class="pa">AK</div><div><div class="nm">Anna Kowalska</div><div class="rl">Squad Płatności · PO</div></div><div class="end"><span class="pill soft">nieobecna</span></div></div>
+            <div class="person"><div class="pa">MN</div><div><div class="nm">Marek Nowak</div><div class="rl">Squad Konta · Developer</div></div><div class="end"><span class="pill soft">nieobecny</span></div></div>
+            <div class="person"><div class="pa">JW</div><div><div class="nm">Julia Wiśniewska</div><div class="rl">Chapter QA</div></div><div class="end"><span class="pill soft">½ dnia</span></div></div>
+          </div>
+        </div>
+        <div class="card"><h3>Przypomnienia</h3>
+          <div class="alert"><span class="ai">!</span><span class="at"><b>Masz 4 dni zaległego urlopu.</b><br>Zaplanuj je do 30.09.2026, aby nie przepadły.</span></div>
+          <div class="note-good"><span>✓</span><span>Twój zespół ma pełne pokrycie ról w bieżącym sprincie.</span></div>
+          <div style="margin-top:14px"><button class="btn primary">Zaplanuj nieobecność</button></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== NOWY WPIS ===== -->
+    <section class="content" id="wpis">
+      <div class="row cols-2">
+        <div class="card"><h3>Nowy wpis nieobecności</h3>
+          <div class="form-grid">
+            <div style="grid-column:1/3"><label class="f">Typ nieobecności</label>
+              <select class="inp"><option>Urlop wypoczynkowy</option><option>Urlop na żądanie</option><option>Opieka</option><option>Urlop okolicznościowy</option><option>Zwolnienie (L4)</option><option>Niedostępność (B2B/OUT)</option></select></div>
+            <div><label class="f">Data od</label><input class="inp" value="2026-07-06"></div>
+            <div><label class="f">Data do</label><input class="inp" value="2026-07-10"></div>
+            <div style="grid-column:1/3"><label class="f">Wymiar</label>
+              <div class="seg"><button class="on">Cały dzień</button><button>Pół dnia (AM/PM)</button><button>Godziny</button></div></div>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:18px"><button class="btn primary">Zapisz wpis</button><button class="btn ghost">Anuluj</button></div>
+          <p class="muted" style="font-size:11.5px;margin-top:14px">Wpis obowiązuje od zapisania — bez formalnej akceptacji. Typ nie jest pokazywany zespołowi (D1/D2).</p>
+        </div>
+        <div class="card"><h3>Asysta na żywo <span class="tag">FR-A9 · B2</span></h3>
+          <div class="assist">
+            <div class="big">5 dni roboczych</div>
+            <div class="muted" style="font-size:12px;margin:4px 0 14px">06–10.07.2026 · weekendy pominięte</div>
+            <div class="assist-row"><span>Dostępna pula</span><b>15 dni</b></div>
+            <div class="assist-row"><span>Ten wpis</span><b>− 5 dni</b></div>
+            <div class="assist-row"><span>Pozostanie do rozplanowania</span><b style="color:var(--brand)">10 dni</b></div>
+          </div>
+          <div class="note-good"><span>✓</span><span>Brak kolizji z Twoimi innymi wpisami.</span></div>
+          <div class="alert"><span class="ai">!</span><span class="at">W tym terminie nieobecny jest już <b>1 z 2 PO</b> w squadzie — sprawdź pokrycie w widoku sprintu.</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== KALENDARZ ===== -->
+    <section class="content" id="kalendarz">
+      <div class="card">
+        <h3>Kalendarz zespołu <span class="tag">Tribe Detal › Squad Płatności · Lipiec 2026</span></h3>
+        <div class="toolbar">
+          <span class="sprint-sel">Tribe Detal ▾</span>
+          <span class="sprint-sel">Squad Płatności ▾</span>
+          <span class="pill grey">Filtr: kto w tym tygodniu ▾</span>
+          <div class="spacer"></div>
+          <button class="btn ghost">‹ Czerwiec</button><button class="btn ghost">Sierpień ›</button>
+        </div>
+        <div class="legend">
+          <span><span class="swatch sw-abs"></span>Nieobecność</span>
+          <span><span class="swatch sw-half"></span>Pół dnia</span>
+          <span><span class="swatch sw-hol"></span>Weekend / święto</span>
+          <span class="muted">Wszystkie typy prezentowane jednolicie — bez rozróżniania (D1).</span>
+        </div>
+        <div class="roster">
+          <table class="rgrid" id="roster"></table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== SPRINT / CAPACITY ===== -->
+    <section class="content" id="sprint">
+      <div class="card" style="margin-bottom:18px">
+        <div class="cap-head">
+          <span class="sprint-sel">◧ Sprint 14 · 13–24 lip 2026 ▾</span>
+          <span class="pill tealp">Squad Płatności · 6 osób</span>
+          <div class="spacer"></div>
+          <span class="mini">Capacity bazowe: 60 osobodni</span>
+        </div>
+        <div class="alert"><span class="ai">▲</span><span class="at"><b>Alert kolizji kluczowych ról.</b> 16–17 lip nieobecni jednocześnie <b>PO (A. Kowalska)</b> oraz <b>Tech Lead (P. Zając)</b> — ryzyko dla ciągłości sprintu. (FR-D3)</span></div>
+      </div>
+      <div class="row cols-2">
+        <div class="card"><h3>Dostępność squadu w sprincie</h3>
+          <div style="margin:6px 0 4px"><div class="capbar"><div class="avail" style="width:73%">44 osobodni dostępne</div><div class="gone" style="width:27%"></div></div></div>
+          <div class="mini" style="margin-bottom:18px">16 osobodni pochłaniają nieobecności (27%)</div>
+          <table>
+            <tr><th>Osoba</th><th>Rola</th><th class="tcenter">Dostępność</th></tr>
+            <tr><td>Anna Kowalska</td><td>PO <span class="flag">★ kluczowa</span></td><td class="tcenter"><span class="pill warn">6/10 dni</span></td></tr>
+            <tr><td>Piotr Zając</td><td>Tech Lead <span class="flag">★ kluczowa</span></td><td class="tcenter"><span class="pill warn">7/10 dni</span></td></tr>
+            <tr><td>Marek Nowak</td><td>Developer</td><td class="tcenter"><span class="pill soft">10/10 dni</span></td></tr>
+            <tr><td>Julia Wiśniewska</td><td>QA</td><td class="tcenter"><span class="pill soft">9/10 dni</span></td></tr>
+            <tr><td>Tomasz Lis</td><td>Developer (B2B)</td><td class="tcenter"><span class="pill soft">10/10 dni</span></td></tr>
+          </table>
+        </div>
+        <div class="card"><h3>Pokrycie ról</h3>
+          <div class="people">
+            <div class="person"><div class="pa" style="background:var(--warn-soft);color:var(--accent)">PO</div><div><div class="nm">Product Owner</div><div class="rl">Luka 16–17 lip</div></div><div class="end"><span class="pill warn">ryzyko</span></div></div>
+            <div class="person"><div class="pa" style="background:var(--warn-soft);color:var(--accent)">TL</div><div><div class="nm">Tech Lead</div><div class="rl">Luka 16–17 lip</div></div><div class="end"><span class="pill warn">ryzyko</span></div></div>
+            <div class="person"><div class="pa">QA</div><div><div class="nm">Quality Assurance</div><div class="rl">Pełne pokrycie</div></div><div class="end"><span class="pill tealp">ok</span></div></div>
+            <div class="person"><div class="pa">DEV</div><div><div class="nm">Development</div><div class="rl">Pełne pokrycie</div></div><div class="end"><span class="pill tealp">ok</span></div></div>
+          </div>
+          <div class="note-good" style="margin-top:16px"><span>↳</span><span>Sugestia: przesuń urlop Tech Leada o 1 dzień, aby uniknąć nakładania ról.</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== ADMIN ===== -->
+    <section class="content" id="admin">
+      <div class="tabs" id="adminTabs">
+        <button class="on" data-t="typy">Typy nieobecności</button>
+        <button data-t="pula">Pula urlopu</button>
+        <button data-t="swieta">Święta i dni wolne</button>
+        <button data-t="role">Role i uprawnienia</button>
+      </div>
+
+      <div class="card adminpane" id="t-typy">
+        <h3>Typy nieobecności <span class="tag">tryb live · FR-G1</span></h3>
+        <table>
+          <tr><th>Nazwa</th><th class="tcenter">Obniża pulę</th><th class="tcenter">Wpływa na capacity</th><th class="tcenter">Kategoria szczególna</th></tr>
+          <tr><td>Urlop wypoczynkowy</td><td class="tcenter"><span class="switch"></span></td><td class="tcenter"><span class="switch"></span></td><td class="tcenter">—</td></tr>
+          <tr><td>Urlop na żądanie</td><td class="tcenter"><span class="switch"></span></td><td class="tcenter"><span class="switch"></span></td><td class="tcenter">—</td></tr>
+          <tr><td>Zwolnienie (L4)</td><td class="tcenter"><span class="switch off"></span></td><td class="tcenter"><span class="switch"></span></td><td class="tcenter"><span class="flag">● dane o zdrowiu</span></td></tr>
+          <tr><td>Niedostępność (B2B/OUT)</td><td class="tcenter"><span class="switch"></span></td><td class="tcenter"><span class="switch"></span></td><td class="tcenter">—</td></tr>
+        </table>
+        <p class="muted" style="font-size:11.5px;margin-top:12px">L4 nie obniża puli urlopu (FR-B5); znacznik „dane o zdrowiu” jest chroniony i niewidoczny dla zespołu (FR-J1).</p>
+      </div>
+
+      <div class="card adminpane" id="t-pula" style="display:none">
+        <h3>Pula urlopu <span class="tag">FR-B3 / FR-G2</span></h3>
+        <div class="form-grid" style="max-width:520px">
+          <div><label class="f">Pula globalna — UoP (rok kalendarzowy)</label><input class="inp" value="26 dni"></div>
+          <div><label class="f">Wymiar B2B/OUT — okres bieżący</label><input class="inp" value="19 dni"></div>
+        </div>
+        <h2 class="sec">Korekty indywidualne</h2>
+        <table>
+          <tr><th>Pracownik</th><th>Forma</th><th class="tcenter">Pula</th><th class="tcenter">Korekta</th></tr>
+          <tr><td>Anna Kowalska</td><td>UoP</td><td class="tcenter">26</td><td class="tcenter"><span class="pill grey">domyślna</span></td></tr>
+          <tr><td>Tomasz Lis</td><td>B2B</td><td class="tcenter">21</td><td class="tcenter"><span class="pill tealp">+2 indyw.</span></td></tr>
+          <tr><td>Marek Nowak</td><td>UoP</td><td class="tcenter">32</td><td class="tcenter"><span class="pill tealp">+6 zaległe</span></td></tr>
+        </table>
+      </div>
+
+      <div class="card adminpane" id="t-swieta" style="display:none">
+        <h3>Święta i dni wolne <span class="tag">FR-G3 / FR-G7</span></h3>
+        <table>
+          <tr><th>Data</th><th>Nazwa</th><th>Kalendarz</th><th class="tcenter">Typ</th></tr>
+          <tr><td>2026-08-15</td><td>Wniebowzięcie NMP</td><td>Polska</td><td class="tcenter"><span class="pill grey">ustawowe</span></td></tr>
+          <tr><td>2026-08-14</td><td>Dzień wolny (odbiór za sobotę)</td><td>Organizacja</td><td class="tcenter"><span class="pill soft">dodatkowe</span></td></tr>
+          <tr><td>2026-11-11</td><td>Narodowe Święto Niepodległości</td><td>Polska</td><td class="tcenter"><span class="pill grey">ustawowe</span></td></tr>
+        </table>
+        <div style="margin-top:14px"><button class="btn primary">+ Dodaj dzień wolny</button></div>
+      </div>
+
+      <div class="card adminpane" id="t-role" style="display:none">
+        <h3>Role i uprawnienia <span class="tag">FR-H4</span></h3>
+        <table>
+          <tr><th>Osoba</th><th>Rola</th><th>Uprawnienia rozszerzone</th><th class="tcenter">Aktywne</th></tr>
+          <tr><td>Anna Kowalska</td><td>Product Owner</td><td>Raporty squadu · widok capacity</td><td class="tcenter"><span class="switch"></span></td></tr>
+          <tr><td>Julia Wiśniewska</td><td>Chapter Lider</td><td>Modyfikacja nieobecności · dodawanie L4</td><td class="tcenter"><span class="switch"></span></td></tr>
+          <tr><td>Marek Nowak</td><td>Developer</td><td>—</td><td class="tcenter"><span class="switch off"></span></td></tr>
+        </table>
+        <p class="muted" style="font-size:11.5px;margin-top:12px">Menedżer może wskazać osobę z uprawnieniem rozszerzonym (np. dodawanie L4 w imieniu innych). Każda zmiana jest audytowana (FR-I1).</p>
+      </div>
+    </section>
+
+    <!-- ===== RAPORTY ===== -->
+    <section class="content" id="raporty">
+      <div class="card">
+        <h3>Raport wykorzystania nieobecności</h3>
+        <div class="crumb"><a>Pion Technologii</a><span>›</span><a>Departament DSKIK</a><span>›</span><a>Tribe Detal</a><span>›</span><b>Squad Płatności</b></div>
+        <div class="toolbar">
+          <span class="pill soft">Rok kalendarzowy 2026</span>
+          <span class="pill grey">Forma: wszystkie</span>
+          <div class="spacer"></div>
+          <button class="btn ghost">Filtry</button>
+          <button class="btn primary">⤓ Eksport do Excela</button>
+        </div>
+        <table>
+          <tr><th>Osoba</th><th>Forma</th><th class="tcenter">Pula</th><th class="tcenter">Wykorzystano</th><th>Pozostało</th><th class="tcenter">Zalega</th></tr>
+          <tr><td>Anna Kowalska</td><td>UoP</td><td class="tcenter">26</td><td class="tcenter">11</td><td><span class="bar-mini"><span style="width:42%"></span></span> 15</td><td class="tcenter"><span class="pill warn">4 dni</span></td></tr>
+          <tr><td>Marek Nowak</td><td>UoP</td><td class="tcenter">32</td><td class="tcenter">8</td><td><span class="bar-mini"><span style="width:25%"></span></span> 24</td><td class="tcenter"><span class="pill warn">6 dni</span></td></tr>
+          <tr><td>Julia Wiśniewska</td><td>UoP</td><td class="tcenter">26</td><td class="tcenter">19</td><td><span class="bar-mini"><span style="width:73%"></span></span> 7</td><td class="tcenter"><span class="pill grey">—</span></td></tr>
+          <tr><td>Tomasz Lis</td><td>B2B</td><td class="tcenter">21</td><td class="tcenter">13</td><td><span class="bar-mini"><span style="width:62%"></span></span> 8</td><td class="tcenter"><span class="pill grey">—</span></td></tr>
+        </table>
+        <h2 class="sec">Podsumowanie squadu</h2>
+        <div class="row cols-3">
+          <div class="card" style="box-shadow:none"><div class="muted" style="font-size:12px">Średnie wykorzystanie</div><div class="kpi green" style="font-size:26px">48%</div></div>
+          <div class="card" style="box-shadow:none"><div class="muted" style="font-size:12px">Osoby zalegające</div><div class="kpi red" style="font-size:26px">2</div></div>
+          <div class="card" style="box-shadow:none"><div class="muted" style="font-size:12px">Dni nieobecności (rok)</div><div class="kpi teal" style="font-size:26px">51</div></div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<script>
+// nav
+const nav=document.getElementById('nav'), title=document.getElementById('title');
+const labels={pulpit:'Pulpit',wpis:'Nowy wpis nieobecności',kalendarz:'Kalendarz zespołu',sprint:'Sprinty i capacity',admin:'Administracja',raporty:'Raporty'};
+nav.addEventListener('click',e=>{const a=e.target.closest('a');if(!a)return;
+  [...nav.children].forEach(x=>x.classList.remove('active'));a.classList.add('active');
+  const s=a.dataset.s;document.querySelectorAll('.content').forEach(c=>c.classList.toggle('active',c.id===s));
+  title.textContent=labels[s];window.scrollTo(0,0);
+});
+// theme
+const tb=document.getElementById('themeBtn'),tl=document.getElementById('themeLbl');
+tb.addEventListener('click',()=>{const d=document.documentElement.getAttribute('data-theme')==='dark';
+  document.documentElement.setAttribute('data-theme',d?'light':'dark');tl.textContent=d?'Tryb ciemny':'Tryb jasny';});
+// admin tabs
+const at=document.getElementById('adminTabs');
+at.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+  [...at.children].forEach(x=>x.classList.remove('on'));b.classList.add('on');
+  document.querySelectorAll('.adminpane').forEach(p=>p.style.display='none');
+  document.getElementById('t-'+b.dataset.t).style.display='block';});
+// roster builder (lipiec 2026, 21 dni roboczych pokazane: 1-21)
+(function(){
+  const days=21, start=3; // 1 lip 2026 = środa(index), we map weekend
+  const dow=['P','W','Ś','C','P','S','N'];
+  const people=[
+    {n:'Anna Kowalska',r:'PO · Płatności',abs:[[6,10]]},
+    {n:'Marek Nowak',r:'Dev · Konta',abs:[[13,15]]},
+    {n:'Julia Wiśniewska',r:'QA',abs:[[9,9,'half']]},
+    {n:'Piotr Zając',r:'Tech Lead',abs:[[16,17]]},
+    {n:'Tomasz Lis',r:'Dev · B2B',abs:[[20,21]]},
+    {n:'Ewa Mazur',r:'UX',abs:[]}
+  ];
+  // weekends for July 2026: 1 Jul = Wednesday => Sat/Sun = 4,5,11,12,18,19
+  const weekend=[4,5,11,12,18,19];
+  const holiday=[14]; // przykładowy dzień wolny (odbiór)
+  let html='<tr><th class="day" style="text-align:left;padding-left:10px;width:150px">Osoba</th>';
+  for(let d=1;d<=days;d++){const we=weekend.includes(d)||holiday.includes(d);
+    html+=`<th class="day${we?' we':''}">${d}</th>`;}
+  html+='</tr>';
+  people.forEach(p=>{
+    html+=`<tr><td class="name"><b>${p.n}</b><small>${p.r}</small></td>`;
+    for(let d=1;d<=days;d++){
+      const we=weekend.includes(d), hol=holiday.includes(d);
+      let cls='cell'+(we?' we':'')+(hol?' hol':'');
+      let inner='';
+      p.abs.forEach(a=>{const[s,e,t]=a; if(d>=s&&d<=e&&!we&&!hol){inner=`<div class="absbar ${t==='half'?'half':''}"></div>`;}});
+      html+=`<td class="${cls}">${inner}</td>`;
+    }
+    html+='</tr>';
+  });
+  document.getElementById('roster').innerHTML=html;
+})();
+</script>

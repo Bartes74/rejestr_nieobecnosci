@@ -1,0 +1,4 @@
+/* Webfonts — Archivo (UI + headings) and IBM Plex Mono (data/codes).
+   Loaded from Google Fonts CDN. If you need fully-offline binaries,
+   download the .woff2 files and replace these @import lines with local @font-face. */
+@import url("https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap");

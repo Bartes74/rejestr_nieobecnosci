@@ -1,0 +1,15 @@
+# NFR-4 — oneshot backup bazy „Nieobecności". Wywoływany przez nieobecnosci-backup.timer.
+# Instalacja: skopiuj oba pliki do /etc/systemd/system/, dostosuj ścieżki, potem:
+#   systemctl daemon-reload && systemctl enable --now nieobecnosci-backup.timer
+[Unit]
+Description=Backup bazy „Nieobecności" (NFR-4)
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+# Ścieżka instalacji on-prem (katalog z docker-compose.yml). Dostosuj do swojego wdrożenia.
+WorkingDirectory=/opt/nieobecnosci
+ExecStart=/opt/nieobecnosci/scripts/backup.sh /var/backups/nieobecnosci
+# Kopia off-site — BEZ niej RPO ginie razem z maszyną. Odkomentuj i ustaw cel:
+# ExecStartPost=/usr/bin/rsync -a /var/backups/nieobecnosci/ kopia@backup-host:/backups/nieobecnosci/

@@ -1,0 +1,34 @@
+<!-- @dsCard group="Components" viewport="700x340" name="Navigation — NavItem, Tabs, Breadcrumb" subtitle="Sidebar rows, in-page tabs, hierarchy drill-down" -->
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>
+  body{margin:0;font-family:var(--font-sans);background:var(--surface);color:var(--ink);padding:20px}
+  .seclbl{font-family:var(--font-mono);font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:0 0 9px}
+  .wrap{display:flex;flex-wrap:wrap;gap:14px;align-items:center}
+  .col{display:flex;flex-direction:column;gap:16px}
+</style></head><body><div id="root"></div>
+<script type="text/babel" data-presets="react">
+const NS = Object.values(window).find(o => o && typeof o === 'object' && o.Button && o.Card) || window;
+const { Button, Badge, Avatar, Card, Input, Select, SegmentedControl, Switch, Tabs, Breadcrumb, NavItem, Alert, StatCard, ProgressBar, AbsencePill, Table, Dialog, Toast, Tooltip } = NS;
+const I = ({d,w=16,sw=1.9})=>(<svg width={w} height={w} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">{d}</svg>);
+function Demo(){ const [tab,setTab]=React.useState('Typy nieobecności');
+ return (<div className="wrap" style={{alignItems:'flex-start',gap:28}}>
+  <div style={{width:230}}>
+    <div className="seclbl">PRACOWNIK</div>
+    <NavItem icon={<I d={<><rect x="3" y="3" width="7.5" height="7.5" rx="1.6"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.6"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.6"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.6"/></>}/>} label="Pulpit" active/>
+    <NavItem icon={<I d={<path d="M3 9h18M8 3v3M16 3v3"/>} sw={1.8}/>} label="Kalendarz zespołu"/>
+    <NavItem icon={<I d={<path d="M12 7v5l3.5 2"/>} sw={1.8}/>} label="Moja historia"/>
+  </div>
+  <div style={{flex:1,minWidth:280}}>
+    <div className="seclbl">Tabs</div>
+    <Tabs tabs={['Typy nieobecności','Pula urlopu','Święta','Sprinty']} value={tab} onChange={setTab}/>
+    <div className="seclbl" style={{marginTop:22}}>Breadcrumb — drążenie hierarchii</div>
+    <Breadcrumb items={[{label:'Departament'},{label:'Tribe „Klient Indywidualny"',active:true},{label:'Squad'},{label:'Osoba'}]}/>
+  </div>
+ </div>); }
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo/>);
+</script></body></html>

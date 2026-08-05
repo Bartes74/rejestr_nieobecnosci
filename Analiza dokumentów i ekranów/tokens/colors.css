@@ -1,0 +1,100 @@
+/* ============================================================
+   COLOR SYSTEM
+   Primary identity = corporate teal-green (Pantone P341/P342).
+   Two themes: light (default) and dark ([data-theme="dark"]).
+   Use SEMANTIC tokens in product code, not raw brand swatches.
+   ============================================================ */
+:root {
+  /* --- Brand identity swatches (reference; from visual-identity palette) --- */
+  --brand-p341: #007A53;  /* primary green        */
+  --brand-p342: #006A4E;  /* primary green, dark  */
+  --brand-p7459:#4298B5;  /* accent blue          */
+  --brand-p646: #5E8AB4;  /* muted steel blue     */
+  --brand-p276: #221C35;  /* deep navy            */
+  --brand-p485: #ED1B2F;  /* alert red            */
+  --brand-p1215:#FBD872;  /* warm yellow          */
+
+  /* --- Surfaces & neutrals --- */
+  --canvas:   #EAEEEC;  /* app background behind cards   */
+  --surface:  #FFFFFF;  /* card / panel background       */
+  --surface-2:#F5F8F6;  /* subtle inset panel            */
+  --surface-3:#EEF3F0;  /* track / chip / hover fill     */
+  --border:   #E1E7E4;  /* hairline divider              */
+  --border-2: #D2DAD7;  /* stronger control border       */
+
+  /* --- Text --- */
+  --ink:    #15201C;    /* primary text                  */
+  --ink-2:  #3C4A45;    /* secondary text                */
+  --muted:  #6A7570;    /* tertiary / captions           */
+
+  /* --- Primary (brand) --- */
+  --brand:      #007A53;
+  --brand-dark: #006A4E; /* hover / pressed              */
+  --brand-tint: #E1F0E9; /* soft brand background        */
+  --brand-tint-2:#CFE6DC;/* stronger brand background    */
+  --on-brand:   #FFFFFF; /* text/icon on brand fill      */
+
+  /* --- Accent (data viz / links; never encodes absence type) --- */
+  --blue:      #2F7FA8;
+  --blue-tint: #E2EEF3;
+  --info:      #41B6E6;
+
+  /* --- Semantic status --- */
+  --amber:      #B57E0F;  /* warning / attention         */
+  --amber-tint: #F8EED4;
+  --danger:     #C81F2D;  /* error / over-limit / risk   */
+  --danger-tint:#FAE4E6;
+
+  /* --- Absence token (UNIFORM — never colored by type, per D1/D2/C3) --- */
+  --absence:        #CFE6DC;
+  --absence-ink:    #005C3F;
+  --absence-border: #A6D2BF;
+
+  /* --- Coverage heatmap scale (sequential: calm -> attention) --- */
+  --heat-1: #D9EBDD;  /* < 12%  calm        */
+  --heat-2: #A8D9B4;  /* 12-24% ok          */
+  --heat-3: #F1DC8E;  /* 25-37% watch       */
+  --heat-4: #ED9F52;  /* 38-49% elevated    */
+  --heat-5: #D8493B;  /* >=50%  at risk     */
+  --heat-1-ink:#1C6B49; --heat-2-ink:#13593A; --heat-3-ink:#735312;
+  --heat-4-ink:#5E2F08; --heat-5-ink:#FFFFFF; --heat-5-ring:#8E1B12;
+
+  /* --- Elevation --- */
+  --shadow-sm: 0 1px 2px rgba(16,40,32,.07);
+  --shadow:    0 8px 28px rgba(16,40,32,.10);
+}
+
+[data-theme="dark"] {
+  --canvas:   #0E1413;
+  --surface:  #18211E;
+  --surface-2:#1E2925;
+  --surface-3:#243029;
+  --border:   #2B3833;
+  --border-2: #384842;
+
+  --ink:    #E9F0EC;
+  --ink-2:  #B5C1BC;
+  --muted:  #7E8D87;
+
+  --brand:      #2FB888;
+  --brand-dark: #27A579;
+  --brand-tint: rgba(47,184,136,.15);
+  --brand-tint-2:rgba(47,184,136,.26);
+  --on-brand:   #0E1413;
+
+  --blue:      #5DB2D6;
+  --blue-tint: rgba(93,178,214,.15);
+  --info:      #41B6E6;
+
+  --amber:      #E0AC4C;
+  --amber-tint: rgba(224,172,76,.15);
+  --danger:     #FF5E6B;
+  --danger-tint:rgba(255,94,107,.15);
+
+  --absence:        rgba(47,184,136,.20);
+  --absence-ink:    #7BD9B4;
+  --absence-border: rgba(47,184,136,.40);
+
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.35);
+  --shadow:    0 12px 34px rgba(0,0,0,.45);
+}

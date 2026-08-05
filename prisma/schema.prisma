@@ -1,0 +1,234 @@
+// Model danych „Nieobecności" — wg Załącznika A wymagań.
+// Okres rozliczeniowy NIE jest tabelą — jest wyliczany w packages/core (resolveBillingPeriod),
+// bo wynika deterministycznie z formy zatrudnienia i daty (UoP=kalendarzowy, B2B/OUT=budżetowy).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum EmploymentType {
+  UOP
+  B2B
+  OUT
+}
+
+enum OrgUnitType {
+  PION
+  DEPARTAMENT
+  TRIBE
+  CHAPTER
+  SQUAD
+}
+
+enum Role {
+  EMPLOYEE
+  LEADER
+  PO
+  DIRECTOR
+  ADMIN
+  PMO
+}
+
+enum AbsenceSource {
+  SELF
+  LEADER
+  DELEGATE
+}
+
+enum DayPart {
+  FULL
+  AM
+  PM
+  HOURS
+}
+
+enum PermissionScope {
+  ADMIN
+  REPORTS
+  MODIFY_ABSENCE
+  VIEW_L4
+}
+
+model Employee {
+  id             String         @id @default(cuid())
+  firstName      String
+  lastName       String
+  email          String         @unique
+  login          String         @unique
+  passwordHash   String?        // MVP: konta lokalne; docelowo SSO/AD (FR-H5)
+  role           Role           @default(EMPLOYEE)
+  employmentType EmploymentType
+  startDate      DateTime       @db.Date
+  endDate        DateTime?      @db.Date
+  isKeyRole      Boolean        @default(false) // FR-D3 — rolę kluczową oznacza administrator
+  minimumToLeave Float          @default(0)     // FR-B4 — minimum urlopu do pozostawienia (UoP)
+  feedToken      String?        @unique         // FR-F4 — token subskrypcji kanału iCal (webcal nie wysyła Bearer)
+
+  holidayCalendarId String?
+  holidayCalendar   HolidayCalendar? @relation(fields: [holidayCalendarId], references: [id])
+
+  memberships        OrgUnitMembership[]
+  absences           Absence[]    @relation("AbsenceEmployee")
+  createdAbsences    Absence[]    @relation("AbsenceCreatedBy")
+  allowances         LeaveAllowance[]
+  permissions        Permission[] @relation("PermissionHolder")
+  grantedPermissions Permission[] @relation("PermissionGrantedBy")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model OrgUnit {
+  id       String      @id @default(cuid())
+  name     String
+  type     OrgUnitType
+  parentId String?
+  parent   OrgUnit?    @relation("OrgTree", fields: [parentId], references: [id])
+  children OrgUnit[]   @relation("OrgTree")
+  members  OrgUnitMembership[]
+  sprints  Sprint[]
+
+  @@index([parentId]) // NFR-1 — przechodzenie drzewa organizacji
+}
+
+// FR-G4 — jedna osoba może należeć do wielu jednostek jednocześnie.
+model OrgUnitMembership {
+  id         String   @id @default(cuid())
+  employeeId String
+  orgUnitId  String
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  orgUnit    OrgUnit  @relation(fields: [orgUnitId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, orgUnitId])
+  @@index([orgUnitId]) // NFR-1 — „członkowie jednostki" (capacity/raporty)
+}
+
+// D1 — typ wpływa wyłącznie na algorytm, nigdy na wygląd w UI.
+model AbsenceType {
+  id              String  @id @default(cuid())
+  name            String
+  affectsPool     Boolean @default(true)  // L4 → false (nie obniża puli urlopu, FR-B5)
+  affectsCapacity Boolean @default(true)
+  specialCategory Boolean @default(false) // FR-J1 — dana o zdrowiu (np. L4), chroniona
+  active          Boolean @default(true)
+
+  absences Absence[]
+}
+
+model Absence {
+  id          String   @id @default(cuid())
+  employeeId  String
+  employee    Employee @relation("AbsenceEmployee", fields: [employeeId], references: [id], onDelete: Cascade)
+  typeId      String
+  type        AbsenceType @relation(fields: [typeId], references: [id])
+  dateFrom    DateTime @db.Date
+  dateTo      DateTime @db.Date
+  dayPart     DayPart  @default(FULL) // FR-A3 — niepełne dni
+  hourFrom    String?                 // "09:00" gdy dayPart=HOURS
+  hourTo      String?
+  source      AbsenceSource @default(SELF)
+  createdById String?
+  createdBy   Employee?     @relation("AbsenceCreatedBy", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([employeeId, dateFrom, dateTo])
+  @@index([dateFrom, dateTo]) // NFR-1 — zakresowe zapytania kalendarza/raportów dla wielu osób
+}
+
+// FR-B3/B6/D4 — pula globalna (AdminSetting) zaaplikowana per osoba/okres + korekta indywidualna.
+model LeaveAllowance {
+  id           String   @id @default(cuid())
+  employeeId   String
+  employee     Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  periodYear   Int      // rok kalendarzowy (UoP) lub budżetowy (B2B/OUT)
+  baseDays     Float    // wartość globalna zaaplikowana w momencie ustawienia
+  overrideDays Float?   // korekta indywidualna — nadpisuje baseDays
+  carriedOver  Float    @default(0) // FR-B7 — urlop zaległy przeniesiony z poprzedniego okresu (nigdy nie przepada)
+
+  @@unique([employeeId, periodYear])
+}
+
+// FR-G7 — wiele kalendarzy świąt/dni wolnych (np. inne lokalizacje B2B/OUT).
+model HolidayCalendar {
+  id        String     @id @default(cuid())
+  name      String
+  isDefault Boolean    @default(false)
+  holidays  Holiday[]
+  employees Employee[]
+}
+
+// FR-G3 — dni wolne pomijane przy liczeniu nieobecności i capacity.
+model Holiday {
+  id         String   @id @default(cuid())
+  date       DateTime @db.Date
+  name       String
+  calendarId String
+  calendar   HolidayCalendar @relation(fields: [calendarId], references: [id], onDelete: Cascade)
+
+  @@unique([calendarId, date])
+}
+
+// FR-D4 — ramy sprintów (import .xlsx z harmonogramu QBR).
+model Sprint {
+  id       String   @id @default(cuid())
+  name     String
+  dateFrom DateTime @db.Date
+  dateTo   DateTime @db.Date
+  squadId  String?
+  squad    OrgUnit? @relation(fields: [squadId], references: [id])
+
+  @@index([dateFrom, dateTo]) // NFR-1 — wybór sprintu po dacie
+}
+
+// FR-H4 — delegacja uprawnień rozszerzonych (np. dodawanie L4 w imieniu innych).
+model Permission {
+  id          String          @id @default(cuid())
+  employeeId  String
+  employee    Employee        @relation("PermissionHolder", fields: [employeeId], references: [id], onDelete: Cascade)
+  scope       PermissionScope
+  grantedById String?
+  grantedBy   Employee?       @relation("PermissionGrantedBy", fields: [grantedById], references: [id])
+  grantedAt   DateTime        @default(now())
+
+  @@unique([employeeId, scope])
+}
+
+// FR-I1 + FR-J1 — dziennik niemodyfikowalny (append-only); loguje też dostęp do znacznika L4.
+model AuditLog {
+  id          String   @id @default(cuid())
+  entity      String
+  entityId    String?
+  action      String
+  userId      String?
+  description String?
+  timestamp   DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@index([timestamp])
+}
+
+// Konfiguracja globalna (pula domyślna, reguły retencji itp.) jako klucz–wartość.
+model AdminSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+// FR-J3 — rejestr czynności przetwarzania (RODO, art. 30).
+model ProcessingActivity {
+  id              String   @id @default(cuid())
+  name            String
+  purpose         String
+  legalBasis      String
+  dataCategories  String
+  recipients      String
+  retention       String
+  specialCategory Boolean  @default(false)
+  updatedAt       DateTime @updatedAt
+}

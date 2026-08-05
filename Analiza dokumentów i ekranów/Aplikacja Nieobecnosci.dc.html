@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  :root{
+    --canvas:#EAEEEC;--surface:#FFFFFF;--surface2:#F5F8F6;--surface3:#EEF3F0;
+    --border:#E1E7E4;--border2:#D2DAD7;
+    --ink:#15201C;--ink2:#3C4A45;--muted:#6A7570;
+    --brand:#007A53;--brand-d:#006A4E;--brand-tint:#E1F0E9;--brand-tint2:#CFE6DC;
+    --blue:#2F7FA8;--blue-tint:#E2EEF3;--info:#41B6E6;
+    --amber:#B57E0F;--amber-tint:#F8EED4;
+    --danger:#C81F2D;--danger-tint:#FAE4E6;
+    --abs:#CFE6DC;--abs-ink:#005C3F;--abs-bd:#A6D2BF;
+    --shadow:0 8px 28px rgba(16,40,32,.10);--shadow-sm:0 1px 2px rgba(16,40,32,.07);
+  }
+  [data-theme="dark"]{
+    --canvas:#0E1413;--surface:#18211E;--surface2:#1E2925;--surface3:#243029;
+    --border:#2B3833;--border2:#384842;
+    --ink:#E9F0EC;--ink2:#B5C1BC;--muted:#7E8D87;
+    --brand:#2FB888;--brand-d:#27A579;--brand-tint:rgba(47,184,136,.15);--brand-tint2:rgba(47,184,136,.26);
+    --blue:#5DB2D6;--blue-tint:rgba(93,178,214,.15);--info:#41B6E6;
+    --amber:#E0AC4C;--amber-tint:rgba(224,172,76,.15);
+    --danger:#FF5E6B;--danger-tint:rgba(255,94,107,.15);
+    --abs:rgba(47,184,136,.20);--abs-ink:#7BD9B4;--abs-bd:rgba(47,184,136,.40);
+    --shadow:0 12px 34px rgba(0,0,0,.45);--shadow-sm:0 1px 2px rgba(0,0,0,.35);
+  }
+  @keyframes fu{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  ::-webkit-scrollbar{width:11px;height:11px}
+  ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:8px;border:3px solid transparent;background-clip:content-box}
+</style>
+</helmet>
+<div data-theme="{{ theme }}" style="{{ rootStyle }}">
+
+  <!-- ================= LOGIN ================= -->
+  <sc-if value="{{ showLoginDesktop }}" hint-placeholder-val="{{ false }}">
+  <div data-screen-label="Logowanie" style="min-height:100vh;display:flex">
+    <div style="flex:1.05;background:linear-gradient(150deg,#006A4E 0%,#007A53 55%,#00533E 100%);color:#fff;padding:64px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden">
+      <div style="position:absolute;inset:0;opacity:.10;background-image:radial-gradient(circle at 1px 1px,#fff 1.4px,transparent 0);background-size:26px 26px"></div>
+      <div style="position:relative;display:flex;align-items:center;gap:13px">
+        <div style="width:42px;height:42px;border-radius:11px;background:rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2"></rect><path d="M3 9h18M8 3v3M16 3v3"></path></svg></div>
+        <span style="font-weight:700;font-size:17px;letter-spacing:.01em">Nieobecności</span>
+      </div>
+      <div style="position:relative;max-width:460px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.16em;text-transform:uppercase;opacity:.75;margin-bottom:18px">Jedno źródło prawdy</div>
+        <h1 style="font-size:40px;line-height:1.12;font-weight:800;margin:0 0 18px;letter-spacing:-.02em">Planowanie i monitorowanie nieobecności całego departamentu</h1>
+        <p style="font-size:15.5px;line-height:1.6;opacity:.86;margin:0">Koniec z awaryjnymi plikami Excel i blokadami. Wielodostęp w czasie rzeczywistym, automatyczna agregacja w górę hierarchii i czytelny licznik wykorzystania urlopu.</p>
+      </div>
+      <div style="position:relative;display:flex;gap:30px;font-size:13px;opacity:.82">
+        <div><div style="font-weight:700;font-size:21px;font-family:'IBM Plex Mono',monospace">~300</div>użytkowników</div>
+        <div><div style="font-weight:700;font-size:21px;font-family:'IBM Plex Mono',monospace">6</div>zespołów</div>
+        <div><div style="font-weight:700;font-size:21px;font-family:'IBM Plex Mono',monospace">0</div>blokad pliku</div>
+      </div>
+    </div>
+    <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:48px">
+      <div style="width:100%;max-width:380px">
+        <h2 style="font-size:25px;font-weight:700;margin:0 0 6px;letter-spacing:-.01em">Zaloguj się</h2>
+        <p style="color:var(--muted);font-size:14px;margin:0 0 30px">Użyj konta służbowego, aby kontynuować.</p>
+        <label style="display:block;font-size:12.5px;font-weight:600;color:var(--ink2);margin-bottom:7px">Adres e-mail</label>
+        <div style="display:flex;align-items:center;gap:10px;border:1px solid var(--border2);background:var(--surface);border-radius:10px;padding:12px 14px;margin-bottom:16px"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="m4 7 8 6 8-6"></path></svg><span style="color:var(--ink2);font-size:14px">anna.kowalska@firma.pl</span></div>
+        <label style="display:block;font-size:12.5px;font-weight:600;color:var(--ink2);margin-bottom:7px">Hasło</label>
+        <div style="display:flex;align-items:center;gap:10px;border:1px solid var(--border2);background:var(--surface);border-radius:10px;padding:12px 14px;margin-bottom:22px"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.8"><rect x="4" y="10" width="16" height="10" rx="2"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></svg><span style="color:var(--muted);font-size:14px;letter-spacing:.25em">••••••••</span></div>
+        <button onClick="{{ goPulpit }}" style="width:100%;border:none;cursor:pointer;background:var(--brand);color:#fff;font-family:Archivo;font-weight:700;font-size:14.5px;padding:13px;border-radius:10px;box-shadow:var(--shadow-sm)">Zaloguj się</button>
+        <div style="display:flex;align-items:center;gap:10px;margin:20px 0;color:var(--muted);font-size:12px"><div style="flex:1;height:1px;background:var(--border)"></div>MVP<div style="flex:1;height:1px;background:var(--border)"></div></div>
+        <div style="display:flex;align-items:flex-start;gap:9px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 13px;color:var(--ink2);font-size:12.5px;line-height:1.5"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="1.9" style="flex:none;margin-top:1px"><circle cx="12" cy="12" r="9"></circle><path d="M12 8v5M12 16v.5"></path></svg><span>Logowanie kontem w aplikacji. Logowanie jednokrotne <b>SSO przez Active Directory</b> planowane w wersji docelowej.</span></div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <!-- ================= APP (DESKTOP) ================= -->
+  <sc-if value="{{ showApp }}" hint-placeholder-val="{{ true }}">
+  <div style="display:flex;min-height:100vh">
+
+    <!-- SIDEBAR -->
+    <aside style="width:250px;flex:none;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:20px 14px;position:sticky;top:0;height:100vh">
+      <div style="display:flex;align-items:center;gap:11px;padding:4px 8px 18px">
+        <div style="width:36px;height:36px;border-radius:10px;background:var(--brand);display:flex;align-items:center;justify-content:center"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2"></rect><path d="M3 9h18M8 3v3M16 3v3"></path></svg></div>
+        <div><div style="font-weight:700;font-size:15px;line-height:1.1">Nieobecności</div></div>
+      </div>
+      <nav style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:1px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.13em;color:var(--muted);padding:14px 11px 6px">PRACOWNIK</div>
+        <a onClick="{{ goPulpit }}" style="{{ navPulpit }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="7.5" rx="1.6"></rect><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.6"></rect><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.6"></rect><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.6"></rect></svg>Pulpit</a>
+        <a onClick="{{ goWpis }}" style="{{ navWpis }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>Nowa nieobecność</a>
+        <a onClick="{{ goKalendarz }}" style="{{ navKalendarz }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2"></rect><path d="M3 9h18M8 3v3M16 3v3"></path></svg>Kalendarz zespołu</a>
+        <a onClick="{{ goHistoria }}" style="{{ navHistoria }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7v5l3.5 2"></path></svg>Moja historia</a>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.13em;color:var(--muted);padding:16px 11px 6px">PLANOWANIE</div>
+        <a onClick="{{ goCapacity }}" style="{{ navCapacity }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v18"></path><path d="M5 4h13l-2.5 3.5L18 11H5"></path></svg>Capacity sprintu</a>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.13em;color:var(--muted);padding:16px 11px 6px">DYREKTOR</div>
+        <a onClick="{{ goRaporty }}" style="{{ navRaporty }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16"></path><rect x="5" y="11" width="3.2" height="6"></rect><rect x="10.4" y="6" width="3.2" height="11"></rect><rect x="15.8" y="13.5" width="3.2" height="3.5"></rect></svg>Raporty i analizy</a>
+        <a onClick="{{ goHeatmapa }}" style="{{ navHeatmapa }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 5-9 5-9-5z"></path><path d="M3 13l9 5 9-5"></path></svg>Heatmapa pokrycia</a>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.13em;color:var(--muted);padding:16px 11px 6px">ADMINISTRACJA</div>
+        <a onClick="{{ goPracownicy }}" style="{{ navPracownicy }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"></circle><path d="M3.5 19a5.5 5.5 0 0 1 11 0"></path><path d="M16.2 5.3a3.2 3.2 0 0 1 0 5.6M16.8 19a5.5 5.5 0 0 0-2.6-4.7"></path></svg>Pracownicy i struktura</a>
+        <a onClick="{{ goKonfiguracja }}" style="{{ navKonfiguracja }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h9M19 7h1M4 17h2M12 17h8"></path><circle cx="16" cy="7" r="2.3"></circle><circle cx="8.5" cy="17" r="2.3"></circle></svg>Konfiguracja</a>
+        <a onClick="{{ goAudyt }}" style="{{ navAudyt }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7.5 3v5.5c0 4.5-3.2 7.6-7.5 9-4.3-1.4-7.5-4.5-7.5-9V6z"></path><path d="m9 12 2 2 4-4"></path></svg>Audyt i RODO</a>
+      </nav>
+      <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:8px;display:flex;align-items:center;gap:10px">
+        <div style="width:34px;height:34px;border-radius:9px;background:var(--brand-tint);color:var(--brand);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px">AK</div>
+        <div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Anna Kowalska</div><div style="font-size:11px;color:var(--muted)">Squad Płatności</div></div>
+        <a onClick="{{ goLogin }}" title="Wyloguj" style="cursor:pointer;color:var(--muted);display:flex;padding:6px;border-radius:7px"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"></path><path d="M10 17l-5-5 5-5M5 12h11"></path></svg></a>
+      </div>
+    </aside>
+
+    <!-- RIGHT COLUMN -->
+    <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+      <header style="height:64px;flex:none;border-bottom:1px solid var(--border);background:var(--surface);display:flex;align-items:center;gap:18px;padding:0 26px;position:sticky;top:0;z-index:5">
+        <div style="flex:1;min-width:0;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:11px;flex-wrap:nowrap;min-width:0;overflow:hidden"><h1 style="font-size:19px;font-weight:700;margin:0;letter-spacing:-.01em;white-space:nowrap">{{ pageTitle }}</h1><span style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--brand);background:var(--brand-tint);padding:3px 8px;border-radius:6px;white-space:nowrap;flex:none">{{ roleTag }}</span></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;border:1px solid var(--border);border-radius:9px;padding:8px 12px;color:var(--muted);font-size:13px;flex:0 1 200px;min-width:44px;white-space:nowrap;overflow:hidden"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="flex:none"><circle cx="11" cy="11" r="6.5"></circle><path d="m20 20-3.8-3.8"></path></svg>Szukaj osoby…</div>
+        <div style="display:flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:3px">
+          <button onClick="{{ setDesktop }}" style="{{ segDesk }}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12.5" rx="2"></rect><path d="M8.5 20.5h7M12 16.5v4"></path></svg>Desktop</button>
+          <button onClick="{{ setMobile }}" style="{{ segMob }}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2.5" width="10" height="19" rx="2.6"></rect><path d="M10.8 18.4h2.4"></path></svg>Mobile</button>
+        </div>
+        <button onClick="{{ toggleTheme }}" title="Przełącz motyw" style="width:38px;height:38px;border:1px solid var(--border);background:var(--surface);border-radius:10px;cursor:pointer;color:var(--ink2);display:flex;align-items:center;justify-content:center">
+          <sc-if value="{{ dark }}" hint-placeholder-val="{{ false }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"></circle><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"></path></svg></sc-if>
+          <sc-if value="{{ light }}" hint-placeholder-val="{{ true }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13.5A8 8 0 1 1 10.5 4 6.3 6.3 0 0 0 20 13.5z"></path></svg></sc-if>
+        </button>
+        <div style="position:relative;color:var(--ink2)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6"></path><path d="M10 20a2 2 0 0 0 4 0"></path></svg><span style="position:absolute;top:-3px;right:-3px;width:8px;height:8px;border-radius:50%;background:var(--danger);border:2px solid var(--surface)"></span></div>
+      </header>
+
+      <main style="flex:1;overflow-y:auto;padding:28px 30px 60px">
+
+        <!-- ===== PULPIT ===== -->
+        <sc-if value="{{ isPulpit }}" hint-placeholder-val="{{ true }}">
+        <div data-screen-label="Pulpit pracownika" style="max-width:1180px">
+          <div style="margin-bottom:22px"><h2 style="font-size:23px;font-weight:700;margin:0 0 3px;letter-spacing:-.01em">Dzień dobry, Anna 👋</h2><p style="color:var(--muted);font-size:14px;margin:0">Poniedziałek, 22 czerwca 2026 · Sprint 13 (16–27.06)</p></div>
+          <div style="display:grid;grid-template-columns:1.35fr 1fr;gap:18px">
+
+            <!-- balance -->
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-sm);padding:24px">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px">
+                <div><div style="font-size:13px;color:var(--muted);font-weight:600;margin-bottom:3px">Twój urlop · pozostało do rozplanowania</div><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink2);background:var(--surface3);padding:3px 8px;border-radius:6px">Rok kalendarzowy 2026</span></div>
+                <button onClick="{{ goWpis }}" style="border:none;cursor:pointer;background:var(--brand);color:#fff;font-family:Archivo;font-weight:700;font-size:13.5px;padding:10px 16px;border-radius:10px;display:flex;align-items:center;gap:7px;box-shadow:var(--shadow-sm)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>Zaplanuj nieobecność</button>
+              </div>
+              <div style="display:flex;align-items:flex-end;gap:8px;margin-bottom:6px"><span style="font-size:58px;font-weight:800;line-height:.9;letter-spacing:-.03em;font-variant-numeric:tabular-nums">15</span><span style="font-size:16px;color:var(--muted);font-weight:600;margin-bottom:9px">/ 26 dni</span><span style="margin-bottom:11px;margin-left:auto;font-size:11.5px;color:var(--brand);background:var(--brand-tint);font-weight:600;padding:4px 9px;border-radius:20px">aktualizacja na żywo</span></div>
+              <div style="display:flex;height:11px;border-radius:7px;overflow:hidden;background:var(--surface3);margin:14px 0 18px"><div style="width:42%;background:var(--brand)"></div><div style="width:15%;background:var(--abs-bd)"></div></div>
+              <div style="display:flex;gap:22px">
+                <div style="flex:1"><div style="font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:600">26</div><div style="font-size:12px;color:var(--muted)">Pula roczna</div></div>
+                <div style="flex:1;border-left:1px solid var(--border);padding-left:22px"><div style="font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:600;color:var(--brand)">11</div><div style="font-size:12px;color:var(--muted)">Wykorzystano</div></div>
+                <div style="flex:1;border-left:1px solid var(--border);padding-left:22px"><div style="font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:600">4</div><div style="font-size:12px;color:var(--muted)">w tym zaległe</div></div>
+              </div>
+            </div>
+
+            <!-- reminders -->
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-sm);padding:20px">
+              <div style="font-weight:700;font-size:14.5px;margin-bottom:14px">Przypomnienia</div>
+              <div style="display:flex;flex-direction:column;gap:11px">
+                <div style="display:flex;gap:11px;align-items:flex-start;background:var(--amber-tint);border:1px solid var(--amber);border-radius:11px;padding:12px 13px"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:1px"><path d="M12 3 1.5 21h21z"></path><path d="M12 9v5M12 17.5v.5"></path></svg><div style="font-size:12.8px;line-height:1.45;color:var(--ink2)"><b style="color:var(--ink)">Masz 4 dni zaległego urlopu.</b> Wykorzystaj do 30.09.2026, aby nie przepadły.</div></div>
+                <div style="display:flex;gap:11px;align-items:flex-start;background:var(--surface2);border:1px solid var(--border);border-radius:11px;padding:12px 13px"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:1px"><circle cx="12" cy="12" r="9"></circle><path d="M12 8v5M12 16v.5"></path></svg><div style="font-size:12.8px;line-height:1.45;color:var(--ink2)">Zbliża się koniec okresu rozliczeniowego — zaplanuj pozostałe <b style="color:var(--ink)">15 dni</b>.</div></div>
+              </div>
+            </div>
+
+            <!-- who is out -->
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-sm);padding:20px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="font-weight:700;font-size:14.5px">Kto dziś / w tym tygodniu nieobecny</div><a onClick="{{ goKalendarz }}" style="cursor:pointer;font-size:12.5px;color:var(--brand);font-weight:600;display:flex;align-items:center;gap:3px">Kalendarz<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"></path></svg></a></div>
+              <div style="display:flex;flex-direction:column;margin-top:14px">
+                <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)"><div style="width:32px;height:32px;border-radius:8px;background:var(--blue-tint);color:var(--blue);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px">MW</div><div style="flex:1"><div style="font-weight:600;font-size:13.5px">Marta Wiśniewska</div><div style="font-size:11.5px;color:var(--muted)">Squad Płatności</div></div><span style="font-size:12px;font-family:'IBM Plex Mono',monospace;color:var(--abs-ink);background:var(--abs);border:1px solid var(--abs-bd);padding:3px 9px;border-radius:7px">dziś–24.06</span></div>
+                <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)"><div style="width:32px;height:32px;border-radius:8px;background:var(--blue-tint);color:var(--blue);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px">TL</div><div style="flex:1"><div style="font-weight:600;font-size:13.5px">Tomasz Lewandowski</div><div style="font-size:11.5px;color:var(--muted)">Squad Onboarding</div></div><span style="font-size:12px;font-family:'IBM Plex Mono',monospace;color:var(--abs-ink);background:var(--abs);border:1px solid var(--abs-bd);padding:3px 9px;border-radius:7px">23–27.06</span></div>
+                <div style="display:flex;align-items:center;gap:12px;padding:10px 0"><div style="width:32px;height:32px;border-radius:8px;background:var(--blue-tint);color:var(--blue);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px">JW</div><div style="flex:1"><div style="font-weight:600;font-size:13.5px">Jakub Wójcik</div><div style="font-size:11.5px;color:var(--muted)">Squad Mobilny</div></div><span style="font-size:12px;font-family:'IBM Plex Mono',monospace;color:var(--abs-ink);background:var(--abs);border:1px solid var(--abs-bd);padding:3px 9px;border-radius:7px">26.06</span></div>
+              </div>
+            </div>
+
+            <!-- my upcoming -->
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-sm);padding:20px">
+              <div style="font-weight:700;font-size:14.5px;margin-bottom:14px">Moje najbliższe nieobecności</div>
+              <div style="display:flex;flex-direction:column;gap:10px">
+                <div style="display:flex;align-items:center;gap:13px;background:var(--surface2);border:1px solid var(--border);border-radius:11px;padding:12px 14px"><div style="text-align:center;width:42px"><div style="font-size:19px;font-weight:700;font-family:'IBM Plex Mono',monospace;line-height:1">14</div><div style="font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">LIP</div></div><div style="flex:1;border-left:1px solid var(--border);padding-left:13px"><div style="font-weight:600;font-size:13.5px">14–18 lipca 2026</div><div style="font-size:11.5px;color:var(--muted)">5 dni roboczych · zaplanowane</div></div><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.8"><path d="m9 6 6 6-6 6"></path></svg></div>
+                <div style="display:flex;align-items:center;gap:13px;background:var(--surface2);border:1px solid var(--border);border-radius:11px;padding:12px 14px"><div style="text-align:center;width:42px"><div style="font-size:19px;font-weight:700;font-family:'IBM Plex Mono',monospace;line-height:1">01</div><div style="font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">WRZ</div></div><div style="flex:1;border-left:1px solid var(--border);padding-left:13px"><div style="font-weight:600;font-size:13.5px">1 września 2026 · pół dnia (PM)</div><div style="font-size:11.5px;color:var(--muted)">0,5 dnia · zaplanowane</div></div><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.8"><path d="m9 6 6 6-6 6"></path></svg></div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+        </sc-if>
+        <!-- ===== NOWA NIEOBECNOŚĆ ===== -->
+        <sc-if value="{{ isWpis }}" hint-placeholder-val="{{ false }}">
+        <div data-screen-label="Nowa nieobecnosc" style="max-width:1080px">
+          <div style="display:grid;grid-template-columns:1.25fr .95fr;gap:18px">
+            <!-- FORM -->
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-sm);padding:24px">
+              <h2 style="font-size:18px;font-weight:700;margin:0 0 20px">Zgłoś nieobecność</h2>
+
+              <label style="display:block;font-size:12.5px;font-weight:600;color:var(--ink2);margin-bottom:7px">Typ nieobecności</label>
+              <div style="display:flex;align-items:center;justify-content:space-between;border:1px solid var(--border2);background:var(--surface);border-radius:10px;padding:12px 14px;margin-bottom:20px;cursor:pointer"><span style="font-size:14px;font-weight:500">Urlop wypoczynkowy</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2"><path d="m6 9 6 6 6-6"></path></svg></div>
+
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px">
+                <div><label style="display:block;font-size:12.5px;font-weight:600;color:var(--ink2);margin-bottom:7px">Data od</label><div style="display:flex;align-items:center;gap:10px;border:1px solid var(--border2);border-radius:10px;padding:12px 14px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="1.8"><rect x="3" y="4.5" width="18" height="16" rx="2"></rect><path d="M3 9h18M8 3v3M16 3v3"></path></svg><span style="font-size:14px;font-weight:500">14.07.2026</span></div></div>
+                <div><label style="display:block;font-size:12.5px;font-weight:600;color:var(--ink2);margin-bottom:7px">Data do</label><div style="display:flex;align-items:center;gap:10px;border:1px solid var(--border2);border-radius:10px;padding:12px 14px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="1.8"><rect x="3" y="4.5" width="18" height="16" rx="2"></rect><path d="M3 9h18M8 3v3M16 3v3"></path></svg><span style="font-size:14px;font-weight:500">18.07.2026</span></div></div>
+              </div>
+
+              <label style="display:block;font-size:12.5px;font-weight:600;color:var(--ink2);margin-bottom:7px">Wymiar dnia</label>
+              <div style="display:flex;gap:8px;margin-bottom:24px">
+                <div style="flex:1;text-align:center;border:1.5px solid var(--brand);background:var(--brand-tint);color:var(--brand);border-radius:9px;padding:10px;font-size:13px;font-weight:600">Cały dzień</div>
+                <div style="flex:1;text-align:center;border:1px solid var(--border2);border-radius:9px;padding:10px;font-size:13px;color:var(--ink2)">Przed poł. (AM)</div>
+                <div style="flex:1;text-align:center;border:1px solid var(--border2);border-radius:9px;padding:10px;font-size:13px;color:var(--ink2)">Po poł. (PM)</div>
+                <div style="flex:1;text-align:center;border:1px solid var(--border2);border-radius:9px;padding:10px;font-size:13px;color:var(--ink2)">Godziny</div>
+              </div>
+
+              <div style="display:flex;gap:10px"><button style="border:none;cursor:pointer;background:var(--brand);color:#fff;font-family:Archivo;font-weight:700;font-size:14px;padding:12px 22px;border-radius:10px;box-shadow:var(--shadow-sm)">Zapisz nieobecność</button><button onClick="{{ goPulpit }}" style="border:1px solid var(--border2);cursor:pointer;background:var(--surface);color:var(--ink2);font-family:Archivo;font-weight:600;font-size:14px;padding:12px 22px;border-radius:10px">Anuluj</button></div>
+            </div>
+
+            <!-- LIVE SUMMARY -->
+            <div style="display:flex;flex-direction:column;gap:14px">
+              <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-sm);padding:20px">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px"><span style="width:7px;height:7px;border-radius:50%;background:var(--brand)"></span><span style="font-weight:700;font-size:13.5px">Podgląd na żywo</span></div>
+                <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border)"><span style="font-size:13px;color:var(--ink2)">Dni robocze w zakresie</span><span style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:14px">5</span></div>
+                <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border)"><span style="font-size:13px;color:var(--ink2)">Pominięto (weekend / święta)</span><span style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:14px;color:var(--muted)">2</span></div>
+                <div style="display:flex;justify-content:space-between;padding:9px 0"><span style="font-size:13px;color:var(--ink2)">Balans po zapisie</span><span style="font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:14px;color:var(--brand)">15 → 10 dni</span></div>
+                <div style="background:var(--surface3);border-radius:9px;padding:10px 12px;margin-top:10px;font-size:11.5px;color:var(--muted);line-height:1.5"><b style="color:var(--ink2)">19.07 (sob)</b> i <b style="color:var(--ink2)">20.07 (niedz)</b> nie są naliczane.</div>
+              </div>
+
+              <div style="background:var(--amber-tint);border:1px solid var(--amber);border-radius:14px;padding:16px">
+                <div style="display:flex;gap:10px;align-items:flex-start"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:1px"><path d="M12 3 1.5 21h21z"></path><path d="M12 9v5M12 17.5v.5"></path></svg><div><div style="font-weight:700;font-size:13px;color:var(--ink);margin-bottom:3px">Kolizja w zespole</div><div style="font-size:12.5px;line-height:1.5;color:var(--ink2)">W tym terminie nieobecny jest <b>Rafał Kamiński</b> (rola kluczowa: Tech Lead). Zapis jest możliwy — to informacja, nie blokada.</div></div></div>
+              </div>
+
+              <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-sm);padding:16px">
+                <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:11px;font-family:'IBM Plex Mono',monospace;letter-spacing:.04em">LIPIEC 2026</div>
+                <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;font-size:11.5px">
+                  <div style="text-align:center;color:var(--muted);padding-bottom:3px">P</div><div style="text-align:center;color:var(--muted)">W</div><div style="text-align:center;color:var(--muted)">Ś</div><div style="text-align:center;color:var(--muted)">C</div><div style="text-align:center;color:var(--muted)">P</div><div style="text-align:center;color:var(--muted)">S</div><div style="text-align:center;color:var(--muted)">N</div>
+                  <div style="text-align:center;padding:6px 0;color:var(--muted)">29</div><div style="text-align:center;padding:6px 0;color:var(--muted)">30</div><div style="text-align:center;padding:6px 0">1</div><div style="text-align:center;padding:6px 0">2</div><div style="text-align:center;padding:6px 0">3</div><div style="text-align:center;padding:6px 0;color:var(--muted)">4</div><div style="text-align:center;padding:6px 0;color:var(--muted)">5</div>
+                  <div style="text-align:center;padding:6px 0">6</div><div style="text-align:center;padding:6px 0">7</div><div style="text-align:center;padding:6px 0">8</div><div style="text-align:center;padding:6px 0">9</div><div style="text-align:center;padding:6px 0">10</div><div style="text-align:center;padding:6px 0;color:var(--muted)">11</div><div style="text-align:center;padding:6px 0;color:var(--muted)">12</div>
+                  <div style="text-align:center;padding:6px 0">13</div><div style="text-align:center;padding:6px 0;background:var(--brand);color:#fff;border-radius:7px 0 0 7px;font-weight:600">14</div><div style="text-align:center;padding:6px 0;background:var(--brand-tint2);color:var(--brand);font-weight:600">15</div><div style="text-align:center;padding:6px 0;background:var(--brand-tint2);color:var(--brand);font-weight:600">16</div><div style="text-align:center;padding:6px 0;background:var(--brand-tint2);color:var(--brand);font-weight:600">17</div><div style="text-align:center;padding:6px 0;background:var(--brand);color:#fff;border-radius:0 7px 7px 0;font-weight:600">18</div><div style="text-align:center;padding:6px 0;color:var(--muted);background:var(--surface3);border-radius:7px">19</div>
+                  <div style="text-align:center;padding:6px 0;color:var(--muted);background:var(--surface3);border-radius:7px">20</div><div style="text-align:center;padding:6px 0">21</div><div style="text-align:center;padding:6px 0">22</div><div style="text-align:center;padding:6px 0">23</div><div style="text-align:center;padding:6px 0">24</div><div style="text-align:center;padding:6px 0;color:var(--muted)">25</div><div style="text-align:center;padding:6px 0;color:var(--muted)">26</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        </sc-if>
+        <!-- ===== KALENDARZ ZESPOŁU ===== -->
+        <sc-if value="{{ isKalendarz }}" hint-placeholder-val="{{ false }}">
+        <div data-screen-label="Kalendarz zespolu" style="max-width:1180px">
+          <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:18px">
+            <div style="display:flex;align-items:center;gap:10px"><button style="width:32px;height:32px;border:1px solid var(--border);background:var(--surface);border-radius:8px;cursor:pointer;color:var(--ink2);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 6-6 6 6 6"></path></svg></button><span style="font-weight:700;font-size:16px;min-width:130px;text-align:center">Czerwiec 2026</span><button style="width:32px;height:32px;border:1px solid var(--border);background:var(--surface);border-radius:8px;cursor:pointer;color:var(--ink2);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"></path></svg></button></div>
+            <div style="display:flex;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:3px"><span style="padding:6px 13px;border-radius:7px;font-size:12.5px;font-weight:600;color:var(--muted)">Tydzień</span><span style="padding:6px 13px;border-radius:7px;font-size:12.5px;font-weight:600;background:var(--surface);color:var(--brand);box-shadow:var(--shadow-sm)">Sprint 13</span><span style="padding:6px 13px;border-radius:7px;font-size:12.5px;font-weight:600;color:var(--muted)">Miesiąc</span></div>
+            <div style="flex:1"></div>
+            <div style="display:flex;align-items:center;gap:8px;border:1px solid var(--border);border-radius:9px;padding:8px 12px;font-size:12.5px;color:var(--ink2);font-weight:600"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 5h18M6 12h12M10 19h4"></path></svg>Kto dziś nieobecny</div>
+          </div>
+
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-sm);overflow:hidden">
+            <!-- header -->
+            <div style="display:grid;grid-template-columns:208px repeat(14,minmax(0,1fr));border-bottom:1px solid var(--border);background:var(--surface2)">
+              <div style="padding:11px 16px;font-size:11.5px;font-weight:700;color:var(--muted);font-family:'IBM Plex Mono',monospace;letter-spacing:.04em;align-self:center">ZESPÓŁ · 9 OS.</div>
+              <sc-for list="{{ cal.days }}" as="d" hint-placeholder-count="14">
+                <div style="{{ d.hstyle }}"><div style="font-size:10px;color:var(--muted)">{{ d.d }}</div><div style="font-size:13px;font-weight:600;font-family:'IBM Plex Mono',monospace">{{ d.n }}</div></div>
+              </sc-for>
+            </div>
+            <!-- rows -->
+            <sc-for list="{{ cal.rows }}" as="r" hint-placeholder-count="9">
+              <sc-if value="{{ r.isGroup }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;align-items:center;gap:8px;padding:8px 16px;background:var(--surface3);border-bottom:1px solid var(--border)"><span style="font-size:12px;font-weight:700;letter-spacing:.01em">{{ r.label }}</span><span style="font-size:11px;color:var(--muted)">{{ r.sub }}</span></div>
+              </sc-if>
+              <sc-if value="{{ r.isPerson }}" hint-placeholder-val="{{ true }}">
+                <div style="display:grid;grid-template-columns:208px repeat(14,minmax(0,1fr));border-bottom:1px solid var(--border);align-items:center">
+                  <div style="display:flex;align-items:center;gap:10px;padding:8px 16px"><div style="width:28px;height:28px;flex:none;border-radius:7px;background:var(--blue-tint);color:var(--blue);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:10.5px">{{ r.initials }}</div><div style="min-width:0"><div style="font-weight:600;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:5px">{{ r.name }}<sc-if value="{{ r.key }}" hint-placeholder-val="{{ false }}"><span title="Rola kluczowa" style="width:6px;height:6px;border-radius:50%;background:var(--amber)"></span></sc-if></div><div style="font-size:10.5px;color:var(--muted)">{{ r.unit }}</div></div></div>
+                  <sc-for list="{{ r.cells }}" as="c" hint-placeholder-count="14"><div style="{{ c.style }}"></div></sc-for>
+                </div>
+              </sc-if>
+            </sc-for>
+          </div>
+          <div style="display:flex;align-items:center;gap:18px;margin-top:14px;font-size:12px;color:var(--muted)"><div style="display:flex;align-items:center;gap:7px"><span style="width:22px;height:13px;border-radius:4px;background:var(--abs);border:1px solid var(--abs-bd)"></span>Nieobecność</div><div style="display:flex;align-items:center;gap:7px"><span style="width:8px;height:8px;border-radius:50%;background:var(--amber)"></span>Rola kluczowa</div><div style="display:flex;align-items:center;gap:7px"><span style="width:22px;height:13px;border-radius:4px;background:var(--surface3);border:1px solid var(--border)"></span>Weekend</div></div>
+        </div>
+        </sc-if>
+        <!-- ===== MOJA HISTORIA ===== -->
+        <sc-if value="{{ isHistoria }}" hint-placeholder-val="{{ false }}">
+        <div data-screen-label="Moja historia" style="max-width:1080px">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:18px"><span style="padding:8px 15px;border-radius:9px;font-size:13px;font-weight:600;background:var(--brand-tint);color:var(--brand)">Wszystkie</span><span style="padding:8px 15px;border-radius:9px;font-size:13px;font-weight:600;color:var(--muted)">Nadchodzące</span><span style="padding:8px 15px;border-radius:9px;font-size:13px;font-weight:600;color:var(--muted)">Zrealizowane</span><div style="flex:1"></div><span style="font-size:12.5px;color:var(--muted);font-family:'IBM Plex Mono',monospace">2026 · rok kalendarzowy</span></div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-sm);overflow:hidden">
+            <div style="display:grid;grid-template-columns:1.6fr .6fr 1.5fr 1.3fr 1fr .9fr;padding:13px 20px;border-bottom:1px solid var(--border);background:var(--surface2);font-size:11px;font-weight:700;color:var(--muted);font-family:'IBM Plex Mono',monospace;letter-spacing:.04em"><div>ZAKRES</div><div>DNI</div><div>TYP</div><div>ŹRÓDŁO</div><div>STATUS</div><div></div></div>
+            <div style="display:grid;grid-template-columns:1.6fr .6fr 1.5fr 1.3fr 1fr .9fr;padding:15px 20px;border-bottom:1px solid var(--border);align-items:center;font-size:13px"><div style="font-weight:600">14–18.07.2026</div><div style="font-family:'IBM Plex Mono',monospace">5</div><div style="color:var(--ink2)">Urlop wypoczynkowy</div><div style="color:var(--muted)">Samodzielny</div><div><span style="font-size:11.5px;font-weight:600;color:var(--blue);background:var(--blue-tint);padding:3px 9px;border-radius:7px">Zaplanowane</span></div><div><span style="color:var(--danger);font-weight:600;font-size:12.5px;cursor:pointer">Wycofaj</span></div></div>
+            <div style="display:grid;grid-template-columns:1.6fr .6fr 1.5fr 1.3fr 1fr .9fr;padding:15px 20px;border-bottom:1px solid var(--border);align-items:center;font-size:13px"><div style="font-weight:600">01.09.2026 <span style="color:var(--muted);font-weight:400">· PM</span></div><div style="font-family:'IBM Plex Mono',monospace">0,5</div><div style="color:var(--ink2)">Urlop wypoczynkowy</div><div style="color:var(--muted)">Samodzielny</div><div><span style="font-size:11.5px;font-weight:600;color:var(--blue);background:var(--blue-tint);padding:3px 9px;border-radius:7px">Zaplanowane</span></div><div><span style="color:var(--danger);font-weight:600;font-size:12.5px;cursor:pointer">Wycofaj</span></div></div>
+            <div style="display:grid;grid-template-columns:1.6fr .6fr 1.5fr 1.3fr 1fr .9fr;padding:15px 20px;border-bottom:1px solid var(--border);align-items:center;font-size:13px"><div style="font-weight:600">02–06.06.2026</div><div style="font-family:'IBM Plex Mono',monospace">5</div><div style="color:var(--ink2)">Urlop wypoczynkowy</div><div style="color:var(--muted)">Samodzielny</div><div><span style="font-size:11.5px;font-weight:600;color:var(--muted);background:var(--surface3);padding:3px 9px;border-radius:7px">Zrealizowane</span></div><div></div></div>
+            <div style="display:grid;grid-template-columns:1.6fr .6fr 1.5fr 1.3fr 1fr .9fr;padding:15px 20px;border-bottom:1px solid var(--border);align-items:center;font-size:13px"><div style="font-weight:600">14–16.04.2026</div><div style="font-family:'IBM Plex Mono',monospace">3</div><div style="color:var(--ink2)">L4 <span style="font-size:10px;color:var(--muted);background:var(--surface3);padding:1px 6px;border-radius:5px;margin-left:4px">widoczne tylko dla Ciebie</span></div><div style="color:var(--muted)">Dodał: Lider</div><div><span style="font-size:11.5px;font-weight:600;color:var(--muted);background:var(--surface3);padding:3px 9px;border-radius:7px">Zrealizowane</span></div><div></div></div>
+            <div style="display:grid;grid-template-columns:1.6fr .6fr 1.5fr 1.3fr 1fr .9fr;padding:15px 20px;align-items:center;font-size:13px"><div style="font-weight:600">02.01.2026</div><div style="font-family:'IBM Plex Mono',monospace">1</div><div style="color:var(--ink2)">Urlop na żądanie</div><div style="color:var(--muted)">Samodzielny</div><div><span style="font-size:11.5px;font-weight:600;color:var(--muted);background:var(--surface3);padding:3px 9px;border-radius:7px">Zrealizowane</span></div><div></div></div>
+          </div>
+        </div>
+        </sc-if>
+
+        <!-- ===== CAPACITY SPRINTU ===== -->
+        <sc-if value="{{ isCapacity }}" hint-placeholder-val="{{ false }}">
+        <div data-screen-label="Capacity sprintu" style="max-width:1180px">
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;flex-wrap:wrap">
+            <div style="display:flex;align-items:center;gap:10px;border:1px solid var(--border2);background:var(--surface);border-radius:10px;padding:10px 15px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v18"></path><path d="M5 4h13l-2.5 3.5L18 11H5"></path></svg><span style="font-weight:700;font-size:14px">Sprint 13</span><span style="color:var(--muted);font-size:13px;font-family:'IBM Plex Mono',monospace">16–27.06.2026 · 10 dni rob.</span><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2"><path d="m6 9 6 6 6-6"></path></svg></div>
+            <span style="font-size:13px;color:var(--muted)">Tribe „Klient Indywidualny"</span>
+          </div>
+
+          <!-- key-role collision -->
+          <div style="background:var(--danger-tint);border:1px solid var(--danger);border-radius:14px;padding:16px 18px;margin-bottom:18px;display:flex;gap:13px;align-items:flex-start">
+            <div style="width:34px;height:34px;flex:none;border-radius:9px;background:var(--danger);display:flex;align-items:center;justify-content:center"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 1.5 21h21z"></path><path d="M12 9v5M12 17.5v.5"></path></svg></div>
+            <div style="flex:1"><div style="font-weight:700;font-size:14px;margin-bottom:3px">Alert: kolizja kluczowych ról</div><div style="font-size:13px;line-height:1.5;color:var(--ink2)"><b>Rafał Kamiński</b> (Tech Lead) i <b>Marta Wiśniewska</b> (Płatności Owner) są nieobecni jednocześnie w dniach <b>23–24.06</b>. Rozważ przesunięcie kluczowych zadań sprintu.</div></div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:18px">
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-sm);padding:20px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><span style="font-weight:700;font-size:14px">Squad Płatności</span><span style="font-size:11.5px;color:var(--muted)">3 osoby</span></div><div style="display:flex;align-items:flex-end;gap:6px;margin-bottom:4px"><span style="font-size:34px;font-weight:800;line-height:.9;font-variant-numeric:tabular-nums">83</span><span style="font-size:15px;color:var(--brand);font-weight:700;margin-bottom:5px">%</span><span style="margin-left:auto;margin-bottom:5px;font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:var(--muted)">25 / 30 os-dni</span></div><div style="height:9px;border-radius:6px;background:var(--surface3);overflow:hidden;margin:10px 0 6px"><div style="width:83%;height:100%;background:var(--brand)"></div></div><div style="font-size:12px;color:var(--muted)">−5 os-dni nieobecności</div></div>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-sm);padding:20px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><span style="font-weight:700;font-size:14px">Squad Onboarding</span><span style="font-size:11.5px;color:var(--muted)">2 osoby</span></div><div style="display:flex;align-items:flex-end;gap:6px;margin-bottom:4px"><span style="font-size:34px;font-weight:800;line-height:.9;font-variant-numeric:tabular-nums;color:var(--amber)">75</span><span style="font-size:15px;color:var(--amber);font-weight:700;margin-bottom:5px">%</span><span style="margin-left:auto;margin-bottom:5px;font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:var(--muted)">15 / 20 os-dni</span></div><div style="height:9px;border-radius:6px;background:var(--surface3);overflow:hidden;margin:10px 0 6px"><div style="width:75%;height:100%;background:var(--amber)"></div></div><div style="font-size:12px;color:var(--muted)">−5 os-dni nieobecności</div></div>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-sm);padding:20px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><span style="font-weight:700;font-size:14px">Squad Mobilny</span><span style="font-size:11.5px;color:var(--muted)">2 osoby</span></div><div style="display:flex;align-items:flex-end;gap:6px;margin-bottom:4px"><span style="font-size:34px;font-weight:800;line-height:.9;font-variant-numeric:tabular-nums">95</span><span style="font-size:15px;color:var(--brand);font-weight:700;margin-bottom:5px">%</span><span style="margin-left:auto;margin-bottom:5px;font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:var(--muted)">19 / 20 os-dni</span></div><div style="height:9px;border-radius:6px;background:var(--surface3);overflow:hidden;margin:10px 0 6px"><div style="width:95%;height:100%;background:var(--brand)"></div></div><div style="font-size:12px;color:var(--muted)">−1 os-dzień nieobecności</div></div>
+          </div>
+
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-sm);padding:22px">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:18px"><span style="font-weight:700;font-size:15px">Capacity Tribe w sprincie</span><span style="font-size:13px;color:var(--muted)">Razem: <b style="color:var(--ink);font-family:'IBM Plex Mono',monospace">59 / 70</b> os-dni</span></div>
+            <div style="display:flex;align-items:flex-end;gap:5px;height:130px;padding-bottom:24px;position:relative">
+              <div style="flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:6px"><div style="width:100%;max-width:46px;height:78%;background:var(--brand);border-radius:5px 5px 0 0"></div><span style="font-size:10.5px;color:var(--muted);position:absolute;bottom:0">Pn 16</span></div>
+              <div style="flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:6px"><div style="width:100%;max-width:46px;height:78%;background:var(--brand);border-radius:5px 5px 0 0"></div><span style="font-size:10.5px;color:var(--muted);position:absolute;bottom:0">Wt 17</span></div>
+              <div style="flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:6px"><div style="width:100%;max-width:46px;height:71%;background:var(--brand);border-radius:5px 5px 0 0"></div><span style="font-size:10.5px;color:var(--muted);position:absolute;bottom:0">Śr 18</span></div>
+              <div style="flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:6px"><div style="width:100%;max-width:46px;height:71%;background:var(--brand);border-radius:5px 5px 0 0"></div><span style="font-size:10.5px;color:var(--muted);position:absolute;bottom:0">Cz 19</span></div>
+              <div style="flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:6px"><div style="width:100%;max-width:46px;height:57%;background:var(--brand);border-radius:5px 5px 0 0"></div><span style="font-size:10.5px;color:var(--muted);position:absolute;bottom:0">Pn 22</span></div>
+              <div style="flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:6px"><div style="width:100%;max-width:46px;height:43%;background:var(--danger);border-radius:5px 5px 0 0"></div><span style="font-size:10.5px;color:var(--danger);font-weight:600;position:absolute;bottom:0">Wt 23</span></div>
+              <div style="flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:6px"><div style="width:100%;max-width:46px;height:43%;background:var(--danger);border-radius:5px 5px 0 0"></div><span style="font-size:10.5px;color:var(--danger);font-weight:600;position:absolute;bottom:0">Śr 24</span></div>
+              <div style="flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:6px"><div style="width:100%;max-width:46px;height:64%;background:var(--brand);border-radius:5px 5px 0 0"></div><span style="font-size:10.5px;color:var(--muted);position:absolute;bottom:0">Cz 25</span></div>
+              <div style="flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:6px"><div style="width:100%;max-width:46px;height:57%;background:var(--brand);border-radius:5px 5px 0 0"></div><span style="font-size:10.5px;color:var(--muted);position:absolute;bottom:0">Pt 26</span></div>
+            </div>
+          </div>
+        </div>
+        </sc-if>
+        <!-- ===== RAPORTY ===== -->
+        <sc-if value="{{ isRaporty }}" hint-placeholder-val="{{ false }}">
+        <div data-screen-label="Raporty i analizy" style="max-width:1180px">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:18px">
+            <div style="display:flex;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:3px"><span style="padding:7px 13px;border-radius:7px;font-size:12.5px;font-weight:600;background:var(--surface);color:var(--brand);box-shadow:var(--shadow-sm)">Rok kalendarzowy</span><span style="padding:7px 13px;border-radius:7px;font-size:12.5px;font-weight:600;color:var(--muted)">Rok budżetowy</span></div>
+            <div style="flex:1"></div>
+            <button style="border:1px solid var(--brand);cursor:pointer;background:var(--brand-tint);color:var(--brand);font-family:Archivo;font-weight:700;font-size:13px;padding:9px 15px;border-radius:9px;display:flex;align-items:center;gap:7px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4"></path><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"></path></svg>Eksport .xlsx</button>
+          </div>
+
+          <!-- drill breadcrumb -->
+          <div style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:16px;flex-wrap:wrap"><span style="color:var(--muted)">Departament Bankowości Detalicznej</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2"><path d="m9 6 6 6-6 6"></path></svg><span style="font-weight:700;color:var(--brand)">Tribe „Klient Indywidualny"</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--border2)" stroke-width="2"><path d="m9 6 6 6-6 6"></path></svg><span style="color:var(--muted)">Squad</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--border2)" stroke-width="2"><path d="m9 6 6 6-6 6"></path></svg><span style="color:var(--muted)">Osoba</span></div>
+
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:18px">
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-sm);padding:20px"><div style="font-size:12.5px;color:var(--muted);font-weight:600;margin-bottom:10px">Śr. wykorzystanie urlopu</div><div style="display:flex;align-items:flex-end;gap:6px"><span style="font-size:34px;font-weight:800;line-height:.9;font-variant-numeric:tabular-nums">54</span><span style="font-size:15px;font-weight:700;color:var(--muted);margin-bottom:4px">%</span></div><div style="font-size:12px;color:var(--muted);margin-top:8px">w departamencie · 142 osoby</div></div>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-sm);padding:20px"><div style="font-size:12.5px;color:var(--muted);font-weight:600;margin-bottom:10px">Dni nieobecności (rok)</div><div style="display:flex;align-items:flex-end;gap:6px"><span style="font-size:34px;font-weight:800;line-height:.9;font-variant-numeric:tabular-nums">1 248</span></div><div style="font-size:12px;color:var(--muted);margin-top:8px">wszystkie typy łącznie</div></div>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-sm);padding:20px"><div style="font-size:12.5px;color:var(--muted);font-weight:600;margin-bottom:10px">Zalega z urlopem</div><div style="display:flex;align-items:flex-end;gap:6px"><span style="font-size:34px;font-weight:800;line-height:.9;font-variant-numeric:tabular-nums;color:var(--amber)">14</span><span style="font-size:14px;color:var(--muted);margin-bottom:5px">osób</span></div><div style="font-size:12px;color:var(--muted);margin-top:8px">powyżej progu zaległości</div></div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1.1fr;gap:16px">
+            <!-- bar chart per squad -->
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-sm);padding:22px">
+              <div style="font-weight:700;font-size:14.5px;margin-bottom:18px">Wykorzystanie urlopu wg squadu</div>
+              <div style="display:flex;flex-direction:column;gap:15px;font-size:12.5px">
+                <div><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span>Squad Płatności</span><span style="font-family:'IBM Plex Mono',monospace;color:var(--muted)">61%</span></div><div style="height:9px;border-radius:6px;background:var(--surface3);overflow:hidden"><div style="width:61%;height:100%;background:var(--brand)"></div></div></div>
+                <div><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span>Squad Onboarding</span><span style="font-family:'IBM Plex Mono',monospace;color:var(--muted)">47%</span></div><div style="height:9px;border-radius:6px;background:var(--surface3);overflow:hidden"><div style="width:47%;height:100%;background:var(--blue)"></div></div></div>
+                <div><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span>Squad Mobilny</span><span style="font-family:'IBM Plex Mono',monospace;color:var(--muted)">58%</span></div><div style="height:9px;border-radius:6px;background:var(--surface3);overflow:hidden"><div style="width:58%;height:100%;background:var(--brand)"></div></div></div>
+                <div><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span>Squad Rozliczenia</span><span style="font-family:'IBM Plex Mono',monospace;color:var(--muted)">64%</span></div><div style="height:9px;border-radius:6px;background:var(--surface3);overflow:hidden"><div style="width:64%;height:100%;background:var(--brand)"></div></div></div>
+                <div><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span>Squad Integracje</span><span style="font-family:'IBM Plex Mono',monospace;color:var(--muted)">41%</span></div><div style="height:9px;border-radius:6px;background:var(--surface3);overflow:hidden"><div style="width:41%;height:100%;background:var(--blue)"></div></div></div>
+              </div>
+            </div>
+
+            <!-- kto zalega -->
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-sm);overflow:hidden">
+              <div style="padding:18px 20px 12px"><div style="font-weight:700;font-size:14.5px">Kto zalega z urlopem</div><div style="font-size:12px;color:var(--muted);margin-top:2px">Osoby z zaległym / niewybranym urlopem</div></div>
+              <div style="display:grid;grid-template-columns:1.7fr .8fr 1fr;padding:8px 20px;background:var(--surface2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);font-size:10.5px;font-weight:700;color:var(--muted);font-family:'IBM Plex Mono',monospace;letter-spacing:.04em"><div>OSOBA</div><div>ZALEGA</div><div>DEADLINE</div></div>
+              <div style="display:grid;grid-template-columns:1.7fr .8fr 1fr;padding:13px 20px;border-bottom:1px solid var(--border);align-items:center;font-size:13px"><div style="font-weight:600">Tomasz Lewandowski</div><div style="font-family:'IBM Plex Mono',monospace;font-weight:700;color:var(--danger)">8 dni</div><div style="color:var(--ink2);font-size:12px">30.06.2026</div></div>
+              <div style="display:grid;grid-template-columns:1.7fr .8fr 1fr;padding:13px 20px;border-bottom:1px solid var(--border);align-items:center;font-size:13px"><div style="font-weight:600">Katarzyna Zielińska</div><div style="font-family:'IBM Plex Mono',monospace;font-weight:700;color:var(--amber)">6 dni</div><div style="color:var(--ink2);font-size:12px">30.09.2026</div></div>
+              <div style="display:grid;grid-template-columns:1.7fr .8fr 1fr;padding:13px 20px;border-bottom:1px solid var(--border);align-items:center;font-size:13px"><div style="font-weight:600">Magdalena Dąbrowska</div><div style="font-family:'IBM Plex Mono',monospace;font-weight:700;color:var(--amber)">5 dni</div><div style="color:var(--ink2);font-size:12px">30.09.2026</div></div>
+              <div style="display:grid;grid-template-columns:1.7fr .8fr 1fr;padding:13px 20px;align-items:center;font-size:13px"><div style="font-weight:600">Jakub Wójcik</div><div style="font-family:'IBM Plex Mono',monospace;font-weight:700;color:var(--amber)">4 dni</div><div style="color:var(--ink2);font-size:12px">30.11.2026</div></div>
+            </div>
+          </div>
+        </div>
+        </sc-if>
+
+        <!-- ===== HEATMAPA ===== -->
+        <sc-if value="{{ isHeatmapa }}" hint-placeholder-val="{{ false }}">
+        <div data-screen-label="Heatmapa pokrycia" style="max-width:1080px">
+          <p style="color:var(--muted);font-size:13.5px;margin:0 0 20px;max-width:680px">Natężenie nieobecności w czasie — pozwala wcześnie wykryć tygodnie zagrożone niedoborem obsady. Kolor prowadzi od zielonego (spokojnie) po czerwony (wymaga uwagi).</p>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-sm);padding:22px;overflow-x:auto">
+            <div style="display:grid;grid-template-columns:150px repeat(9,minmax(46px,1fr));gap:6px;align-items:center;min-width:640px">
+              <div></div>
+              <sc-for list="{{ heat.weeks }}" as="w" hint-placeholder-count="9"><div style="text-align:center;font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-weight:600">T{{ w }}</div></sc-for>
+              <sc-for list="{{ heat.rows }}" as="r" hint-placeholder-count="5">
+                <div style="font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.squad }}</div>
+                <sc-for list="{{ r.cells }}" as="c" hint-placeholder-count="9"><div style="{{ c.style }}"><div style="{{ c.fill }}"></div><span style="{{ c.txt }}">{{ c.v }}</span></div></sc-for>
+              </sc-for>
+            </div>
+            <div style="display:flex;align-items:center;gap:24px;margin-top:22px;padding-top:18px;border-top:1px solid var(--border)">
+              <div style="display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted)"><span>Spokojnie</span><div style="width:170px;height:11px;border-radius:6px;background:linear-gradient(90deg,#D9EBDD,#A8D9B4,#F1DC8E,#ED9F52,#D8493B)"></div><span>Wymaga uwagi</span></div>
+              <div style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted)"><span style="width:18px;height:18px;border-radius:5px;background:#D8493B;box-shadow:0 0 0 2px var(--surface),inset 0 0 0 2px #8E1B12"></span>Tydzień wysokiego ryzyka (≥50% nieobecnych)</div>
+            </div>
+          </div>
+        </div>
+        </sc-if>
+        <!-- ===== PRACOWNICY I STRUKTURA ===== -->
+        <sc-if value="{{ isPracownicy }}" hint-placeholder-val="{{ false }}">
+        <div data-screen-label="Pracownicy i struktura" style="max-width:1200px">
+          <div style="display:grid;grid-template-columns:268px 1fr;gap:18px">
+            <!-- ORG TREE -->
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-sm);padding:18px;height:fit-content">
+              <div style="font-weight:700;font-size:13.5px;margin-bottom:14px">Struktura organizacyjna</div>
+              <div style="font-size:13px;display:flex;flex-direction:column;gap:2px">
+                <div style="display:flex;align-items:center;gap:7px;padding:7px 8px;border-radius:7px;font-weight:600"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2"><path d="m6 9 6 6 6-6"></path></svg>Dep. Bankowości Detal.</div>
+                <div style="display:flex;align-items:center;gap:7px;padding:7px 8px 7px 24px;border-radius:7px;font-weight:600;background:var(--brand-tint);color:var(--brand)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"></path></svg>Tribe „Klient Indywidualny"</div>
+                <div style="padding:6px 8px 6px 44px;border-radius:7px;color:var(--ink2)">Squad Płatności <span style="color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:11px">3</span></div>
+                <div style="padding:6px 8px 6px 44px;border-radius:7px;color:var(--ink2)">Squad Onboarding <span style="color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:11px">2</span></div>
+                <div style="padding:6px 8px 6px 44px;border-radius:7px;color:var(--ink2)">Squad Mobilny <span style="color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:11px">2</span></div>
+                <div style="display:flex;align-items:center;gap:7px;padding:7px 8px 7px 24px;border-radius:7px;color:var(--ink2)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2"><path d="m9 6 6 6-6 6"></path></svg>Tribe „Klient Biznesowy"</div>
+                <div style="display:flex;align-items:center;gap:7px;padding:7px 8px 7px 24px;border-radius:7px;color:var(--ink2)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2"><path d="m9 6 6 6-6 6"></path></svg>Chapter „Inżynieria"</div>
+              </div>
+            </div>
+
+            <!-- EMPLOYEES -->
+            <div>
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+                <div style="flex:1;display:flex;align-items:center;gap:9px;border:1px solid var(--border);border-radius:9px;padding:9px 12px;color:var(--muted);font-size:13px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="6.5"></circle><path d="m20 20-3.8-3.8"></path></svg>Szukaj pracownika…</div>
+                <button style="border:1px solid var(--border2);cursor:pointer;background:var(--surface);color:var(--ink2);font-family:Archivo;font-weight:600;font-size:13px;padding:9px 14px;border-radius:9px;display:flex;align-items:center;gap:7px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0-4-4m4 4 4-4"></path><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"></path></svg>Import .xlsx</button>
+                <button style="border:none;cursor:pointer;background:var(--brand);color:#fff;font-family:Archivo;font-weight:700;font-size:13px;padding:9px 15px;border-radius:9px;display:flex;align-items:center;gap:7px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>Dodaj</button>
+              </div>
+              <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-sm);overflow:hidden">
+                <div style="display:grid;grid-template-columns:1.9fr 1.5fr .7fr .8fr .9fr;padding:11px 20px;background:var(--surface2);border-bottom:1px solid var(--border);font-size:10.5px;font-weight:700;color:var(--muted);font-family:'IBM Plex Mono',monospace;letter-spacing:.04em"><div>PRACOWNIK</div><div>JEDNOSTKI</div><div>PULA</div><div>ZALEGŁE</div><div>STATUS</div></div>
+                <div style="display:grid;grid-template-columns:1.9fr 1.5fr .7fr .8fr .9fr;padding:13px 20px;border-bottom:1px solid var(--border);align-items:center;font-size:13px"><div style="display:flex;align-items:center;gap:10px"><div style="width:28px;height:28px;border-radius:7px;background:var(--brand-tint);color:var(--brand);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:10.5px">AK</div><span style="font-weight:600">Anna Kowalska</span></div><div style="color:var(--muted);font-size:12px">Płatności · Chapter Inż.</div><div style="font-family:'IBM Plex Mono',monospace">26</div><div style="font-family:'IBM Plex Mono',monospace">4</div><div><span style="font-size:7px;color:var(--brand)">●</span> <span style="font-size:12px;color:var(--ink2)">Aktywny</span></div></div>
+                <div style="display:grid;grid-template-columns:1.9fr 1.5fr .7fr .8fr .9fr;padding:13px 20px;border-bottom:1px solid var(--border);align-items:center;font-size:13px"><div style="display:flex;align-items:center;gap:10px"><div style="width:28px;height:28px;border-radius:7px;background:var(--blue-tint);color:var(--blue);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:10.5px">PN</div><span style="font-weight:600">Piotr Nowak</span></div><div style="color:var(--muted);font-size:12px">Mobilny</div><div style="font-family:'IBM Plex Mono',monospace">19</div><div style="font-family:'IBM Plex Mono',monospace">0</div><div><span style="font-size:7px;color:var(--brand)">●</span> <span style="font-size:12px;color:var(--ink2)">Aktywny</span></div></div>
+                <div style="display:grid;grid-template-columns:1.9fr 1.5fr .7fr .8fr .9fr;padding:13px 20px;border-bottom:1px solid var(--border);align-items:center;font-size:13px"><div style="display:flex;align-items:center;gap:10px"><div style="width:28px;height:28px;border-radius:7px;background:var(--brand-tint);color:var(--brand);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:10.5px">MW</div><span style="font-weight:600">Marta Wiśniewska</span></div><div style="color:var(--muted);font-size:12px">Płatności</div><div style="font-family:'IBM Plex Mono',monospace">26</div><div style="font-family:'IBM Plex Mono',monospace">2</div><div><span style="font-size:7px;color:var(--brand)">●</span> <span style="font-size:12px;color:var(--ink2)">Aktywny</span></div></div>
+                <div style="display:grid;grid-template-columns:1.9fr 1.5fr .7fr .8fr .9fr;padding:13px 20px;border-bottom:1px solid var(--border);align-items:center;font-size:13px"><div style="display:flex;align-items:center;gap:10px"><div style="width:28px;height:28px;border-radius:7px;background:var(--surface3);color:var(--ink2);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:10.5px">TL</div><span style="font-weight:600">Tomasz Lewandowski</span></div><div style="color:var(--muted);font-size:12px">Onboarding</div><div style="font-family:'IBM Plex Mono',monospace">19</div><div style="font-family:'IBM Plex Mono',monospace;color:var(--danger);font-weight:600">8</div><div><span style="font-size:7px;color:var(--brand)">●</span> <span style="font-size:12px;color:var(--ink2)">Aktywny</span></div></div>
+                <div style="display:grid;grid-template-columns:1.9fr 1.5fr .7fr .8fr .9fr;padding:13px 20px;border-bottom:1px solid var(--border);align-items:center;font-size:13px"><div style="display:flex;align-items:center;gap:10px"><div style="width:28px;height:28px;border-radius:7px;background:var(--brand-tint);color:var(--brand);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:10.5px">RK</div><span style="font-weight:600">Rafał Kamiński</span></div><div style="color:var(--muted);font-size:12px">Płatności · <span style="color:var(--amber);font-weight:600">kluczowa</span></div><div style="font-family:'IBM Plex Mono',monospace">30</div><div style="font-family:'IBM Plex Mono',monospace">1</div><div><span style="font-size:7px;color:var(--brand)">●</span> <span style="font-size:12px;color:var(--ink2)">Aktywny</span></div></div>
+                <div style="display:grid;grid-template-columns:1.9fr 1.5fr .7fr .8fr .9fr;padding:13px 20px;align-items:center;font-size:13px"><div style="display:flex;align-items:center;gap:10px"><div style="width:28px;height:28px;border-radius:7px;background:var(--blue-tint);color:var(--blue);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:10.5px">JW</div><span style="font-weight:600">Jakub Wójcik</span></div><div style="color:var(--muted);font-size:12px">Mobilny</div><div style="font-family:'IBM Plex Mono',monospace">20</div><div style="font-family:'IBM Plex Mono',monospace">4</div><div><span style="font-size:7px;color:var(--brand)">●</span> <span style="font-size:12px;color:var(--ink2)">Aktywny</span></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        </sc-if>
+        <!-- ===== KONFIGURACJA ===== -->
+        <sc-if value="{{ isKonfiguracja }}" hint-placeholder-val="{{ false }}">
+        <div data-screen-label="Konfiguracja" style="max-width:1200px">
+          <div style="display:flex;gap:6px;margin-bottom:18px;border-bottom:1px solid var(--border)">
+            <span style="padding:11px 4px;margin-right:18px;font-size:13.5px;font-weight:700;color:var(--brand);border-bottom:2px solid var(--brand)">Typy nieobecności</span>
+            <span style="padding:11px 4px;margin-right:18px;font-size:13.5px;font-weight:600;color:var(--muted)">Pula urlopu</span>
+            <span style="padding:11px 4px;margin-right:18px;font-size:13.5px;font-weight:600;color:var(--muted)">Święta i dni wolne</span>
+            <span style="padding:11px 4px;font-size:13.5px;font-weight:600;color:var(--muted)">Sprinty (QBR)</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 320px;gap:18px">
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-sm);overflow:hidden">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--border)"><div><div style="font-weight:700;font-size:14.5px">Typy nieobecności</div></div><button style="border:none;cursor:pointer;background:var(--brand);color:#fff;font-family:Archivo;font-weight:700;font-size:12.5px;padding:8px 13px;border-radius:8px">+ Dodaj typ</button></div>
+              <div style="display:grid;grid-template-columns:1.6fr .9fr .9fr 1.2fr;padding:10px 20px;background:var(--surface2);border-bottom:1px solid var(--border);font-size:10.5px;font-weight:700;color:var(--muted);font-family:'IBM Plex Mono',monospace;letter-spacing:.04em"><div>NAZWA TYPU</div><div>OBNIŻA PULĘ</div><div>CAPACITY</div><div>KAT. SZCZEGÓLNA</div></div>
+              <div style="display:grid;grid-template-columns:1.6fr .9fr .9fr 1.2fr;padding:13px 20px;border-bottom:1px solid var(--border);align-items:center;font-size:13px"><div style="font-weight:600">Urlop wypoczynkowy</div><div style="color:var(--brand);font-weight:600">Tak</div><div style="color:var(--brand);font-weight:600">Tak</div><div style="color:var(--muted)">—</div></div>
+              <div style="display:grid;grid-template-columns:1.6fr .9fr .9fr 1.2fr;padding:13px 20px;border-bottom:1px solid var(--border);align-items:center;font-size:13px"><div style="font-weight:600">Urlop na żądanie</div><div style="color:var(--brand);font-weight:600">Tak</div><div style="color:var(--brand);font-weight:600">Tak</div><div style="color:var(--muted)">—</div></div>
+              <div style="display:grid;grid-template-columns:1.6fr .9fr .9fr 1.2fr;padding:13px 20px;border-bottom:1px solid var(--border);align-items:center;font-size:13px;background:var(--danger-tint)"><div style="font-weight:600;display:flex;align-items:center;gap:7px">L4 (zwolnienie chorobowe)</div><div style="color:var(--muted);font-weight:600">Nie</div><div style="color:var(--brand);font-weight:600">Tak</div><div><span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:var(--danger);background:var(--surface);border:1px solid var(--danger);padding:3px 8px;border-radius:6px"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 3l7.5 3v5.5c0 4.5-3.2 7.6-7.5 9-4.3-1.4-7.5-4.5-7.5-9V6z"></path></svg>Dane o zdrowiu</span></div></div>
+              <div style="display:grid;grid-template-columns:1.6fr .9fr .9fr 1.2fr;padding:13px 20px;border-bottom:1px solid var(--border);align-items:center;font-size:13px"><div style="font-weight:600">Opieka (art. 188 KP)</div><div style="color:var(--muted);font-weight:600">Nie</div><div style="color:var(--brand);font-weight:600">Tak</div><div style="color:var(--muted)">—</div></div>
+              <div style="display:grid;grid-template-columns:1.6fr .9fr .9fr 1.2fr;padding:13px 20px;align-items:center;font-size:13px"><div style="font-weight:600">Urlop okolicznościowy</div><div style="color:var(--muted);font-weight:600">Nie</div><div style="color:var(--brand);font-weight:600">Tak</div><div style="color:var(--muted)">—</div></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:14px">
+              <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-sm);padding:18px"><div style="font-weight:700;font-size:13.5px;margin-bottom:14px">Pula urlopu</div><div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="color:var(--ink2)">Pula globalna</span><span style="font-family:'IBM Plex Mono',monospace;font-weight:700">26 dni</span></div><div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="color:var(--ink2)">Wymiar okresowy (Q2)</span><span style="font-family:'IBM Plex Mono',monospace;font-weight:700">19 dni</span></div><div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px"><span style="color:var(--ink2)">Korekty indywidualne</span><span style="font-family:'IBM Plex Mono',monospace;font-weight:700">7 osób</span></div></div>
+              <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-sm);padding:18px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><span style="font-weight:700;font-size:13.5px">Święta i dni wolne</span><span style="font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace">2026</span></div><div style="display:flex;flex-direction:column;gap:7px;font-size:12.5px"><div style="display:flex;justify-content:space-between"><span style="color:var(--ink2)">Boże Ciało</span><span style="color:var(--muted);font-family:'IBM Plex Mono',monospace">04.06</span></div><div style="display:flex;justify-content:space-between"><span style="color:var(--ink2)">Wniebowzięcie NMP</span><span style="color:var(--muted);font-family:'IBM Plex Mono',monospace">15.08</span></div><div style="display:flex;justify-content:space-between;background:var(--brand-tint);margin:0 -8px;padding:5px 8px;border-radius:6px"><span style="color:var(--brand);font-weight:600">Odbiór za 15.08 (sob)</span><span style="color:var(--brand);font-family:'IBM Plex Mono',monospace">14.08</span></div></div></div>
+            </div>
+          </div>
+        </div>
+        </sc-if>
+
+        <!-- ===== AUDYT I RODO ===== -->
+        <sc-if value="{{ isAudyt }}" hint-placeholder-val="{{ false }}">
+        <div data-screen-label="Audyt i RODO" style="max-width:1200px">
+          <div style="display:flex;gap:12px;align-items:flex-start;background:linear-gradient(120deg,var(--brand-tint),var(--brand-tint2));border:1px solid var(--abs-bd);border-radius:16px;padding:18px 20px;margin-bottom:18px">
+            <div style="width:38px;height:38px;flex:none;border-radius:10px;background:var(--brand);display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7.5 3v5.5c0 4.5-3.2 7.6-7.5 9-4.3-1.4-7.5-4.5-7.5-9V6z"></path><path d="m9 12 2 2 4-4"></path></svg></div>
+            <div style="flex:1"><div style="font-weight:700;font-size:14.5px;margin-bottom:3px">Ochrona znacznika L4 (dane o zdrowiu · art. 9 RODO)</div><div style="font-size:13px;line-height:1.55;color:var(--ink2)">Informacja „to jest L4" dostępna wyłącznie dla ról uprawnionych (administrator, osoba z uprawnieniem rozszerzonym). Pozostali widzą tylko „nieobecność". Każda próba odczytu przez nieuprawnioną rolę jest blokowana i logowana.</div></div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 300px;gap:18px">
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-sm);overflow:hidden">
+              <div style="padding:16px 20px;border-bottom:1px solid var(--border)"><div style="font-weight:700;font-size:14.5px">Dziennik audytu</div></div>
+              <div style="display:grid;grid-template-columns:1.3fr 1.4fr 1.3fr 1fr;padding:10px 20px;background:var(--surface2);border-bottom:1px solid var(--border);font-size:10.5px;font-weight:700;color:var(--muted);font-family:'IBM Plex Mono',monospace;letter-spacing:.04em"><div>CZAS</div><div>UŻYTKOWNIK</div><div>AKCJA</div><div>ENCJA</div></div>
+              <div style="display:grid;grid-template-columns:1.3fr 1.4fr 1.3fr 1fr;padding:12px 20px;border-bottom:1px solid var(--border);align-items:center;font-size:12.5px"><div style="font-family:'IBM Plex Mono',monospace;color:var(--muted)">22.06 09:42</div><div>Anna Kowalska</div><div style="color:var(--brand);font-weight:600">Dodanie wpisu</div><div style="color:var(--muted)">Nieobecność</div></div>
+              <div style="display:grid;grid-template-columns:1.3fr 1.4fr 1.3fr 1fr;padding:12px 20px;border-bottom:1px solid var(--border);align-items:center;font-size:12.5px"><div style="font-family:'IBM Plex Mono',monospace;color:var(--muted)">22.06 08:55</div><div>Lider (M. Nowak)</div><div style="color:var(--amber);font-weight:600">Konwersja → L4</div><div style="color:var(--muted)">Nieobecność</div></div>
+              <div style="display:grid;grid-template-columns:1.3fr 1.4fr 1.3fr 1fr;padding:12px 20px;border-bottom:1px solid var(--border);align-items:center;font-size:12.5px"><div style="font-family:'IBM Plex Mono',monospace;color:var(--muted)">21.06 16:20</div><div>Administrator</div><div style="color:var(--ink2);font-weight:600">Zmiana puli</div><div style="color:var(--muted)">Pracownik</div></div>
+              <div style="display:grid;grid-template-columns:1.3fr 1.4fr 1.3fr 1fr;padding:12px 20px;border-bottom:1px solid var(--border);align-items:center;font-size:12.5px;background:var(--danger-tint)"><div style="font-family:'IBM Plex Mono',monospace;color:var(--muted)">21.06 14:03</div><div>K. Zielińska</div><div style="color:var(--danger);font-weight:600">Odmowa: odczyt L4</div><div style="color:var(--muted)">Znacznik L4</div></div>
+              <div style="display:grid;grid-template-columns:1.3fr 1.4fr 1.3fr 1fr;padding:12px 20px;align-items:center;font-size:12.5px"><div style="font-family:'IBM Plex Mono',monospace;color:var(--muted)">21.06 11:10</div><div>Administrator</div><div style="color:var(--ink2);font-weight:600">Nadanie uprawnień</div><div style="color:var(--muted)">Rola</div></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:14px">
+              <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-sm);padding:18px"><div style="font-weight:700;font-size:13.5px;margin-bottom:14px">Retencja i RODO</div>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)"><span style="font-size:12.5px;color:var(--ink2)">Okres przechowywania</span><span style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;font-weight:700">36 mies.</span></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)"><span style="font-size:12.5px;color:var(--ink2)">Anonimizacja b. pracowników</span><span style="width:34px;height:19px;border-radius:11px;background:var(--brand);position:relative;flex:none"><span style="position:absolute;top:2px;right:2px;width:15px;height:15px;border-radius:50%;background:#fff"></span></span></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0"><span style="font-size:12.5px;color:var(--ink2)">Bezpieczne eksporty (bez L4)</span><span style="width:34px;height:19px;border-radius:11px;background:var(--brand);position:relative;flex:none"><span style="position:absolute;top:2px;right:2px;width:15px;height:15px;border-radius:50%;background:#fff"></span></span></div>
+              </div>
+              <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-sm);padding:18px"><div style="font-weight:700;font-size:13.5px;margin-bottom:6px">Prawo do bycia zapomnianym</div><div style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:12px">Po upływie retencji dane są anonimizowane lub usuwane zgodnie z polityką.</div><button style="width:100%;border:1px solid var(--border2);cursor:pointer;background:var(--surface);color:var(--ink2);font-family:Archivo;font-weight:600;font-size:12.5px;padding:9px;border-radius:8px">Rejestr czynności przetwarzania</button></div>
+            </div>
+          </div>
+        </div>
+        </sc-if>
+        <!--SCREENS-->
+
+      </main>
+    </div>
+  </div>
+  </sc-if>
+
+  <!-- ================= MOBILE SHOWCASE ================= -->
+  <sc-if value="{{ isMobile }}" hint-placeholder-val="{{ false }}">
+  <div style="min-height:100vh;background:var(--canvas);padding:26px 30px 60px">
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:28px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:11px;flex:1;min-width:240px"><div style="width:36px;height:36px;border-radius:10px;background:var(--brand);display:flex;align-items:center;justify-content:center"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2"></rect><path d="M3 9h18M8 3v3M16 3v3"></path></svg></div><div><div style="font-weight:700;font-size:16px;letter-spacing:-.01em">Widok mobilny</div><div style="font-size:12.5px;color:var(--muted)">Responsywny interfejs — light i dark obok siebie</div></div></div>
+      <div style="display:flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:3px">
+        <button onClick="{{ setDesktop }}" style="{{ segDesk }}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12.5" rx="2"></rect><path d="M8.5 20.5h7M12 16.5v4"></path></svg>Desktop</button>
+        <button onClick="{{ setMobile }}" style="{{ segMob }}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2.5" width="10" height="19" rx="2.6"></rect><path d="M10.8 18.4h2.4"></path></svg>Mobile</button>
+      </div>
+      <button onClick="{{ toggleTheme }}" title="Przełącz motyw tła" style="width:38px;height:38px;border:1px solid var(--border);background:var(--surface);border-radius:10px;cursor:pointer;color:var(--ink2);display:flex;align-items:center;justify-content:center"><sc-if value="{{ dark }}" hint-placeholder-val="{{ false }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"></circle><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"></path></svg></sc-if><sc-if value="{{ light }}" hint-placeholder-val="{{ true }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13.5A8 8 0 1 1 10.5 4 6.3 6.3 0 0 0 20 13.5z"></path></svg></sc-if></button>
+    </div>
+
+    <div style="display:flex;gap:34px;flex-wrap:wrap;justify-content:center;align-items:flex-start">
+
+      <!-- PHONE 1 — PULPIT (LIGHT) -->
+      <div style="display:flex;flex-direction:column;align-items:center;gap:12px">
+        <div style="width:316px;border-radius:42px;background:#0C1110;padding:11px;box-shadow:0 22px 50px rgba(16,40,32,.3)">
+          <div style="border-radius:32px;overflow:hidden;background:#F5F8F6;height:648px;display:flex;flex-direction:column;color:#15201C;font-family:Archivo,sans-serif">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:13px 22px 6px;font-size:12.5px;font-weight:700"><span>9:41</span><span style="display:flex;gap:5px;align-items:center"><svg width="15" height="11" viewBox="0 0 18 12" fill="#15201C"><rect x="0" y="7" width="3" height="5" rx="1"></rect><rect x="5" y="4" width="3" height="8" rx="1"></rect><rect x="10" y="1.5" width="3" height="10.5" rx="1"></rect><rect x="15" y="0" width="3" height="12" rx="1" opacity=".35"></rect></svg><svg width="22" height="12" viewBox="0 0 26 13" fill="none"><rect x="1" y="1.5" width="20" height="10" rx="3" stroke="#15201C" stroke-width="1.2"></rect><rect x="3" y="3.5" width="14" height="6" rx="1.5" fill="#15201C"></rect><rect x="22.5" y="4.5" width="2" height="4" rx="1" fill="#15201C"></rect></svg></span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 20px 14px"><div><div style="font-size:18px;font-weight:800;letter-spacing:-.01em">Cześć, Anna</div><div style="font-size:11.5px;color:#6A7570">Pon, 22 czerwca · Sprint 13</div></div><div style="width:34px;height:34px;border-radius:10px;background:#E1F0E9;color:#007A53;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px">AK</div></div>
+            <div style="flex:1;overflow:hidden;padding:0 16px;display:flex;flex-direction:column;gap:13px">
+              <div style="background:#fff;border:1px solid #E1E7E4;border-radius:18px;padding:18px;box-shadow:0 1px 2px rgba(16,40,32,.06)">
+                <div style="font-size:11.5px;color:#6A7570;font-weight:600;margin-bottom:8px">Urlop · pozostało · rok 2026</div>
+                <div style="display:flex;align-items:flex-end;gap:6px;margin-bottom:12px"><span style="font-size:46px;font-weight:800;line-height:.85;letter-spacing:-.02em">15</span><span style="font-size:14px;color:#6A7570;font-weight:600;margin-bottom:7px">/ 26 dni</span></div>
+                <div style="display:flex;height:9px;border-radius:6px;overflow:hidden;background:#EEF3F0;margin-bottom:14px"><div style="width:42%;background:#007A53"></div><div style="width:15%;background:#A6D2BF"></div></div>
+                <button style="width:100%;border:none;background:#007A53;color:#fff;font-family:Archivo;font-weight:700;font-size:13.5px;padding:12px;border-radius:11px;display:flex;align-items:center;justify-content:center;gap:7px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>Zaplanuj nieobecność</button>
+              </div>
+              <div style="background:#fff;border:1px solid #E1E7E4;border-radius:18px;padding:16px;box-shadow:0 1px 2px rgba(16,40,32,.06)">
+                <div style="font-weight:700;font-size:13px;margin-bottom:11px">Kto w tym tygodniu nieobecny</div>
+                <div style="display:flex;align-items:center;gap:10px;padding-bottom:11px;border-bottom:1px solid #E1E7E4"><div style="width:30px;height:30px;border-radius:8px;background:#E2EEF3;color:#2F7FA8;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px">MW</div><div style="flex:1"><div style="font-weight:600;font-size:12.5px">Marta Wiśniewska</div><div style="font-size:10.5px;color:#6A7570">Squad Płatności</div></div><span style="font-size:10.5px;font-family:'IBM Plex Mono',monospace;color:#005C3F;background:#CFE6DC;border:1px solid #A6D2BF;padding:2px 7px;border-radius:6px">do 24.06</span></div>
+                <div style="display:flex;align-items:center;gap:10px;padding-top:11px"><div style="width:30px;height:30px;border-radius:8px;background:#E2EEF3;color:#2F7FA8;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px">TL</div><div style="flex:1"><div style="font-weight:600;font-size:12.5px">Tomasz Lewandowski</div><div style="font-size:10.5px;color:#6A7570">Squad Onboarding</div></div><span style="font-size:10.5px;font-family:'IBM Plex Mono',monospace;color:#005C3F;background:#CFE6DC;border:1px solid #A6D2BF;padding:2px 7px;border-radius:6px">23–27.06</span></div>
+              </div>
+            </div>
+            <div style="display:flex;justify-content:space-around;align-items:center;padding:12px 8px 20px;border-top:1px solid #E1E7E4;background:#fff;color:#9AA5A0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#007A53" stroke-width="1.9"><rect x="3" y="3" width="7.5" height="7.5" rx="1.6"></rect><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.6"></rect><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.6"></rect><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.6"></rect></svg><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="4.5" width="18" height="16" rx="2"></rect><path d="M3 9h18M8 3v3M16 3v3"></path></svg><div style="width:40px;height:40px;border-radius:50%;background:#007A53;display:flex;align-items:center;justify-content:center;margin-top:-22px;box-shadow:0 6px 16px rgba(0,122,83,.4)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg></div><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7v5l3 2"></path></svg><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="8" r="3.4"></circle><path d="M5 20a7 7 0 0 1 14 0"></path></svg></div>
+          </div>
+        </div>
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--muted)">Pulpit · light</span>
+      </div>
+
+      <!-- PHONE 2 — WPIS (LIGHT) -->
+      <div style="display:flex;flex-direction:column;align-items:center;gap:12px">
+        <div style="width:316px;border-radius:42px;background:#0C1110;padding:11px;box-shadow:0 22px 50px rgba(16,40,32,.3)">
+          <div style="border-radius:32px;overflow:hidden;background:#F5F8F6;height:648px;display:flex;flex-direction:column;color:#15201C;font-family:Archivo,sans-serif">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:13px 22px 6px;font-size:12.5px;font-weight:700"><span>9:41</span><span style="display:flex;gap:5px;align-items:center"><svg width="15" height="11" viewBox="0 0 18 12" fill="#15201C"><rect x="0" y="7" width="3" height="5" rx="1"></rect><rect x="5" y="4" width="3" height="8" rx="1"></rect><rect x="10" y="1.5" width="3" height="10.5" rx="1"></rect><rect x="15" y="0" width="3" height="12" rx="1" opacity=".35"></rect></svg><svg width="22" height="12" viewBox="0 0 26 13" fill="none"><rect x="1" y="1.5" width="20" height="10" rx="3" stroke="#15201C" stroke-width="1.2"></rect><rect x="3" y="3.5" width="14" height="6" rx="1.5" fill="#15201C"></rect><rect x="22.5" y="4.5" width="2" height="4" rx="1" fill="#15201C"></rect></svg></span></div>
+            <div style="display:flex;align-items:center;gap:12px;padding:8px 18px 14px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#15201C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 6-6 6 6 6"></path></svg><span style="font-size:17px;font-weight:800;letter-spacing:-.01em">Nowa nieobecność</span></div>
+            <div style="flex:1;overflow:hidden;padding:0 18px;display:flex;flex-direction:column;gap:14px">
+              <div><div style="font-size:11.5px;font-weight:600;color:#3C4A45;margin-bottom:6px">Typ nieobecności</div><div style="display:flex;justify-content:space-between;align-items:center;border:1px solid #D2DAD7;background:#fff;border-radius:11px;padding:13px 14px;font-size:13.5px;font-weight:500">Urlop wypoczynkowy<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6A7570" stroke-width="2"><path d="m6 9 6 6 6-6"></path></svg></div></div>
+              <div style="display:flex;gap:10px"><div style="flex:1"><div style="font-size:11.5px;font-weight:600;color:#3C4A45;margin-bottom:6px">Od</div><div style="border:1px solid #D2DAD7;background:#fff;border-radius:11px;padding:13px 12px;font-size:13px;font-weight:600">14.07</div></div><div style="flex:1"><div style="font-size:11.5px;font-weight:600;color:#3C4A45;margin-bottom:6px">Do</div><div style="border:1px solid #D2DAD7;background:#fff;border-radius:11px;padding:13px 12px;font-size:13px;font-weight:600">18.07</div></div></div>
+              <div><div style="font-size:11.5px;font-weight:600;color:#3C4A45;margin-bottom:6px">Wymiar</div><div style="display:flex;gap:6px"><div style="flex:1;text-align:center;border:1.5px solid #007A53;background:#E1F0E9;color:#007A53;border-radius:9px;padding:10px;font-size:11.5px;font-weight:700">Cały</div><div style="flex:1;text-align:center;border:1px solid #D2DAD7;border-radius:9px;padding:10px;font-size:11.5px;color:#3C4A45">AM</div><div style="flex:1;text-align:center;border:1px solid #D2DAD7;border-radius:9px;padding:10px;font-size:11.5px;color:#3C4A45">PM</div><div style="flex:1;text-align:center;border:1px solid #D2DAD7;border-radius:9px;padding:10px;font-size:11.5px;color:#3C4A45">Godz.</div></div></div>
+              <div style="background:#fff;border:1px solid #E1E7E4;border-radius:14px;padding:14px;box-shadow:0 1px 2px rgba(16,40,32,.06)">
+                <div style="display:flex;justify-content:space-between;padding-bottom:9px;border-bottom:1px solid #E1E7E4;font-size:12.5px"><span style="color:#3C4A45">Dni robocze</span><span style="font-family:'IBM Plex Mono',monospace;font-weight:700">5</span></div>
+                <div style="display:flex;justify-content:space-between;padding-top:9px;font-size:12.5px"><span style="color:#3C4A45">Balans po zapisie</span><span style="font-family:'IBM Plex Mono',monospace;font-weight:700;color:#007A53">15 → 10</span></div>
+              </div>
+              <div style="display:flex;gap:9px;align-items:flex-start;background:#F8EED4;border:1px solid #B57E0F;border-radius:12px;padding:11px 12px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#B57E0F" stroke-width="2" style="flex:none;margin-top:1px"><path d="M12 3 1.5 21h21z"></path><path d="M12 9v5M12 17.5v.5"></path></svg><div style="font-size:11.5px;line-height:1.45;color:#3C4A45"><b style="color:#15201C">Rafał K.</b> (rola kluczowa) nieobecny w tym terminie.</div></div>
+            </div>
+            <div style="padding:14px 18px 22px;background:#fff;border-top:1px solid #E1E7E4"><button style="width:100%;border:none;background:#007A53;color:#fff;font-family:Archivo;font-weight:700;font-size:14px;padding:14px;border-radius:12px">Zapisz nieobecność</button></div>
+          </div>
+        </div>
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--muted)">Nowa nieobecność · light</span>
+      </div>
+
+      <!-- PHONE 3 — KALENDARZ / POWIADOMIENIE (DARK) -->
+      <div style="display:flex;flex-direction:column;align-items:center;gap:12px">
+        <div style="width:316px;border-radius:42px;background:#000;padding:11px;box-shadow:0 22px 50px rgba(0,0,0,.5)">
+          <div style="border-radius:32px;overflow:hidden;background:#0E1413;height:648px;display:flex;flex-direction:column;color:#E9F0EC;font-family:Archivo,sans-serif">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:13px 22px 6px;font-size:12.5px;font-weight:700;color:#E9F0EC"><span>9:41</span><span style="display:flex;gap:5px;align-items:center"><svg width="15" height="11" viewBox="0 0 18 12" fill="#E9F0EC"><rect x="0" y="7" width="3" height="5" rx="1"></rect><rect x="5" y="4" width="3" height="8" rx="1"></rect><rect x="10" y="1.5" width="3" height="10.5" rx="1"></rect><rect x="15" y="0" width="3" height="12" rx="1" opacity=".35"></rect></svg><svg width="22" height="12" viewBox="0 0 26 13" fill="none"><rect x="1" y="1.5" width="20" height="10" rx="3" stroke="#E9F0EC" stroke-width="1.2"></rect><rect x="3" y="3.5" width="14" height="6" rx="1.5" fill="#E9F0EC"></rect><rect x="22.5" y="4.5" width="2" height="4" rx="1" fill="#E9F0EC"></rect></svg></span></div>
+            <div style="padding:8px 18px 14px"><div style="font-size:17px;font-weight:800;letter-spacing:-.01em">Kalendarz zespołu</div><div style="font-size:11.5px;color:#7E8D87">Sprint 13 · 16–27 czerwca</div></div>
+            <div style="flex:1;overflow:hidden;padding:0 16px;display:flex;flex-direction:column;gap:12px">
+              <div style="display:flex;gap:6px;justify-content:space-between">
+                <div style="flex:1;text-align:center;padding:9px 0;border-radius:10px;background:#1E2925"><div style="font-size:9.5px;color:#7E8D87">PON</div><div style="font-size:13px;font-weight:700;font-family:'IBM Plex Mono',monospace">22</div></div>
+                <div style="flex:1;text-align:center;padding:9px 0;border-radius:10px;background:rgba(47,184,136,.18);border:1px solid rgba(47,184,136,.4)"><div style="font-size:9.5px;color:#2FB888">WT</div><div style="font-size:13px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:#2FB888">23</div></div>
+                <div style="flex:1;text-align:center;padding:9px 0;border-radius:10px;background:rgba(47,184,136,.18);border:1px solid rgba(47,184,136,.4)"><div style="font-size:9.5px;color:#2FB888">ŚR</div><div style="font-size:13px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:#2FB888">24</div></div>
+                <div style="flex:1;text-align:center;padding:9px 0;border-radius:10px;background:#1E2925"><div style="font-size:9.5px;color:#7E8D87">CZW</div><div style="font-size:13px;font-weight:700;font-family:'IBM Plex Mono',monospace">25</div></div>
+                <div style="flex:1;text-align:center;padding:9px 0;border-radius:10px;background:#1E2925"><div style="font-size:9.5px;color:#7E8D87">PT</div><div style="font-size:13px;font-weight:700;font-family:'IBM Plex Mono',monospace">26</div></div>
+              </div>
+              <div style="font-size:11px;color:#7E8D87;font-weight:600;font-family:'IBM Plex Mono',monospace;letter-spacing:.04em;margin-top:2px">NIEOBECNI · 23–24.06</div>
+              <div style="background:#18211E;border:1px solid #2B3833;border-radius:14px;padding:13px;display:flex;flex-direction:column;gap:12px">
+                <div style="display:flex;align-items:center;gap:10px"><div style="width:30px;height:30px;border-radius:8px;background:rgba(93,178,214,.18);color:#5DB2D6;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px">MW</div><div style="flex:1"><div style="font-weight:600;font-size:12.5px">Marta Wiśniewska</div><div style="font-size:10.5px;color:#7E8D87">Squad Płatności</div></div><span style="width:9px;height:14px;border-radius:3px;background:rgba(47,184,136,.3)"></span></div>
+                <div style="display:flex;align-items:center;gap:10px"><div style="width:30px;height:30px;border-radius:8px;background:rgba(93,178,214,.18);color:#5DB2D6;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px">RK</div><div style="flex:1"><div style="font-weight:600;font-size:12.5px;display:flex;align-items:center;gap:5px">Rafał Kamiński<span style="width:5px;height:5px;border-radius:50%;background:#E0AC4C"></span></div><div style="font-size:10.5px;color:#7E8D87">Tech Lead · kluczowa</div></div><span style="width:9px;height:14px;border-radius:3px;background:rgba(47,184,136,.3)"></span></div>
+              </div>
+              <div style="background:#18211E;border:1px solid #2B3833;border-radius:14px;padding:13px;display:flex;gap:11px;align-items:flex-start;box-shadow:0 8px 22px rgba(0,0,0,.4)"><div style="width:32px;height:32px;flex:none;border-radius:9px;background:rgba(47,184,136,.16);display:flex;align-items:center;justify-content:center"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#2FB888" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6"></path><path d="M10 20a2 2 0 0 0 4 0"></path></svg></div><div><div style="font-weight:700;font-size:12px;margin-bottom:2px">Nowa nieobecność w zespole</div><div style="font-size:11px;color:#B5C1BC;line-height:1.45">Jakub Wójcik zaplanował nieobecność 26.06 — powiadomienie informacyjne.</div></div></div>
+            </div>
+            <div style="display:flex;justify-content:space-around;align-items:center;padding:12px 8px 20px;border-top:1px solid #2B3833;background:#18211E;color:#5C6A64"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="3" width="7.5" height="7.5" rx="1.6"></rect><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.6"></rect><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.6"></rect><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.6"></rect></svg><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2FB888" stroke-width="1.9"><rect x="3" y="4.5" width="18" height="16" rx="2"></rect><path d="M3 9h18M8 3v3M16 3v3"></path></svg><div style="width:40px;height:40px;border-radius:50%;background:#2FB888;display:flex;align-items:center;justify-content:center;margin-top:-22px;box-shadow:0 6px 16px rgba(47,184,136,.4)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0E1413" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg></div><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7v5l3 2"></path></svg><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="8" r="3.4"></circle><path d="M5 20a7 7 0 0 1 14 0"></path></svg></div>
+          </div>
+        </div>
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--muted)">Kalendarz · dark</span>
+      </div>
+
+    </div>
+  </div>
+  </sc-if>
+  <!--MOBILE-->
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;brandColor&quot;: { &quot;editor&quot;: &quot;enum&quot;, &quot;default&quot;: &quot;#007A53&quot;, &quot;options&quot;: [&quot;#007A53&quot;, &quot;#4298B5&quot;, &quot;#5E8AB4&quot;, &quot;#006A4E&quot;], &quot;tsType&quot;: &quot;string&quot; },
+  &quot;defaultTheme&quot;: { &quot;editor&quot;: &quot;enum&quot;, &quot;default&quot;: &quot;light&quot;, &quot;options&quot;: [&quot;light&quot;, &quot;dark&quot;], &quot;tsType&quot;: &quot;string&quot; },
+  &quot;startScreen&quot;: { &quot;editor&quot;: &quot;enum&quot;, &quot;default&quot;: &quot;pulpit&quot;, &quot;options&quot;: [&quot;login&quot;, &quot;pulpit&quot;, &quot;wpis&quot;, &quot;kalendarz&quot;, &quot;historia&quot;, &quot;capacity&quot;, &quot;raporty&quot;, &quot;heatmapa&quot;, &quot;pracownicy&quot;, &quot;konfiguracja&quot;, &quot;audyt&quot;], &quot;tsType&quot;: &quot;string&quot; }
+}">
+class Component extends DCLogic {
+  state = { theme: 'light', view: 'pulpit', device: 'desktop' };
+  componentDidMount() {
+    const p = this.props || {};
+    const patch = {};
+    if (p.startScreen) patch.view = p.startScreen;
+    if (p.defaultTheme) patch.theme = p.defaultTheme;
+    if (Object.keys(patch).length) this.setState(patch);
+  }
+  rootStyle() {
+    const base = 'min-height:100vh;background:var(--canvas);color:var(--ink);font-family:Archivo,system-ui,sans-serif;-webkit-font-smoothing:antialiased;';
+    const c = (this.props || {}).brandColor;
+    if (!c || c === '#007A53') return base;
+    const h = c.replace('#',''); const r=parseInt(h.slice(0,2),16), g=parseInt(h.slice(2,4),16), b=parseInt(h.slice(4,6),16);
+    const rgba=(a)=>`rgba(${r},${g},${b},${a})`;
+    return base + `--brand:${c};--brand-d:${c};--brand-tint:${rgba(0.14)};--brand-tint2:${rgba(0.26)};--abs:${rgba(0.16)};--abs-ink:${c};--abs-bd:${rgba(0.34)};`;
+  }
+  buildCal() {
+    const days = [
+      {n:15,d:'P'},{n:16,d:'W'},{n:17,d:'Ś'},{n:18,d:'C'},{n:19,d:'P'},{n:20,d:'S',we:1},{n:21,d:'N',we:1},
+      {n:22,d:'P',today:1},{n:23,d:'W'},{n:24,d:'Ś'},{n:25,d:'C'},{n:26,d:'P'},{n:27,d:'S',we:1},{n:28,d:'N',we:1}
+    ];
+    const we = [5,6,12,13];
+    const cells = (ranges) => days.map((_,i) => {
+      const r = ranges.find(([s,e]) => i>=s && i<=e);
+      let bg='transparent', rad='0';
+      if (r) { const [s,e]=r; const st=i===s, en=i===e; bg='var(--abs)';
+        rad = (st&&en)?'8px':(st?'8px 0 0 8px':(en?'0 8px 8px 0':'0')); }
+      else if (we.includes(i)) bg='var(--surface3)';
+      return { style:`height:34px;border-left:1px solid var(--border);background:${bg};border-radius:${rad};` };
+    });
+    const P=(name,initials,unit,ranges,key)=>({isPerson:true,isGroup:false,name,initials,unit,key:!!key,cells:cells(ranges)});
+    const G=(label,sub)=>({isGroup:true,isPerson:false,label,sub});
+    return {
+      days: days.map(d => ({...d, hstyle:`text-align:center;padding:7px 0 9px;border-left:1px solid var(--border);${d.we?'background:var(--surface3);':''}${d.today?'color:var(--brand);font-weight:700;':''}`})),
+      rows: [
+        G('Squad Płatności','3 osoby'),
+        P('Anna Kowalska','AK','',[]),
+        P('Marta Wiśniewska','MW','',[[7,9]]),
+        P('Rafał Kamiński','RK','Tech Lead',[[8,9]],1),
+        G('Squad Onboarding','2 osoby'),
+        P('Tomasz Lewandowski','TL','',[[8,12]]),
+        P('Katarzyna Zielińska','KZ','',[]),
+        G('Squad Mobilny','2 osoby'),
+        P('Jakub Wójcik','JW','',[[11,11]]),
+        P('Magdalena Dąbrowska','MD','',[[1,2]]),
+      ]
+    };
+  }
+  buildHeat() {
+    const weeks = ['22','23','24','25','26','27','28','29','30'];
+    const data = {
+      'Squad Płatności':   [10,15,20,45,35,20,15,30,55],
+      'Squad Onboarding':  [20,25,30,50,60,25,20,15,10],
+      'Squad Mobilny':     [5,10,15,20,10,40,15,10,20],
+      'Squad Rozliczenia': [15,10,25,30,20,15,55,40,25],
+      'Squad Integracje':  [30,20,15,10,45,50,20,25,15],
+    };
+    const rows = Object.entries(data).map(([squad, vals]) => ({
+      squad,
+      cells: vals.map(v => {
+        let bg, fg;
+        if (v < 12)      { bg = '#D9EBDD'; fg = '#1C6B49'; }
+        else if (v < 25) { bg = '#A8D9B4'; fg = '#13593A'; }
+        else if (v < 38) { bg = '#F1DC8E'; fg = '#735312'; }
+        else if (v < 50) { bg = '#ED9F52'; fg = '#5E2F08'; }
+        else             { bg = '#D8493B'; fg = '#FFFFFF'; }
+        const high = v >= 50;
+        return { v: v + '%', style:`position:relative;height:40px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:${bg};${high?'box-shadow:0 0 0 2px var(--surface),inset 0 0 0 2px #8E1B12;':''}`,
+          fill:'display:none;',
+          txt:`position:relative;font-size:10.5px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:${fg};` };
+      })
+    }));
+    return { weeks, rows };
+  }
+  renderVals() {
+    const { theme, view, device } = this.state;
+    const set = (o) => () => this.setState(o);
+    const nav = (name) => {
+      const a = view === name;
+      return `display:flex;align-items:center;gap:11px;padding:9px 11px;margin:1px 0;border-radius:9px;cursor:pointer;text-decoration:none;font-family:Archivo,sans-serif;font-weight:600;font-size:13.5px;letter-spacing:.005em;color:${a ? 'var(--brand)' : 'var(--ink2)'};background:${a ? 'var(--brand-tint)' : 'transparent'};`;
+    };
+    const seg = (a) => `display:flex;align-items:center;gap:6px;padding:6px 11px;border-radius:8px;cursor:pointer;border:none;font-family:Archivo,sans-serif;font-weight:600;font-size:12.5px;color:${a ? 'var(--brand)' : 'var(--muted)'};background:${a ? 'var(--surface)' : 'transparent'};box-shadow:${a ? 'var(--shadow-sm)' : 'none'};`;
+    const titles = { pulpit:'Pulpit', wpis:'Nowa nieobecność', kalendarz:'Kalendarz zespołu', historia:'Moja historia', capacity:'Capacity sprintu', raporty:'Raporty i analizy', heatmapa:'Heatmapa pokrycia', pracownicy:'Pracownicy i struktura', konfiguracja:'Konfiguracja', audyt:'Audyt i RODO', login:'Logowanie' };
+    const roles = { pulpit:'Pracownik', wpis:'Pracownik', kalendarz:'Pracownik / Lider', historia:'Pracownik', capacity:'PO / Agile PM', raporty:'Dyrektor', heatmapa:'Dyrektor', pracownicy:'Administrator', konfiguracja:'Administrator', audyt:'Administrator / IOD' };
+    return {
+      theme, dark: theme === 'dark', light: theme === 'light', cal: this.buildCal(), heat: this.buildHeat(), rootStyle: this.rootStyle(),
+      showLoginDesktop: device === 'desktop' && view === 'login',
+      showApp: device === 'desktop' && view !== 'login',
+      isMobile: device === 'mobile',
+      isPulpit: view==='pulpit', isWpis: view==='wpis', isKalendarz: view==='kalendarz', isHistoria: view==='historia', isCapacity: view==='capacity', isRaporty: view==='raporty', isHeatmapa: view==='heatmapa', isPracownicy: view==='pracownicy', isKonfiguracja: view==='konfiguracja', isAudyt: view==='audyt',
+      pageTitle: titles[view], roleTag: roles[view] || '',
+      goPulpit:set({view:'pulpit'}), goWpis:set({view:'wpis'}), goKalendarz:set({view:'kalendarz'}), goHistoria:set({view:'historia'}), goCapacity:set({view:'capacity'}), goRaporty:set({view:'raporty'}), goHeatmapa:set({view:'heatmapa'}), goPracownicy:set({view:'pracownicy'}), goKonfiguracja:set({view:'konfiguracja'}), goAudyt:set({view:'audyt'}), goLogin:set({view:'login'}),
+      navPulpit:nav('pulpit'), navWpis:nav('wpis'), navKalendarz:nav('kalendarz'), navHistoria:nav('historia'), navCapacity:nav('capacity'), navRaporty:nav('raporty'), navHeatmapa:nav('heatmapa'), navPracownicy:nav('pracownicy'), navKonfiguracja:nav('konfiguracja'), navAudyt:nav('audyt'),
+      toggleTheme: () => this.setState(s => ({ theme: s.theme === 'light' ? 'dark' : 'light' })),
+      setDesktop: set({device:'desktop'}), setMobile: set({device:'mobile'}),
+      segDesk: seg(device==='desktop'), segMob: seg(device==='mobile'),
+    };
+  }
+}
+</script>
+</body>
+</html>

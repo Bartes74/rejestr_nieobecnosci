@@ -1,0 +1,27 @@
+/* ============================================================
+   SPACING, RADIUS, ELEVATION
+   4px base grid. Cards use radius-lg/xl; controls radius-md.
+   ============================================================ */
+:root {
+  --space-1: 4px;
+  --space-2: 6px;
+  --space-3: 8px;
+  --space-4: 10px;
+  --space-5: 12px;
+  --space-6: 14px;
+  --space-7: 16px;
+  --space-8: 18px;
+  --space-9: 20px;
+  --space-10:22px;
+  --space-12:24px;
+  --space-14:28px;
+  --space-16:30px;
+
+  --radius-sm: 7px;
+  --radius-md: 10px;  /* buttons, inputs, chips        */
+  --radius-lg: 14px;  /* inner cards                   */
+  --radius-xl: 16px;  /* primary cards / panels        */
+  --radius-pill: 20px;
+
+  --control-h: 44px;  /* min touch target              */
+}
