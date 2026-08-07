@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { balance, countWorkingDays, dayFraction, isoDate, proratePool, resolveBillingPeriod, usedLeaveDays } from '@nieobecnosci/core';
+import { balance, countWorkingDays, dayFraction, isoDate, proratePool, resolveBillingPeriod, todayUtc, usedLeaveDays } from '@nieobecnosci/core';
 import ExcelJS from 'exceljs';
 import { PrismaService } from './prisma.service';
 import { OrgService } from './org.service';
@@ -53,7 +53,7 @@ export class ReportsService {
     const absByEmp = new Map<string, typeof absences>();
     for (const a of absences) (absByEmp.get(a.employeeId) ?? absByEmp.set(a.employeeId, []).get(a.employeeId)!).push(a);
 
-    const now = new Date();
+    const now = todayUtc(); // dzień w strefie organizacji — patrz komentarz w balance.service
     const rows: UsageRow[] = employees.map((e) => {
       const period = resolveBillingPeriod(e.employmentType, now);
       const allow = allowByKey.get(`${e.id}:${period.year}`);
@@ -154,7 +154,7 @@ export class ReportsService {
     for (const a of absences) (absByEmp.get(a.employeeId) ?? absByEmp.set(a.employeeId, []).get(a.employeeId)!).push(a);
 
     const seeL4 = canViewL4(user);
-    const now = new Date();
+    const now = todayUtc();
     const records = employees.map((e) => {
       const period = resolveBillingPeriod(e.employmentType, now);
       const holidays = new Set((e.holidayCalendar?.holidays ?? []).map((h) => isoDate(h.date)));

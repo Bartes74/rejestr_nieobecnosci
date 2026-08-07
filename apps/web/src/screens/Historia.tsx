@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { plural } from '@nieobecnosci/core/plural';
-import { dateRange } from '../format';
+import { dateRange, todayIso } from '../format';
 import { api, type Absence, type AbsenceType } from '../api';
 import { useAuth } from '../current-employee';
 import { ConfirmDialog, Notice, field, useNotice } from '../admin/ui';
@@ -8,7 +8,7 @@ import { cardClipped } from '../design-system/surfaces';
 import { SegmentedControl } from '../design-system/components/forms/SegmentedControl';
 
 const d = (iso: string) => iso.slice(0, 10);
-const today = () => new Date().toISOString().slice(0, 10);
+
 const COLS = '1.6fr .6fr 1.6fr 1.1fr 1fr .9fr';
 
 // Dni robocze liczy serwer (z kalendarzem świąt osoby) — ta sama liczba, którą widzi balans.
@@ -61,7 +61,7 @@ export function Historia() {
   };
 
   const filtered = useMemo(() => {
-    const t = today();
+    const t = todayIso();
     const sorted = [...rows].sort((a, b) => b.dateFrom.localeCompare(a.dateFrom));
     if (filter === 'upcoming') return sorted.filter((a) => d(a.dateTo) >= t);
     if (filter === 'done') return sorted.filter((a) => d(a.dateTo) < t);
@@ -104,7 +104,7 @@ export function Historia() {
           </div></div>
         )}
         {filtered.map((a, i) => {
-          const isUpcoming = d(a.dateTo) >= today();
+          const isUpcoming = d(a.dateTo) >= todayIso();
           const part = a.dayPart === 'AM' ? ' · AM' : a.dayPart === 'PM' ? ' · PM' : a.dayPart === 'HOURS' ? ' · godz.' : '';
           if (edit && edit.id === a.id) {
             return (

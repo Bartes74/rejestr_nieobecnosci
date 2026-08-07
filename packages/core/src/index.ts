@@ -1,3 +1,4 @@
+export * from './today.js';
 export * from './period.js';
 export * from './workdays.js';
 export * from './balance.js';

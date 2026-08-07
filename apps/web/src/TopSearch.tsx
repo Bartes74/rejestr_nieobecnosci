@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
-import { dateRange } from './format';
+import { addDays, dateRange, todayIso } from './format';
 import { api, type CalEntry, type Employee } from './api';
 import { AbsencePill } from './design-system/components/data/AbsencePill';
 
 const HORIZON_DAYS = 60;
-const iso = (d: Date) => d.toISOString().slice(0, 10);
 const range = (e: CalEntry) => dateRange(e.dateFrom, e.dateTo);
 
 /**
@@ -32,10 +31,9 @@ export function TopSearch() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const from = new Date();
-    const to = new Date(from.getTime() + HORIZON_DAYS * 86_400_000);
+    const from = todayIso();
     api.employees().then(setPeople).catch(() => setPeople([]));
-    api.calendar(iso(from), iso(to)).then(setEntries).catch(() => setEntries([]));
+    api.calendar(from, addDays(from, HORIZON_DAYS)).then(setEntries).catch(() => setEntries([]));
   }, []);
 
   const byPerson = useMemo(() => {

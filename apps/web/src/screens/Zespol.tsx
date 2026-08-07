@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { count, plural } from '@nieobecnosci/core/plural';
-import { dateRange } from '../format';
+import { dateRange, todayIso } from '../format';
 import { api, type Absence, type AbsenceType, type Employee } from '../api';
 import { Button } from '../design-system/components/core/Button';
 import { ConfirmDialog, Field, Section, Notice, field, th, td, useNotice } from '../admin/ui';
 import { cardClipped } from '../design-system/surfaces';
 
-const today = () => new Date().toISOString().slice(0, 10);
+
 // Zakres szedł dotąd w surowym ISO („2026-08-03 – 2026-08-05") — jedyny ekran korygujący
 // cudze wpisy pokazywał daty inaczej niż wszystkie pozostałe.
 const range = (a: Absence) => dateRange(a.dateFrom, a.dateTo, { long: true });
@@ -21,11 +21,11 @@ export function Zespol() {
   const { notice, ok, fail, clear } = useNotice();
   const [busy, setBusy] = useState(false);
   const [edit, setEdit] = useState<{ id: string; from: string; to: string } | null>(null);
-  const [add, setAdd] = useState({ typeId: '', dayPart: 'FULL', from: today(), to: today() });
+  const [add, setAdd] = useState({ typeId: '', dayPart: 'FULL', from: todayIso(), to: todayIso() });
   const [confirmDel, setConfirmDel] = useState<Absence | null>(null);
   // FR-A10 — operacje masowe
   const [bulkSel, setBulkSel] = useState<Set<string>>(new Set());
-  const [bulk, setBulk] = useState({ typeId: '', dayPart: 'FULL', from: today(), to: today() });
+  const [bulk, setBulk] = useState({ typeId: '', dayPart: 'FULL', from: todayIso(), to: todayIso() });
   const bulkNotice = useNotice();
 
   // do dodania „w imieniu" wybieramy tylko typy zwykłe — L4 jest domeną uprawnienia VIEW_L4/konwersji (FR-B10).

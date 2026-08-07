@@ -2,26 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight, Info, Plus, TriangleAlert } from 'lucide-react';
 import { count } from '@nieobecnosci/core/plural';
-import { dateRange, dayMonth, dayOfMonth } from '../format';
+import { dateRange, dayMonth, dayOfMonth, todayIso, weekBounds } from '../format';
 import { api, type Absence, type Balance, type CalEntry, type Sprint } from '../api';
 import { useAuth } from '../current-employee';
 import { card, panel } from '../design-system/surfaces';
 import { AbsencePill } from '../design-system/components/data/AbsencePill';
 import { Avatar } from '../design-system/components/core/Avatar';
 import { ProgressBar } from '../design-system/components/data/ProgressBar';
-
-const iso = (d: Date) => d.toISOString().slice(0, 10);
-const today = () => iso(new Date());
-
-// Bieżący tydzień (pon–niedz) wg dzisiejszej daty.
-function weekBounds(): [string, string] {
-  const n = new Date();
-  const t = new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate()));
-  const dow = (t.getUTCDay() + 6) % 7;
-  const mon = new Date(t); mon.setUTCDate(t.getUTCDate() - dow);
-  const sun = new Date(mon); sun.setUTCDate(mon.getUTCDate() + 6);
-  return [iso(mon), iso(sun)];
-}
 
 const initialsOf = (name: string) => name.split(' ').map((w) => w[0] ?? '').slice(0, 2).join('').toUpperCase();
 const monthShort = (s: string) => new Intl.DateTimeFormat('pl-PL', { month: 'short', timeZone: 'UTC' }).format(new Date(s + 'T00:00:00Z')).replace('.', '').toUpperCase();
@@ -104,7 +91,7 @@ export function Pulpit() {
     return s.charAt(0).toUpperCase() + s.slice(1); // tylko dzień tygodnia z wielkiej (miesiąc małą, jak w prototypie)
   }, []);
   const sprint = useMemo(() => {
-    const t = today();
+    const t = todayIso();
     return sprints.find((s) => s.dateFrom.slice(0, 10) <= t && s.dateTo.slice(0, 10) >= t) ?? null;
   }, [sprints]);
 
@@ -123,7 +110,7 @@ export function Pulpit() {
 
   // FR-I2 — moje najbliższe (przyszłe) nieobecności.
   const upcoming = useMemo(() => {
-    const t = today();
+    const t = todayIso();
     return mine.filter((a) => a.dateTo.slice(0, 10) >= t).sort((a, b) => a.dateFrom.localeCompare(b.dateFrom)).slice(0, 4);
   }, [mine]);
 
@@ -136,7 +123,7 @@ export function Pulpit() {
   const carriedW = total > 0 ? Math.min(100 - usedW, (carried / total) * 100) : 0;
 
   const chipDate = (a: { from: string; to: string }) => {
-    const t = today();
+    const t = todayIso();
     // Trwająca nieobecność zaczyna się od słowa „dziś" — data początku jest wtedy mniej użyteczna
     // niż informacja, że ktoś jest nieobecny teraz.
     const fromTxt = a.from <= t && a.to >= t ? 'dziś' : dayMonth(a.from);

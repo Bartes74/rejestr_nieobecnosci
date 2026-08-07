@@ -8,6 +8,10 @@
     "./plural": {
       "types": "./dist/plural.d.ts",
       "default": "./dist/plural.js"
+    },
+    "./today": {
+      "types": "./dist/today.d.ts",
+      "default": "./dist/today.js"
     }
   },
   "files": [

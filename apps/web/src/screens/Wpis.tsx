@@ -2,13 +2,13 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CalendarDays, TriangleAlert } from 'lucide-react';
 import { count, plural } from '@nieobecnosci/core/plural';
-import { dateRange } from '../format';
+import { dateRange, todayIso } from '../format';
 import { api, type AbsenceType, type Preview } from '../api';
 import { useAuth } from '../current-employee';
 import { Notice, useNotice } from '../admin/ui';
 import { card } from '../design-system/surfaces';
 
-const today = () => new Date().toISOString().slice(0, 10);
+
 const nf = (n: number) => String(n).replace('.', ','); // ułamki po polsku (0,5)
 const labelStyle = { display: 'block', fontFamily: 'var(--font-sans)', fontSize: 12.5, fontWeight: 600, color: 'var(--ink-2)', marginBottom: 7 } as const;
 const inputBox = { display: 'flex', alignItems: 'center', gap: 10, border: '1px solid var(--border-2)', background: 'var(--surface)', borderRadius: 'var(--radius-md)', padding: '11px 14px' } as const;
@@ -81,8 +81,8 @@ export function Wpis() {
   const navigate = useNavigate();
   const [types, setTypes] = useState<AbsenceType[]>([]);
   const [typeId, setTypeId] = useState('');
-  const [from, setFrom] = useState(today());
-  const [to, setTo] = useState(today());
+  const [from, setFrom] = useState(todayIso());
+  const [to, setTo] = useState(todayIso());
   const [dayPart, setDayPart] = useState('FULL');
   const [hourFrom, setHourFrom] = useState('09:00');
   const [hourTo, setHourTo] = useState('13:00');

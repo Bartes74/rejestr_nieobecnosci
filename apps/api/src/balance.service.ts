@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { balance, dayFraction, isoDate, proratePool, resolveBillingPeriod, usedLeaveDays } from '@nieobecnosci/core';
+import { balance, dayFraction, isoDate, proratePool, resolveBillingPeriod, todayUtc, usedLeaveDays } from '@nieobecnosci/core';
 import { PrismaService } from './prisma.service';
 
 const DEFAULT_POOL_KEY = 'leavePool.default';
@@ -42,7 +42,10 @@ export class BalanceService {
   async current(employeeId: string) {
     const emp = await this.prisma.employee.findUnique({ where: { id: employeeId } });
     if (!emp) throw new NotFoundException('Pracownik nie istnieje.');
-    const period = resolveBillingPeriod(emp.employmentType, new Date());
+    // `todayUtc()`, nie `new Date()`: o 23:30 UTC 31 grudnia w Warszawie jest już 1 stycznia,
+    // a surowe „teraz" sięgnęłoby po pulę poprzedniego roku. Dwa okresy rozliczeniowe są
+    // warunkiem akceptacji projektu (FR-B1), więc granica roku musi trafiać co do dnia.
+    const period = resolveBillingPeriod(emp.employmentType, todayUtc());
     const { pool, carriedOver } = await this.effectivePool(emp, period);
     const holidays = await this.holidaysFor(employeeId);
     const absences = await this.prisma.absence.findMany({
