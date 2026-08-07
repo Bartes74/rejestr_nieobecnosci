@@ -84,6 +84,9 @@ export interface Absence { id: string; dateFrom: string; dateTo: string; dayPart
 export interface AdminSetting { key: string; value: number; label: string; ref: string }
 export interface Preview { workingDays: number; remaining: number; remainingAfter: number; minimumToLeave?: number; collision?: boolean; collisionFrom?: string | null; collisionTo?: string | null }
 export interface CalEntry { employeeId: string; employee: string; dateFrom: string; dateTo: string; dayPart: string }
+/** Skład Tribe na osi czasu. Pusty wiersz to informacja („dostępna"), nie brak danych. */
+export interface TeamPerson { id: string; name: string; initials: string; squad: string | null; keyRole: boolean }
+export interface TeamGrid { people: TeamPerson[]; absences: { employeeId: string; dateFrom: string; dateTo: string; dayPart: string }[] }
 export interface Sprint { id: string; name: string; dateFrom: string; dateTo: string; squad?: { id: string; name: string } | null }
 export interface OrgUnit { id: string; name: string; type: string }
 export interface Capacity {
@@ -177,6 +180,8 @@ export const api = {
     req<Absence>(`/absences/${id}`, { method: 'PATCH', body: JSON.stringify(body) }).finally(invalidateCapacity),
   deleteAbsence: (id: string) => req<void>(`/absences/${id}`, { method: 'DELETE' }).finally(invalidateCapacity),
   calendar: (from: string, to: string) => req<CalEntry[]>(`/calendar?from=${from}&to=${to}`),
+  /** Siatka zespołu: skład Tribe plus nieobecności w oknie — jedno żądanie na widok osi czasu. */
+  calendarTeam: (from: string, to: string) => req<TeamGrid>(`/calendar/team?from=${from}&to=${to}`),
   feedToken: (regenerate = false) => req<{ token: string }>(`/me/feed-token${regenerate ? '?regenerate=true' : ''}`),
   sprints: () => req<Sprint[]>('/sprints'),
   orgUnits: () => req<OrgUnit[]>('/org/units'),
