@@ -14,7 +14,7 @@ export function Alert({ variant = 'info', icon, title, children, right, solidIco
       borderRadius: 'var(--radius-xl)', padding: '16px 18px', ...style }}>
       {icon && (
         <span style={{ flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          ...(solidIcon ? { width: 34, height: 34, borderRadius: 'var(--radius-md)', background: v.fg, color: '#fff' } : { color: v.fg, marginTop: 1 }) }}>
+          ...(solidIcon ? { width: 34, height: 34, borderRadius: 'var(--radius-md)', background: v.fg, color: 'var(--on-brand)' } : { color: v.fg, marginTop: 1 }) }}>
           {icon}
         </span>
       )}

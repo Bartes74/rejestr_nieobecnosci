@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api, type AuditEntry } from '../api';
 import { useAuth } from '../current-employee';
 import { AdminOnly, th, td } from '../admin/ui';
+import { cardClipped } from '../design-system/surfaces';
 
 const actionColor: Record<string, string> = {
   LOGIN_FAILED: 'var(--danger)', ACCESS_DENIED: 'var(--danger)', VIEW_TYPES: 'var(--amber)',
@@ -21,10 +22,12 @@ export function Audyt() {
   return (
     <div>
       <AdminOnly ok={isAdmin}>
-        {err && <div style={{ color: 'var(--danger)', fontFamily: 'var(--font-sans)', fontSize: 14 }}>{err}</div>}
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-xl)', overflow: 'hidden' }}>
+        <div role="alert" aria-live="assertive">
+          {err && <div style={{ padding: '10px 14px', marginBottom: 14, borderRadius: 10, background: 'var(--danger-tint)', border: '1px solid var(--danger)', color: 'var(--danger)', fontFamily: 'var(--font-sans)', fontSize: 13.5 }}>{err}</div>}
+        </div>
+        <div style={cardClipped}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead><tr><th style={th}>Czas</th><th style={th}>Akcja</th><th style={th}>Encja</th><th style={th}>Opis</th></tr></thead>
+            <thead><tr><th scope="col" style={th}>Czas</th><th scope="col" style={th}>Akcja</th><th scope="col" style={th}>Encja</th><th scope="col" style={th}>Opis</th></tr></thead>
             <tbody>
               {rows.map((r) => (
                 <tr key={r.id}>
@@ -34,7 +37,7 @@ export function Audyt() {
                   <td style={{ ...td, color: 'var(--ink-2)' }}>{r.description ?? '—'}</td>
                 </tr>
               ))}
-              {rows.length === 0 && <tr><td style={{ ...td, color: 'var(--muted)' }} colSpan={4}>Brak zdarzeń.</td></tr>}
+              {rows.length === 0 && <tr><td style={{ ...td, color: 'var(--muted)' }} colSpan={4}>Brak zdarzeń w dzienniku audytu.</td></tr>}
             </tbody>
           </table>
         </div>

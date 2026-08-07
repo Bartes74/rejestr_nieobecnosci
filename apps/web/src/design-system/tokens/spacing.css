@@ -21,7 +21,6 @@
   --radius-md: 10px;  /* buttons, inputs, chips        */
   --radius-lg: 14px;  /* inner cards                   */
   --radius-xl: 16px;  /* primary cards / panels        */
-  --radius-pill: 20px;
 
   --control-h: 44px;  /* min touch target              */
 }

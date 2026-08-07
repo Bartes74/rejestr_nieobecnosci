@@ -13,7 +13,7 @@
 </style></head><body><div id="root"></div>
 <script type="text/babel" data-presets="react">
 const NS = Object.values(window).find(o => o && typeof o === 'object' && o.Button && o.Card) || window;
-const { Button, Badge, Avatar, Card, Input, Select, SegmentedControl, Switch, Tabs, Breadcrumb, NavItem, Alert, StatCard, ProgressBar, AbsencePill, Table, Dialog, Toast, Tooltip } = NS;
+const { Button, Badge, Avatar, Card, Input, SegmentedControl, Alert, StatCard, ProgressBar, AbsencePill, Table, Dialog } = NS;
 const I = ({d,w=16,sw=1.9})=>(<svg width={w} height={w} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">{d}</svg>);
 function Demo(){ return (<div className="col">
   <div className="wrap" style={{alignItems:'stretch'}}>

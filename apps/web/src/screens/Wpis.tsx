@@ -3,10 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { CalendarDays, TriangleAlert } from 'lucide-react';
 import { api, type AbsenceType, type Balance, type Preview } from '../api';
 import { useAuth } from '../current-employee';
+import { Field, Notice, useNotice } from '../admin/ui';
+import { card } from '../design-system/surfaces';
 
 const today = () => new Date().toISOString().slice(0, 10);
 const nf = (n: number) => String(n).replace('.', ','); // ułamki po polsku (0,5)
-const card = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, boxShadow: 'var(--shadow-sm)' } as const;
 const label = { display: 'block', fontFamily: 'var(--font-sans)', fontSize: 12.5, fontWeight: 600, color: 'var(--ink-2)', marginBottom: 7 } as const;
 const inputBox = { display: 'flex', alignItems: 'center', gap: 10, border: '1px solid var(--border-2)', background: 'var(--surface)', borderRadius: 10, padding: '11px 14px' } as const;
 const inputEl = { flex: 1, border: 'none', outline: 'none', background: 'transparent', color: 'var(--ink)', fontFamily: 'var(--font-sans)', fontSize: 14, minWidth: 0 } as const;
@@ -37,8 +38,10 @@ function MiniCal({ from, to }: { from: string; to: string }) {
           const weekend = d.getUTCDay() === 0 || d.getUTCDay() === 6;
           let bg = 'transparent', col = weekend ? 'var(--muted)' : 'var(--ink)', radius = '0', weight = 400;
           if (inRange) {
-            col = 'var(--brand)'; weight = 600;
-            bg = isStart || isEnd ? 'var(--brand)' : 'var(--brand-tint-2)';
+            // Zakres to planowana nieobecność — nosi tokeny nieobecności, nie tinty marki.
+            // Krańce zakresu są uchwytami zaznaczenia, więc te zostają w kolorze marki.
+            col = 'var(--absence-ink)'; weight = 600;
+            bg = isStart || isEnd ? 'var(--brand)' : 'var(--absence)';
             if (isStart || isEnd) col = 'var(--on-brand)';
             radius = isStart && isEnd ? '7px' : isStart ? '7px 0 0 7px' : isEnd ? '0 7px 7px 0' : '0';
           } else if (weekend) { bg = 'var(--surface-3)'; radius = '7px'; }
@@ -61,11 +64,13 @@ export function Wpis() {
   const [hourTo, setHourTo] = useState('13:00');
   const [preview, setPreview] = useState<Preview | null>(null);
   const [bal, setBal] = useState<Balance | null>(null);
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const { notice, ok, fail, clear } = useNotice();
   const [saving, setSaving] = useState(false);
 
   const partial = dayPart !== 'FULL';
   const effTo = partial ? from : to;
+  const badRange = !partial && !!to && to < from;
+  const badHours = dayPart === 'HOURS' && hourTo <= hourFrom;
   const hf = dayPart === 'HOURS' ? hourFrom : undefined;
   const ht = dayPart === 'HOURS' ? hourTo : undefined;
 
@@ -83,13 +88,16 @@ export function Wpis() {
     return Math.max(0, total - preview.workingDays);
   }, [preview, from, effTo, partial]);
 
+  const blocked = !typeId || !!preview?.collision || badRange || badHours;
   const save = async () => {
-    if (!current || !typeId) return;
-    setSaving(true); setMsg(null);
+    if (!current || blocked || saving) return;
+    setSaving(true); clear();
     try {
       await api.createAbsence({ employeeId: current.id, typeId, dateFrom: from, dateTo: effTo, dayPart, hourFrom: hf, hourTo: ht });
-      setMsg({ ok: true, text: 'Zapisano nieobecność.' }); loadBalance();
-    } catch (e) { setMsg({ ok: false, text: (e as Error).message }); } finally { setSaving(false); }
+      const days = preview ? nf(preview.workingDays) : '';
+      ok(`Zapisano nieobecność${days ? ` — ${days} dni roboczych` : ''}. Wpis obowiązuje od razu i jest już widoczny w kalendarzu zespołu.`);
+      loadBalance();
+    } catch (e) { fail(e); } finally { setSaving(false); }
   };
 
   return (
@@ -99,48 +107,63 @@ export function Wpis() {
         <div style={{ ...card, padding: 24 }}>
           <h2 style={{ fontFamily: 'var(--font-sans)', fontSize: 18, fontWeight: 700, margin: '0 0 20px', color: 'var(--ink)' }}>Zgłoś nieobecność</h2>
 
-          <div style={label}>Typ nieobecności</div>
-          <div style={{ ...inputBox, marginBottom: 20 }}>
-            <select aria-label="Typ nieobecności" value={typeId} onChange={(e) => setTypeId(e.target.value)} style={{ ...inputEl, fontWeight: 500, cursor: 'pointer' }}>
-              {types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-            </select>
-          </div>
+          <Field label="Typ nieobecności">
+            <div style={{ ...inputBox, marginBottom: 20 }}>
+              <select value={typeId} onChange={(e) => setTypeId(e.target.value)} style={{ ...inputEl, fontWeight: 500, cursor: 'pointer' }}>
+                {types.length === 0 && <option value="">Brak zdefiniowanych typów</option>}
+                {types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+              </select>
+            </div>
+          </Field>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 20 }}>
-            <div>
-              <div style={label}>{partial ? 'Data' : 'Data od'}</div>
-              <div style={inputBox}><CalendarDays size={16} color="var(--brand)" style={{ flex: 'none' }} /><input type="date" aria-label="Data od" value={from} onChange={(e) => setFrom(e.target.value)} style={inputEl} /></div>
-            </div>
-            <div>
-              <div style={label}>Data do</div>
-              <div style={{ ...inputBox, opacity: partial ? 0.5 : 1 }}><CalendarDays size={16} color="var(--brand)" style={{ flex: 'none' }} /><input type="date" aria-label="Data do" value={effTo} min={from} disabled={partial} onChange={(e) => setTo(e.target.value)} style={inputEl} /></div>
-            </div>
+            <label>
+              <span style={label}>{partial ? 'Data' : 'Data od'}</span>
+              <span style={inputBox}><CalendarDays size={16} color="var(--brand)" style={{ flex: 'none' }} aria-hidden="true" /><input type="date" value={from} onChange={(e) => setFrom(e.target.value)} style={inputEl} /></span>
+            </label>
+            <label>
+              <span style={label}>Data do</span>
+              <span style={{ ...inputBox, opacity: partial ? 0.5 : 1 }}><CalendarDays size={16} color="var(--brand)" style={{ flex: 'none' }} aria-hidden="true" /><input type="date" value={effTo} min={from} disabled={partial} aria-invalid={badRange || undefined} onChange={(e) => setTo(e.target.value)} style={inputEl} /></span>
+            </label>
           </div>
 
-          <div style={label}>Wymiar dnia</div>
-          <div style={{ display: 'flex', gap: 8, marginBottom: dayPart === 'HOURS' ? 14 : 24 }}>
-            {PARTS.map(([k, lbl]) => {
-              const active = dayPart === k;
-              return <button key={k} type="button" onClick={() => setDayPart(k)} style={{
-                flex: 1, textAlign: 'center', borderRadius: 9, padding: 10, cursor: 'pointer', fontFamily: 'var(--font-sans)', fontSize: 12.5, fontWeight: 600,
-                border: active ? '1.5px solid var(--brand)' : '1px solid var(--border-2)', background: active ? 'var(--brand-tint)' : 'var(--surface)', color: active ? 'var(--brand)' : 'var(--ink-2)',
-              }}>{lbl}</button>;
-            })}
+          {/* Grupa wyboru zachowuje się jak radio, więc i nazywa się jak radio — inaczej czytnik
+              ekranu czyta cztery niezależne przyciski bez informacji, który jest wybrany. */}
+          <div role="radiogroup" aria-label="Wymiar dnia">
+            <div style={label}>Wymiar dnia</div>
+            <div style={{ display: 'flex', gap: 8, marginBottom: dayPart === 'HOURS' ? 14 : 24 }}>
+              {PARTS.map(([k, lbl]) => {
+                const active = dayPart === k;
+                return <button key={k} type="button" role="radio" aria-checked={active} onClick={() => setDayPart(k)} style={{
+                  flex: 1, textAlign: 'center', borderRadius: 9, padding: 10, cursor: 'pointer', fontFamily: 'var(--font-sans)', fontSize: 12.5, fontWeight: 600,
+                  border: active ? '1.5px solid var(--brand)' : '1px solid var(--border-2)', background: active ? 'var(--brand-tint)' : 'var(--surface)', color: active ? 'var(--brand)' : 'var(--ink-2)',
+                }}>{lbl}</button>;
+              })}
+            </div>
           </div>
           {dayPart === 'HOURS' && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 24 }}>
-              <div><div style={label}>Od godz.</div><div style={inputBox}><input type="time" aria-label="Godzina od" value={hourFrom} onChange={(e) => setHourFrom(e.target.value)} style={inputEl} /></div></div>
-              <div><div style={label}>Do godz.</div><div style={inputBox}><input type="time" aria-label="Godzina do" value={hourTo} onChange={(e) => setHourTo(e.target.value)} style={inputEl} /></div></div>
+              <label><span style={label}>Od godz.</span><span style={inputBox}><input type="time" value={hourFrom} onChange={(e) => setHourFrom(e.target.value)} style={inputEl} /></span></label>
+              <label><span style={label}>Do godz.</span><span style={inputBox}><input type="time" value={hourTo} aria-invalid={badHours || undefined} onChange={(e) => setHourTo(e.target.value)} style={inputEl} /></span></label>
             </div>
           )}
 
           <div style={{ display: 'flex', gap: 10 }}>
-            <button type="button" onClick={save} disabled={saving || !typeId || preview?.collision} style={{ border: 'none', cursor: 'pointer', background: 'var(--brand)', color: 'var(--on-brand)', fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 14, padding: '12px 22px', borderRadius: 10, boxShadow: 'var(--shadow-sm)', opacity: saving || preview?.collision ? 0.6 : 1 }}>{saving ? 'Zapisywanie…' : 'Zapisz nieobecność'}</button>
+            <button type="button" onClick={save} disabled={saving || blocked} aria-describedby={blocked ? 'wpis-blokada' : undefined}
+              style={{ border: 'none', cursor: saving || blocked ? 'not-allowed' : 'pointer', background: 'var(--brand)', color: 'var(--on-brand)', fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 14, padding: '12px 22px', borderRadius: 10, boxShadow: 'var(--shadow-sm)', opacity: saving || blocked ? 0.6 : 1 }}>
+              {saving ? 'Zapisywanie…' : 'Zapisz nieobecność'}
+            </button>
             <button type="button" onClick={() => navigate('/pulpit')} style={{ border: '1px solid var(--border-2)', cursor: 'pointer', background: 'var(--surface)', color: 'var(--ink-2)', fontFamily: 'var(--font-sans)', fontWeight: 600, fontSize: 14, padding: '12px 22px', borderRadius: 10 }}>Anuluj</button>
           </div>
-          {msg && (
-            <div style={{ marginTop: 14, padding: '10px 14px', borderRadius: 10, fontFamily: 'var(--font-sans)', fontSize: 13.5, background: msg.ok ? 'var(--brand-tint)' : 'var(--danger-tint)', color: msg.ok ? 'var(--brand-dark)' : 'var(--danger)', border: `1px solid ${msg.ok ? 'var(--brand)' : 'var(--danger)'}` }}>{msg.text}</div>
-          )}
+          {/* Wyłączony przycisk nie da się sfokusować, więc powód blokady musi stać obok niego
+              we własnym regionie live — inaczej użytkownik klawiatury nie dowie się, co poprawić. */}
+          <div id="wpis-blokada" role="status" aria-live="polite" style={{ fontFamily: 'var(--font-sans)', fontSize: 12.5, color: 'var(--amber)', marginTop: blocked ? 10 : 0 }}>
+            {badRange ? 'Zapis zablokowany: data „do" jest wcześniejsza niż „od".'
+              : badHours ? 'Zapis zablokowany: godzina zakończenia musi być późniejsza niż rozpoczęcia.'
+                : preview?.collision ? 'Zapis zablokowany: masz już nieobecność w tym terminie. Zmień daty.'
+                  : !typeId ? 'Zapis zablokowany: wybierz typ nieobecności.' : ''}
+          </div>
+          <Notice {...notice} />
         </div>
 
         {/* PODGLĄD NA ŻYWO */}
@@ -153,7 +176,8 @@ export function Wpis() {
             <Row label="Dni robocze w zakresie" value={preview ? nf(preview.workingDays) : '—'} />
             <Row label="Pominięto (weekend / święta)" value={partial ? '—' : String(skipped)} muted />
             <Row label="Balans po zapisie" value={preview ? `${nf(preview.remaining)} → ${nf(preview.remainingAfter)}` : '—'} accent last />
-            {preview && preview.minimumToLeave && preview.remainingAfter >= 0 && preview.remainingAfter < preview.minimumToLeave && (
+            {/* `&&` na liczbie renderuje samo „0", gdy minimum wynosi zero — stąd jawne porównanie. */}
+            {!!preview && (preview.minimumToLeave ?? 0) > 0 && preview.remainingAfter >= 0 && preview.remainingAfter < (preview.minimumToLeave ?? 0) && (
               <div style={{ background: 'var(--surface-3)', borderRadius: 9, padding: '10px 12px', marginTop: 10, fontFamily: 'var(--font-sans)', fontSize: 11.5, color: 'var(--amber)', lineHeight: 1.5 }}>Zejdziesz poniżej minimum do pozostawienia ({preview.minimumToLeave} dni).</div>
             )}
           </div>

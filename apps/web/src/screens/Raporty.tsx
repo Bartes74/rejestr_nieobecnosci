@@ -1,26 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Upload } from 'lucide-react';
+import { count, plural } from '@nieobecnosci/core/plural';
 import { api, type OrgUnit, type ReportTreeNode, type UsageReport } from '../api';
+import { card, cardClipped } from '../design-system/surfaces';
+import { ProgressBar } from '../design-system/components/data/ProgressBar';
+import { StatCard } from '../design-system/components/data/StatCard';
+import { num, td, th } from '../admin/ui';
 
 type OverdueRow = { employeeId: string; name: string; employmentType: string; carriedOver: number; remaining: number; zalega: boolean };
 
-const card = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, boxShadow: 'var(--shadow-sm)' } as const;
-const th = { textAlign: 'left', fontFamily: 'var(--font-mono)', fontSize: 10.5, letterSpacing: '.04em', textTransform: 'uppercase', color: 'var(--muted)', fontWeight: 700, padding: '11px 16px', background: 'var(--surface-2)', borderBottom: '1px solid var(--border)' } as const;
-const td = { fontFamily: 'var(--font-sans)', fontSize: 13, color: 'var(--ink)', padding: '12px 16px', borderBottom: '1px solid var(--border)' } as const;
-const num = { ...td, fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', textAlign: 'right' } as const;
-
-function StatCard({ label, value, unit, sub, color }: { label: string; value: string | number; unit?: string; sub: string; color?: string }) {
-  return (
-    <div style={{ ...card, padding: 20 }}>
-      <div style={{ fontFamily: 'var(--font-sans)', fontSize: 12.5, color: 'var(--muted)', fontWeight: 600, marginBottom: 10 }}>{label}</div>
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6 }}>
-        <span style={{ fontFamily: 'var(--font-sans)', fontSize: 34, fontWeight: 800, lineHeight: .9, fontVariantNumeric: 'tabular-nums', color: color ?? 'var(--ink)' }}>{value}</span>
-        {unit && <span style={{ fontFamily: 'var(--font-sans)', fontSize: 14, color: 'var(--muted)', fontWeight: 700, marginBottom: 4 }}>{unit}</span>}
-      </div>
-      <div style={{ fontFamily: 'var(--font-sans)', fontSize: 12, color: 'var(--muted)', marginTop: 8 }}>{sub}</div>
-    </div>
-  );
-}
 
 function TreeRows({ node, depth = 0 }: { node: ReportTreeNode; depth?: number }) {
   return (
@@ -102,13 +90,15 @@ export function Raporty() {
         </button>
       </div>
 
-      {err && <div style={{ color: 'var(--danger)', fontFamily: 'var(--font-sans)', fontSize: 14 }}>{err}</div>}
+      <div role="alert" aria-live="assertive">
+        {err && <div style={{ padding: '10px 14px', marginBottom: 14, borderRadius: 10, background: 'var(--danger-tint)', border: '1px solid var(--danger)', color: 'var(--danger)', fontFamily: 'var(--font-sans)', fontSize: 13.5, lineHeight: 1.45 }}>{err}</div>}
+      </div>
 
       {stats && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16, marginBottom: 18 }}>
-          <StatCard label="Śr. wykorzystanie urlopu" value={stats.pct} unit="%" sub={`w jednostce · ${stats.people} ${stats.people === 1 ? 'osoba' : 'osób'}`} />
+          <StatCard label="Śr. wykorzystanie urlopu" value={stats.pct} unit="%" sub={`w jednostce · ${count(stats.people, ['osoba', 'osoby', 'osób'])}`} />
           <StatCard label="Wykorzystany urlop" value={stats.used} unit="dni" sub="wszystkie typy obniżające pulę" />
-          <StatCard label="Zalega z urlopem" value={overdueRows.length} unit="osób" sub="powyżej progu zaległości" color={overdueRows.length > 0 ? 'var(--amber)' : 'var(--ink)'} />
+          <StatCard label="Zalega z urlopem" value={overdueRows.length} unit={plural(overdueRows.length, ['osoba', 'osoby', 'osób'])} sub="powyżej progu zaległości" accent={overdueRows.length > 0 ? 'var(--amber)' : 'var(--ink)'} />
         </div>
       )}
 
@@ -123,7 +113,7 @@ export function Raporty() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5, fontFamily: 'var(--font-sans)', fontSize: 12.5, color: 'var(--ink-2)' }}>
                     <span>{b.name}</span><span style={{ fontFamily: 'var(--font-mono)', color: 'var(--muted)' }}>{b.used} dni{pool ? ` · ${b.pct}%` : ''}</span>
                   </div>
-                  <div style={{ height: 9, borderRadius: 6, background: 'var(--surface-3)', overflow: 'hidden' }}><div style={{ width: `${b.pct}%`, height: '100%', background: b.color }} /></div>
+                  <ProgressBar value={b.pct} color={b.color} height={9} />
                 </div>
               ))}
             </div>
@@ -154,7 +144,7 @@ export function Raporty() {
       {usage && (
         <div style={{ ...card, overflow: 'hidden', marginBottom: 18 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead><tr><th style={th}>Pracownik</th><th style={th}>Forma</th><th style={{ ...th, textAlign: 'right' }}>Pula+zaległe</th><th style={{ ...th, textAlign: 'right' }}>Wykorzystano</th><th style={{ ...th, textAlign: 'right' }}>Pozostało</th></tr></thead>
+            <thead><tr><th scope="col" style={th}>Pracownik</th><th scope="col" style={th}>Forma</th><th scope="col" style={{ ...th, textAlign: 'right' }}>Pula+zaległe</th><th scope="col" style={{ ...th, textAlign: 'right' }}>Wykorzystano</th><th scope="col" style={{ ...th, textAlign: 'right' }}>Pozostało</th></tr></thead>
             <tbody>
               {usage.rows.map((r) => (
                 <tr key={r.employeeId}>

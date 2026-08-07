@@ -4,6 +4,11 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Nieobecności</title>
+    <!-- Kroje leżą pod arkuszem, który jest pod bundlem JS — bez preloadu przeglądarka
+         dowiaduje się o nich dopiero w trzecim kroku łańcucha. Oba podzbiory Archivo są
+         krytyczne: polskie „ó" jest w latin, a „ą ć ę ł ń ś ź ż" w latin-ext. -->
+    <link rel="preload" href="/fonts/archivo-variable-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/archivo-variable-latin-ext.woff2" as="font" type="font/woff2" crossorigin />
   </head>
   <body>
     <div id="root"></div>

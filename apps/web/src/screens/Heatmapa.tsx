@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api, type OrgUnit, type Sprint } from '../api';
+import { card } from '../design-system/surfaces';
 
 // FR-C4 — heatmapa pokrycia: natężenie nieobecności (% osobodni) per squad × sprint.
 // Kolor prowadzi od zielonego (spokojnie) po czerwony (≥50% — ryzyko niedoboru obsady).
@@ -46,7 +47,9 @@ export function Heatmapa() {
           title: `${sq.name} · ${sp.name}: ${c.absentPersonDays}/${c.totalPersonDays} osobodni` }))
         .catch(() => ({ sq: sq.id, pct: null as number | null, title: `${sq.name} · ${sp.name}: brak danych` })),
     ));
+    let alive = true;
     Promise.all(tasks).then((res) => {
+      if (!alive) return; // ekran zdążył zniknąć — nie dotykamy stanu odmontowanego drzewa
       const m: Record<string, Cell[]> = {};
       let k = 0;
       for (const sq of squads) {
@@ -55,6 +58,7 @@ export function Heatmapa() {
       setMatrix(m);
       setLoading(false);
     });
+    return () => { alive = false; };
   }, [squads, sprints]);
 
   const cols = useMemo(() => `150px repeat(${sprints.length}, minmax(46px,1fr))`, [sprints.length]);
@@ -67,9 +71,11 @@ export function Heatmapa() {
         Kolor prowadzi od zielonego (spokojnie) po czerwony (wymaga uwagi).
       </p>
 
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, boxShadow: 'var(--shadow-sm)', padding: 22, overflowX: 'auto' }}>
-        {loading && <div style={{ fontFamily: 'var(--font-sans)', fontSize: 14, color: 'var(--muted)', padding: '8px 0' }}>Wczytywanie pokrycia…</div>}
-        {empty && <div style={{ fontFamily: 'var(--font-sans)', fontSize: 14, color: 'var(--muted)', padding: '8px 0' }}>Brak squadów lub sprintów — dodaj je w Konfiguracji, aby zobaczyć pokrycie.</div>}
+      <div style={{ ...card, padding: 22, overflowX: 'auto' }}>
+        <div role="status" aria-live="polite">
+          {loading && <div style={{ fontFamily: 'var(--font-sans)', fontSize: 14, color: 'var(--muted)', padding: '8px 0' }}>Wczytywanie pokrycia…</div>}
+          {empty && <div style={{ fontFamily: 'var(--font-sans)', fontSize: 14, color: 'var(--muted)', padding: '8px 0' }}>Brak squadów lub sprintów — dodaj je w Konfiguracji, aby zobaczyć pokrycie.</div>}
+        </div>
 
         {!loading && !empty && (
           <>

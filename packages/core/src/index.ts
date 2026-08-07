@@ -3,3 +3,4 @@ export * from './workdays.js';
 export * from './balance.js';
 export * from './capacity.js';
 export * from './ical.js';
+export * from './plural.js';

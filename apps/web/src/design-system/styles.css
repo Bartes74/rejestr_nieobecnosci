@@ -9,6 +9,13 @@
 html, body, #root { height: 100%; }
 body { margin: 0; font-family: var(--font-sans); color: var(--ink); background: var(--canvas); -webkit-font-smoothing: antialiased; }
 @keyframes fu { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+/* WCAG 2.3.3 — kto wyłączył animacje w systemie, dostaje ten sam stan końcowy bez ruchu.
+   Nie zerujemy czasu globalnie: przejścia stanów (hover, aktywna pozycja) niosą informację
+   zwrotną i mają zostać, tylko skrócone. */
+@media (prefers-reduced-motion: reduce) {
+  @keyframes fu { from { opacity: 1; transform: none; } to { opacity: 1; transform: none; } }
+  * { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: 80ms !important; scroll-behavior: auto !important; }
+}
 @media (max-width: 860px) { .login-hero { display: none !important; } }
 /* WCAG 2.4.7 — widoczny focus z klawiatury (brak takiego stylu był realną luką). */
 :focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 2px; }

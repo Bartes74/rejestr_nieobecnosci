@@ -5,13 +5,52 @@ export function setToken(t: string | null) {
   token = t;
   if (t) localStorage.setItem('token', t);
   else localStorage.removeItem('token');
+  // Zmiana tokenu = zmiana zasięgu widoczności. Bez tego dane capacity poprzedniego
+  // użytkownika zostałyby pokazane następnemu zalogowanemu w tej samej karcie.
+  invalidateCapacity();
 }
 export function getToken() {
   return token;
 }
 
+/** Zdarzenie na `window` — API wykryło wygasłą sesję; AuthProvider sprząta stan i wraca na logowanie. */
+export const UNAUTHORIZED = 'nieobecnosci:unauthorized';
+
+// Komunikat ma nazywać problem i drogę wyjścia. Treść z serwera jest najbardziej konkretna
+// (walidacja per pole), więc wygrywa; kody bez treści dostają zdanie zrozumiałe dla użytkownika.
+const BY_STATUS: Record<number, string> = {
+  403: 'Nie masz uprawnień do tej operacji. Jeśli powinieneś je mieć, poproś administratora aplikacji.',
+  404: 'Nie znaleziono danych — mogły zostać usunięte lub zmienione przez inną osobę. Odśwież widok.',
+  409: 'Ktoś zmienił te dane w międzyczasie. Odśwież widok i spróbuj ponownie.',
+  413: 'Plik jest za duży. Podziel import na mniejsze części.',
+  429: 'Zbyt wiele żądań. Odczekaj chwilę i spróbuj ponownie.',
+  500: 'Błąd serwera. Spróbuj ponownie za chwilę; jeśli się powtarza, zgłoś to administratorowi aplikacji.',
+  503: 'Aplikacja jest chwilowo niedostępna (trwa przerwa techniczna lub baza nie odpowiada). Spróbuj za kilka minut.',
+};
+
+async function errorMessage(res: Response): Promise<string> {
+  try {
+    const e = await res.json();
+    const m = Array.isArray(e.message) ? e.message.join(', ') : e.message;
+    if (m) return String(m);
+  } catch {
+    /* brak treści błędu — zejdź do komunikatu wg kodu */
+  }
+  return BY_STATUS[res.status] ?? `Operacja nie powiodła się (${res.status} ${res.statusText}).`;
+}
+
+// Brak sieci i przerwane połączenie to najczęstszy błąd w sieci wewnętrznej — `fetch` rzuca wtedy
+// TypeError bez użytecznej treści. Zamieniamy go na zdanie, z którego wynika, co zrobić.
+async function send(path: string, init: RequestInit): Promise<Response> {
+  try {
+    return await fetch(BASE + path, init);
+  } catch {
+    throw new Error('Brak połączenia z serwerem. Sprawdź sieć i spróbuj ponownie.');
+  }
+}
+
 async function req<T>(path: string, opts?: RequestInit): Promise<T> {
-  const res = await fetch(BASE + path, {
+  const res = await send(path, {
     headers: {
       'content-type': 'application/json',
       ...(token ? { authorization: `Bearer ${token}` } : {}),
@@ -20,17 +59,13 @@ async function req<T>(path: string, opts?: RequestInit): Promise<T> {
   });
   if (res.status === 401) {
     setToken(null);
-    throw new Error('Wymagane logowanie.');
+    // Sam token nie wystarczy — bez tego sygnału aplikacja zostaje na ekranie z wygasłą sesją
+    // i każde kolejne żądanie kończy się błędem, którego użytkownik nie umie naprawić.
+    window.dispatchEvent(new Event(UNAUTHORIZED));
+    throw new Error('Sesja wygasła. Zaloguj się ponownie.');
   }
   if (!res.ok) {
-    let message = res.statusText;
-    try {
-      const e = await res.json();
-      message = Array.isArray(e.message) ? e.message.join(', ') : (e.message ?? message);
-    } catch {
-      /* brak treści błędu */
-    }
-    throw new Error(message);
+    throw new Error(await errorMessage(res));
   }
   return res.status === 204 ? (null as T) : ((await res.json()) as T);
 }
@@ -72,13 +107,34 @@ async function upload<T>(path: string, file: File, fields?: Record<string, strin
   const fd = new FormData();
   fd.append('file', file);
   for (const [k, v] of Object.entries(fields ?? {})) fd.append(k, v);
-  const res = await fetch(BASE + path, { method: 'POST', headers: token ? { authorization: `Bearer ${token}` } : {}, body: fd });
-  if (!res.ok) {
-    let m = res.statusText;
-    try { const e = await res.json(); m = Array.isArray(e.message) ? e.message.join(', ') : (e.message ?? m); } catch { /* */ }
-    throw new Error(m);
+  const res = await send(path, { method: 'POST', headers: token ? { authorization: `Bearer ${token}` } : {}, body: fd });
+  if (res.status === 401) {
+    setToken(null);
+    window.dispatchEvent(new Event(UNAUTHORIZED));
+    throw new Error('Sesja wygasła. Zaloguj się ponownie.');
   }
+  if (!res.ok) throw new Error(await errorMessage(res));
   return res.json() as Promise<T>;
+}
+
+/**
+ * Capacity per squad × sprint jest jedynym miejscem, gdzie liczba żądań rośnie iloczynowo:
+ * heatmapa pyta o każdą parę osobno (przy 5 squadach i 12 sprintach to 60 wywołań, każde
+ * z weryfikacją tokenu, kontrolą zasięgu i zapytaniami do bazy). Dopóki nie ma zbiorczego
+ * endpointu, trzymamy trzy tanie zabezpieczenia po stronie klienta:
+ *
+ *  1. deduplikacja w locie — dwa równoległe pytania o tę samą parę to jedno żądanie,
+ *  2. pamięć wyników — powrót na ekran i wspólne pary z ekranu „Capacity sprintu" są darmowe,
+ *  3. unieważnianie przy każdej zmianie nieobecności, bo to jedyne, co zmienia wynik.
+ *
+ * ponytail: sufit tego rozwiązania to pierwsze wejście — nadal N×M żądań. Zbiorczy
+ *           `GET /capacity/matrix` zbija je do jednego; to zmiana po stronie API.
+ */
+const capacityCache = new Map<string, Capacity>();
+const capacityInFlight = new Map<string, Promise<Capacity>>();
+export function invalidateCapacity() {
+  capacityCache.clear();
+  capacityInFlight.clear();
 }
 
 export const api = {
@@ -99,17 +155,28 @@ export const api = {
     return req<Preview>(`/absences/preview?${q.toString()}`);
   },
   createAbsence: (body: { employeeId: string; typeId: string; dateFrom: string; dateTo: string; dayPart?: string; hourFrom?: string; hourTo?: string }) =>
-    req<Absence>('/absences', { method: 'POST', body: JSON.stringify(body) }),
+    req<Absence>('/absences', { method: 'POST', body: JSON.stringify(body) }).finally(invalidateCapacity),
   bulkCreateAbsences: (body: { employeeIds: string[]; typeId: string; dateFrom: string; dateTo: string; dayPart?: string }) =>
-    req<{ created: number; errors: { employeeId: string; message: string }[] }>('/absences/bulk', { method: 'POST', body: JSON.stringify(body) }),
+    req<{ created: number; errors: { employeeId: string; message: string }[] }>('/absences/bulk', { method: 'POST', body: JSON.stringify(body) }).finally(invalidateCapacity),
   updateAbsence: (id: string, body: { typeId?: string; dateFrom?: string; dateTo?: string; dayPart?: string }) =>
-    req<Absence>(`/absences/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
-  deleteAbsence: (id: string) => req<void>(`/absences/${id}`, { method: 'DELETE' }),
+    req<Absence>(`/absences/${id}`, { method: 'PATCH', body: JSON.stringify(body) }).finally(invalidateCapacity),
+  deleteAbsence: (id: string) => req<void>(`/absences/${id}`, { method: 'DELETE' }).finally(invalidateCapacity),
   calendar: (from: string, to: string) => req<CalEntry[]>(`/calendar?from=${from}&to=${to}`),
   feedToken: (regenerate = false) => req<{ token: string }>(`/me/feed-token${regenerate ? '?regenerate=true' : ''}`),
   sprints: () => req<Sprint[]>('/sprints'),
   orgUnits: () => req<OrgUnit[]>('/org/units'),
-  capacity: (sprintId: string, unitId: string) => req<Capacity>(`/capacity?sprintId=${sprintId}&unitId=${unitId}`),
+  capacity: (sprintId: string, unitId: string): Promise<Capacity> => {
+    const key = `${sprintId}:${unitId}`;
+    const hit = capacityCache.get(key);
+    if (hit) return Promise.resolve(hit);
+    const pending = capacityInFlight.get(key);
+    if (pending) return pending;
+    const p = req<Capacity>(`/capacity?sprintId=${sprintId}&unitId=${unitId}`)
+      .then((r) => { capacityCache.set(key, r); return r; })
+      .finally(() => capacityInFlight.delete(key));
+    capacityInFlight.set(key, p);
+    return p;
+  },
   reportUsage: (unitId: string) => req<UsageReport>(`/reports/usage?unitId=${unitId}`),
   reportTree: (unitId: string) => req<ReportTreeNode>(`/reports/tree?unitId=${unitId}`),
   reportOverdue: (unitId: string) => req<{ unitId: string; threshold: number; rows: (UsageRow & { zalega: boolean })[] }>(`/reports/overdue?unitId=${unitId}`),

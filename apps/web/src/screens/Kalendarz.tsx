@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
 import { api, type CalEntry } from '../api';
+import { cardClipped } from '../design-system/surfaces';
+import { AbsencePill } from '../design-system/components/data/AbsencePill';
 
 const iso = (y: number, m: number, d: number) => new Date(Date.UTC(y, m, d)).toISOString().slice(0, 10);
 
@@ -81,33 +83,37 @@ export function Kalendarz() {
           <button type="button" aria-label="Następny miesiąc" style={navBtn} onClick={() => shift(1)}><ChevronRight size={17} /></button>
         </div>
       </div>
-      {feedMsg && (
-        <div style={{ marginBottom: 14, padding: '10px 14px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
-          <div style={{ fontFamily: 'var(--font-sans)', fontSize: 12.5, color: 'var(--ink-2)' }}>{feedMsg}</div>
-          {feedUrl && <code style={{ display: 'block', marginTop: 6, fontFamily: 'var(--font-mono)', fontSize: 11.5, color: 'var(--muted)', wordBreak: 'break-all' }}>{feedUrl}</code>}
-        </div>
-      )}
+      <div role="status" aria-live="polite">
+        {feedMsg && (
+          <div style={{ marginBottom: 14, padding: '10px 14px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
+            <div style={{ fontFamily: 'var(--font-sans)', fontSize: 12.5, color: 'var(--ink-2)' }}>{feedMsg}</div>
+            {feedUrl && <code style={{ display: 'block', marginTop: 6, fontFamily: 'var(--font-mono)', fontSize: 11.5, color: 'var(--muted)', wordBreak: 'break-all' }}>{feedUrl}</code>}
+          </div>
+        )}
+      </div>
 
-      <div style={{ display: 'inline-flex', gap: 2, padding: 3, marginBottom: 14, background: 'var(--surface-3)', borderRadius: 'var(--radius-md)' }}>
+      <div role="group" aria-label="Zakres kalendarza" style={{ display: 'inline-flex', gap: 2, padding: 3, marginBottom: 14, background: 'var(--surface-3)', borderRadius: 'var(--radius-md)' }}>
         {([['all', 'Wszyscy'], ['today', 'Dziś'], ['week', 'Ten tydzień']] as const).map(([k, label]) => (
-          <button key={k} type="button" onClick={() => setFilter(k)} style={{
-            fontFamily: 'var(--font-sans)', fontSize: 13, fontWeight: 600, padding: '6px 14px', borderRadius: 'var(--radius-sm, 8px)', border: 'none', cursor: 'pointer',
+          <button key={k} type="button" onClick={() => setFilter(k)} aria-pressed={filter === k} style={{
+            fontFamily: 'var(--font-sans)', fontSize: 13, fontWeight: 600, padding: '6px 14px', borderRadius: 'var(--radius-sm)', border: 'none', cursor: 'pointer',
             background: filter === k ? 'var(--surface)' : 'transparent', color: filter === k ? 'var(--brand)' : 'var(--ink-2)',
             boxShadow: filter === k ? 'var(--shadow-sm)' : 'none',
           }}>{label}</button>
         ))}
       </div>
 
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-xl)', overflow: 'hidden' }}>
+      <div style={cardClipped}>
         {byPerson.length === 0 && <div style={{ padding: 20, color: 'var(--muted)', fontFamily: 'var(--font-sans)', fontSize: 14 }}>{filter === 'all' ? 'Brak nieobecności w tym miesiącu.' : 'Nikt nieobecny w wybranym okresie.'}</div>}
         {byPerson.map((row) => (
           <div key={row.name} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 18px', borderTop: '1px solid var(--border)' }}>
-            <span style={{ fontFamily: 'var(--font-sans)', fontSize: 13.5, fontWeight: 600, color: 'var(--ink)', width: 180 }}>{row.name}</span>
+            {/* Nazwisko musi mieć stałą kolumnę (pigułki mają się zaczynać w jednej linii), ale
+                nie może uciąć długiego nazwiska bez ostrzeżenia — stąd elipsa i pełna treść w title. */}
+            <span title={row.name} style={{ fontFamily: 'var(--font-sans)', fontSize: 13.5, fontWeight: 600, color: 'var(--ink)', flex: '0 0 180px', minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.name}</span>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {row.ranges.map((r, i) => (
-                <span key={i} style={{ fontFamily: 'var(--font-mono)', fontSize: 12, padding: '4px 9px', borderRadius: 20, background: 'var(--absence)', color: 'var(--absence-ink)' }}>
+                <AbsencePill key={i}>
                   {r.dateFrom === r.dateTo ? r.dateFrom : `${r.dateFrom} – ${r.dateTo}`}
-                </span>
+                </AbsencePill>
               ))}
             </div>
           </div>

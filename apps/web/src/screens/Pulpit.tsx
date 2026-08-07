@@ -3,6 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronRight, Info, Plus, TriangleAlert } from 'lucide-react';
 import { api, type Absence, type Balance, type CalEntry, type Sprint } from '../api';
 import { useAuth } from '../current-employee';
+import { card, panel } from '../design-system/surfaces';
+import { AbsencePill } from '../design-system/components/data/AbsencePill';
+import { Avatar } from '../design-system/components/core/Avatar';
+import { ProgressBar } from '../design-system/components/data/ProgressBar';
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 const today = () => iso(new Date());
@@ -22,7 +26,6 @@ const monthShort = (s: string) => new Intl.DateTimeFormat('pl-PL', { month: 'sho
 const dayNum = (s: string) => s.slice(8, 10);
 const dmShort = (s: string) => `${Number(s.slice(8, 10))}.${s.slice(5, 7)}`;
 
-const card = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, boxShadow: 'var(--shadow-sm)' } as const;
 const cardTitle = { fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 14.5, color: 'var(--ink)' } as const;
 
 export function Pulpit() {
@@ -112,10 +115,10 @@ export function Pulpit() {
             <span style={{ fontFamily: 'var(--font-sans)', fontSize: 16, color: 'var(--muted)', fontWeight: 600, marginBottom: 9 }}>/ {total} dni</span>
             <span style={{ marginBottom: 11, marginLeft: 'auto', fontFamily: 'var(--font-sans)', fontSize: 11.5, color: 'var(--brand)', background: 'var(--brand-tint)', fontWeight: 600, padding: '4px 9px', borderRadius: 20 }}>aktualizacja na żywo</span>
           </div>
-          <div style={{ display: 'flex', height: 11, borderRadius: 7, overflow: 'hidden', background: 'var(--surface-3)', margin: '14px 0 18px' }}>
-            <div style={{ width: `${usedW}%`, background: 'var(--brand)' }} />
-            <div style={{ width: `${carriedW}%`, background: 'var(--absence-border)' }} />
-          </div>
+          <ProgressBar height={11} style={{ margin: '14px 0 18px' }} segments={[
+            { pct: usedW, color: 'var(--brand)' },
+            { pct: carriedW, color: 'var(--absence-border)' },
+          ]} />
           <div style={{ display: 'flex', gap: 22 }}>
             {[['Pula roczna', pool, false], ['Wykorzystano', used, true], ['w tym zaległe', carried, false]].map(([label, value, accent], i) => (
               <div key={label as string} style={{ flex: 1, borderLeft: i ? '1px solid var(--border)' : 'none', paddingLeft: i ? 22 : 0 }}>
@@ -138,7 +141,7 @@ export function Pulpit() {
                 </div>
               </div>
             ) : null}
-            <div style={{ display: 'flex', gap: 11, alignItems: 'flex-start', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 11, padding: '12px 13px' }}>
+            <div style={{ ...panel, display: 'flex', gap: 11, alignItems: 'flex-start', padding: '12px 13px' }}>
               <Info size={17} color="var(--blue)" style={{ flex: 'none', marginTop: 1 }} />
               <div style={{ fontFamily: 'var(--font-sans)', fontSize: 12.8, lineHeight: 1.45, color: 'var(--ink-2)' }}>
                 {remaining > 0 ? <>Zbliża się koniec okresu rozliczeniowego — zaplanuj pozostałe <b style={{ color: 'var(--ink)' }}>{remaining} dni</b>.</> : 'Masz w pełni rozplanowany urlop w tym okresie.'}
@@ -159,9 +162,9 @@ export function Pulpit() {
             {absent.length === 0 && <div style={{ fontFamily: 'var(--font-sans)', fontSize: 13.5, color: 'var(--muted)', padding: '12px 0' }}>Nikt nieobecny w tym tygodniu.</div>}
             {absent.map((p, i) => (
               <div key={p.name} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: i < absent.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--blue-tint)', color: 'var(--blue)', display: 'grid', placeItems: 'center', fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 12 }}>{initialsOf(p.name)}</div>
+                <Avatar initials={initialsOf(p.name)} tone="blue" size={32} />
                 <div style={{ flex: 1 }}><div style={{ fontFamily: 'var(--font-sans)', fontWeight: 600, fontSize: 13.5, color: 'var(--ink)' }}>{p.name}</div></div>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--absence-ink)', background: 'var(--absence)', border: '1px solid var(--absence-border)', padding: '3px 9px', borderRadius: 7 }}>{chipDate(p)}</span>
+                <AbsencePill>{chipDate(p)}</AbsencePill>
               </div>
             ))}
           </div>
@@ -176,7 +179,7 @@ export function Pulpit() {
               const from = a.dateFrom.slice(0, 10), to = a.dateTo.slice(0, 10);
               const part = a.dayPart === 'AM' ? ' · pół dnia (AM)' : a.dayPart === 'PM' ? ' · pół dnia (PM)' : a.dayPart === 'HOURS' ? ' · godziny' : '';
               return (
-                <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 13, background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 11, padding: '12px 14px' }}>
+                <div key={a.id} style={{ ...panel, display: 'flex', alignItems: 'center', gap: 13, padding: '12px 14px' }}>
                   <div style={{ textAlign: 'center', width: 42 }}>
                     <div style={{ fontFamily: 'var(--font-mono)', fontSize: 19, fontWeight: 700, lineHeight: 1, color: 'var(--ink)' }}>{dayNum(from)}</div>
                     <div style={{ fontFamily: 'var(--font-sans)', fontSize: 10.5, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.05em' }}>{monthShort(from)}</div>

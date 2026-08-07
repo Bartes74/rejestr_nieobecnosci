@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
+import { plural } from '@nieobecnosci/core/plural';
 import { api, type AbsenceType, type Adoption, type Calendar, type Employee, type OrgUnit, type ProcessingActivity, type Sprint, type AdminSetting } from '../api';
 import { useAuth } from '../current-employee';
 import { Button } from '../design-system/components/core/Button';
-import { AdminOnly, Section, Notice, ColumnMap, field } from '../admin/ui';
+import { AdminOnly, Section, Notice, ColumnMap, ConfirmDialog, Field, field, useNotice } from '../admin/ui';
 
 const row = { display: 'flex', flexWrap: 'wrap' as const, gap: 8, alignItems: 'center' };
 const list = { fontFamily: 'var(--font-sans)', fontSize: 13.5, color: 'var(--ink-2)', padding: '4px 0' };
@@ -13,25 +14,33 @@ const sprintColDefaults = Object.fromEntries(SPRINT_COLS.map((c) => [c.key, c.la
 function Typy() {
   const [types, setTypes] = useState<AbsenceType[]>([]);
   const [f, setF] = useState({ name: '', affectsPool: true, affectsCapacity: true, specialCategory: false });
-  const [msg, setMsg] = useState('');
+  const { notice, ok, fail, clear } = useNotice();
+  const [busy, setBusy] = useState(false);
   const load = () => api.types().then(setTypes);
   useEffect(() => { load(); }, []);
-  const add = async () => { setMsg(''); try { await api.createType(f); setF({ name: '', affectsPool: true, affectsCapacity: true, specialCategory: false }); load(); } catch (e) { setMsg((e as Error).message); } };
+  const add = async () => {
+    if (busy) return;
+    setBusy(true); clear();
+    try { await api.createType(f); setF({ name: '', affectsPool: true, affectsCapacity: true, specialCategory: false }); await load(); ok(`Dodano typ „${f.name}".`); }
+    catch (e) { fail(e); } finally { setBusy(false); }
+  };
   const cb = (k: 'affectsPool' | 'affectsCapacity' | 'specialCategory') => (
-    <label style={{ fontSize: 12.5, color: 'var(--ink-2)', display: 'flex', gap: 4, alignItems: 'center' }}>
+    <label style={{ fontFamily: 'var(--font-sans)', fontSize: 12.5, color: 'var(--ink-2)', display: 'flex', gap: 5, alignItems: 'center' }}>
       <input type="checkbox" checked={f[k]} onChange={(e) => setF((s) => ({ ...s, [k]: e.target.checked }))} />
-      {k === 'affectsPool' ? 'pula' : k === 'affectsCapacity' ? 'capacity' : 'L4/szczególna'}
+      {k === 'affectsPool' ? 'obniża pulę' : k === 'affectsCapacity' ? 'obniża capacity' : 'kategoria szczególna (L4)'}
     </label>
   );
   return (
     <Section title="Typy nieobecności">
-      {types.map((t) => <div key={t.id} style={list}>{t.name} {t.specialCategory && <em style={{ color: 'var(--amber)' }}>· szczególna</em>} {!t.affectsPool && <span style={{ color: 'var(--muted)' }}>· bez puli</span>}</div>)}
-      <div style={{ ...row, marginTop: 12 }}>
-        <input style={field} placeholder="Nazwa typu" value={f.name} onChange={(e) => setF((s) => ({ ...s, name: e.target.value }))} />
+      {types.length === 0
+        ? <div style={{ ...list, color: 'var(--muted)' }}>Brak typów. Dodaj pierwszy — bez niego nikt nie zapisze nieobecności.</div>
+        : types.map((t) => <div key={t.id} style={list}>{t.name} {t.specialCategory && <em style={{ color: 'var(--amber)' }}>· szczególna</em>} {!t.affectsPool && <span style={{ color: 'var(--muted)' }}>· bez puli</span>}</div>)}
+      <div style={{ ...row, marginTop: 12, alignItems: 'flex-end' }}>
+        <Field label="Nazwa typu"><input style={field} value={f.name} onChange={(e) => setF((s) => ({ ...s, name: e.target.value }))} /></Field>
         {cb('affectsPool')}{cb('affectsCapacity')}{cb('specialCategory')}
-        <Button onClick={add} disabled={!f.name}>Dodaj</Button>
+        <Button onClick={add} disabled={!f.name.trim() || busy}>{busy ? 'Dodawanie…' : 'Dodaj'}</Button>
       </div>
-      <Notice text={msg} />
+      <Notice {...notice} />
     </Section>
   );
 }
@@ -40,36 +49,47 @@ function Pula() {
   const [val, setVal] = useState('');
   const [emps, setEmps] = useState<Employee[]>([]);
   const [a, setA] = useState({ employeeId: '', periodYear: '2026', baseDays: '26', overrideDays: '', carriedOver: '0' });
-  const [msg, setMsg] = useState('');
+  const { notice, ok, fail, clear } = useNotice();
+  const [busy, setBusy] = useState(false);
   useEffect(() => { api.poolDefault().then((d) => setVal(String(d.value ?? ''))); api.employees().then(setEmps); }, []);
-  const saveDefault = async () => { setMsg(''); try { await api.setDefaultPool(Number(val)); setMsg('Pula domyślna zapisana.'); } catch (e) { setMsg((e as Error).message); } };
-  const saveAllow = async () => {
-    setMsg('');
-    try {
-      await api.setAllowance({ employeeId: a.employeeId, periodYear: Number(a.periodYear), baseDays: Number(a.baseDays), overrideDays: a.overrideDays ? Number(a.overrideDays) : undefined, carriedOver: Number(a.carriedOver) });
-      setMsg('Korekta zapisana.');
-    } catch (e) { setMsg((e as Error).message); }
+  const guard = async (fn: () => Promise<string>) => {
+    if (busy) return;
+    setBusy(true); clear();
+    try { ok(await fn()); } catch (e) { fail(e); } finally { setBusy(false); }
   };
+  const saveDefault = () => guard(async () => {
+    const n = Number(val);
+    if (!Number.isFinite(n) || n < 0) throw new Error('Pula domyślna musi być liczbą nieujemną (np. 26).');
+    await api.setDefaultPool(n);
+    return `Pula domyślna zapisana: ${n} dni.`;
+  });
+  const saveAllow = () => guard(async () => {
+    await api.setAllowance({ employeeId: a.employeeId, periodYear: Number(a.periodYear), baseDays: Number(a.baseDays), overrideDays: a.overrideDays ? Number(a.overrideDays) : undefined, carriedOver: Number(a.carriedOver) });
+    return 'Korekta indywidualna zapisana.';
+  });
+  const num = (k: 'periodYear' | 'baseDays' | 'overrideDays' | 'carriedOver') => (e: { target: { value: string } }) => setA((s) => ({ ...s, [k]: e.target.value }));
   return (
     <Section title="Pula urlopu">
-      <div style={row}>
-        <span style={list}>Pula domyślna (dni):</span>
-        <input style={{ ...field, width: 80 }} value={val} onChange={(e) => setVal(e.target.value)} />
-        <Button onClick={saveDefault}>Zapisz</Button>
+      <div style={{ ...row, alignItems: 'flex-end' }}>
+        <Field label="Pula domyślna — dni dla wszystkich" width={230}>
+          <input style={field} type="number" min={0} inputMode="numeric" value={val} onChange={(e) => setVal(e.target.value)} />
+        </Field>
+        <Button onClick={saveDefault} disabled={busy}>{busy ? 'Zapisywanie…' : 'Zapisz'}</Button>
       </div>
-      <div style={{ ...row, marginTop: 14 }}>
-        <span style={list}>Korekta indywidualna:</span>
-        <select style={field} value={a.employeeId} onChange={(e) => setA((s) => ({ ...s, employeeId: e.target.value }))}>
-          <option value="">— pracownik —</option>
-          {emps.map((e) => <option key={e.id} value={e.id}>{e.firstName} {e.lastName}</option>)}
-        </select>
-        <input style={{ ...field, width: 70 }} value={a.periodYear} onChange={(e) => setA((s) => ({ ...s, periodYear: e.target.value }))} title="rok" />
-        <input style={{ ...field, width: 70 }} value={a.baseDays} onChange={(e) => setA((s) => ({ ...s, baseDays: e.target.value }))} title="pula" />
-        <input style={{ ...field, width: 90 }} placeholder="override" value={a.overrideDays} onChange={(e) => setA((s) => ({ ...s, overrideDays: e.target.value }))} />
-        <input style={{ ...field, width: 80 }} value={a.carriedOver} onChange={(e) => setA((s) => ({ ...s, carriedOver: e.target.value }))} title="zaległe" />
-        <Button onClick={saveAllow} disabled={!a.employeeId}>Zapisz</Button>
+      <div style={{ ...row, marginTop: 18, alignItems: 'flex-end' }}>
+        <Field label="Korekta indywidualna — pracownik">
+          <select style={field} value={a.employeeId} onChange={(e) => setA((s) => ({ ...s, employeeId: e.target.value }))}>
+            <option value="">— wybierz —</option>
+            {emps.map((e) => <option key={e.id} value={e.id}>{e.firstName} {e.lastName}</option>)}
+          </select>
+        </Field>
+        <Field label="Rok" width={90}><input style={field} type="number" inputMode="numeric" value={a.periodYear} onChange={num('periodYear')} /></Field>
+        <Field label="Pula bazowa" width={100}><input style={field} type="number" min={0} inputMode="numeric" value={a.baseDays} onChange={num('baseDays')} /></Field>
+        <Field label="Nadpisanie (opcj.)" width={120}><input style={field} type="number" min={0} inputMode="numeric" value={a.overrideDays} onChange={num('overrideDays')} /></Field>
+        <Field label="Zaległe" width={100}><input style={field} type="number" min={0} inputMode="numeric" value={a.carriedOver} onChange={num('carriedOver')} /></Field>
+        <Button onClick={saveAllow} disabled={!a.employeeId || busy}>{busy ? 'Zapisywanie…' : 'Zapisz'}</Button>
       </div>
-      <Notice text={msg} />
+      <Notice {...notice} />
     </Section>
   );
 }
@@ -79,35 +99,62 @@ function Struktura() {
   const [emps, setEmps] = useState<Employee[]>([]);
   const [u, setU] = useState({ name: '', type: 'TRIBE', parentId: '' });
   const [m, setM] = useState({ employeeId: '', orgUnitId: '' });
-  const [msg, setMsg] = useState('');
+  const { notice, ok, fail, clear } = useNotice();
+  const [busy, setBusy] = useState(false);
   const load = () => api.orgUnits().then(setUnits);
   useEffect(() => { load(); api.employees().then(setEmps); }, []);
-  const addUnit = async () => { setMsg(''); try { await api.createUnit({ name: u.name, type: u.type, parentId: u.parentId || undefined }); setU({ name: '', type: 'TRIBE', parentId: '' }); load(); } catch (e) { setMsg((e as Error).message); } };
-  const addMember = async () => { setMsg(''); try { await api.addMembership(m); setMsg('Przypisano.'); } catch (e) { setMsg((e as Error).message); } };
+  const guard = async (fn: () => Promise<string>) => {
+    if (busy) return;
+    setBusy(true); clear();
+    try { ok(await fn()); } catch (e) { fail(e); } finally { setBusy(false); }
+  };
+  const addUnit = () => guard(async () => {
+    await api.createUnit({ name: u.name, type: u.type, parentId: u.parentId || undefined });
+    const name = u.name;
+    setU({ name: '', type: 'TRIBE', parentId: '' });
+    await load();
+    return `Dodano jednostkę „${name}".`;
+  });
+  const addMember = () => guard(async () => {
+    await api.addMembership(m);
+    const who = emps.find((e) => e.id === m.employeeId);
+    const where = units.find((x) => x.id === m.orgUnitId);
+    return `Przypisano ${who ? `${who.firstName} ${who.lastName}` : 'pracownika'} do jednostki ${where?.name ?? ''}.`;
+  });
   return (
     <Section title="Struktura organizacyjna">
-      {units.map((x) => <div key={x.id} style={list}><span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--muted)', marginRight: 6 }}>{x.type}</span>{x.name}</div>)}
-      <div style={{ ...row, marginTop: 12 }}>
-        <input style={field} placeholder="Nazwa jednostki" value={u.name} onChange={(e) => setU((s) => ({ ...s, name: e.target.value }))} />
-        <select style={field} value={u.type} onChange={(e) => setU((s) => ({ ...s, type: e.target.value }))}>
-          {['PION', 'DEPARTAMENT', 'TRIBE', 'CHAPTER', 'SQUAD'].map((t) => <option key={t} value={t}>{t}</option>)}
-        </select>
-        <select style={field} value={u.parentId} onChange={(e) => setU((s) => ({ ...s, parentId: e.target.value }))}>
-          <option value="">— bez nadrzędnej —</option>
-          {units.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
-        </select>
-        <Button onClick={addUnit} disabled={!u.name}>Dodaj jednostkę</Button>
+      {units.length === 0
+        ? <div style={{ ...list, color: 'var(--muted)' }}>Brak jednostek. Zacznij od pionu lub departamentu, potem dodaj jednostki podrzędne.</div>
+        : units.map((x) => <div key={x.id} style={list}><span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--muted)', marginRight: 6 }}>{x.type}</span>{x.name}</div>)}
+      <div style={{ ...row, marginTop: 12, alignItems: 'flex-end' }}>
+        <Field label="Nazwa jednostki"><input style={field} value={u.name} onChange={(e) => setU((s) => ({ ...s, name: e.target.value }))} /></Field>
+        <Field label="Typ">
+          <select style={field} value={u.type} onChange={(e) => setU((s) => ({ ...s, type: e.target.value }))}>
+            {['PION', 'DEPARTAMENT', 'TRIBE', 'CHAPTER', 'SQUAD'].map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </Field>
+        <Field label="Jednostka nadrzędna">
+          <select style={field} value={u.parentId} onChange={(e) => setU((s) => ({ ...s, parentId: e.target.value }))}>
+            <option value="">— bez nadrzędnej —</option>
+            {units.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+          </select>
+        </Field>
+        <Button onClick={addUnit} disabled={!u.name.trim() || busy}>{busy ? 'Dodawanie…' : 'Dodaj jednostkę'}</Button>
       </div>
-      <div style={{ ...row, marginTop: 10 }}>
-        <select style={field} value={m.employeeId} onChange={(e) => setM((s) => ({ ...s, employeeId: e.target.value }))}>
-          <option value="">— pracownik —</option>{emps.map((e) => <option key={e.id} value={e.id}>{e.firstName} {e.lastName}</option>)}
-        </select>
-        <select style={field} value={m.orgUnitId} onChange={(e) => setM((s) => ({ ...s, orgUnitId: e.target.value }))}>
-          <option value="">— jednostka —</option>{units.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
-        </select>
-        <Button onClick={addMember} disabled={!m.employeeId || !m.orgUnitId}>Przypisz</Button>
+      <div style={{ ...row, marginTop: 14, alignItems: 'flex-end' }}>
+        <Field label="Przypisz pracownika">
+          <select style={field} value={m.employeeId} onChange={(e) => setM((s) => ({ ...s, employeeId: e.target.value }))}>
+            <option value="">— wybierz —</option>{emps.map((e) => <option key={e.id} value={e.id}>{e.firstName} {e.lastName}</option>)}
+          </select>
+        </Field>
+        <Field label="Do jednostki" hint="Jedna osoba może należeć do kilku jednostek.">
+          <select style={field} value={m.orgUnitId} onChange={(e) => setM((s) => ({ ...s, orgUnitId: e.target.value }))}>
+            <option value="">— wybierz —</option>{units.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+          </select>
+        </Field>
+        <Button onClick={addMember} disabled={!m.employeeId || !m.orgUnitId || busy}>{busy ? 'Przypisywanie…' : 'Przypisz'}</Button>
       </div>
-      <Notice text={msg} />
+      <Notice {...notice} />
     </Section>
   );
 }
@@ -118,28 +165,53 @@ function Swieta() {
   const [hols, setHols] = useState<{ id: string; date: string; name: string }[]>([]);
   const [newCal, setNewCal] = useState('');
   const [h, setH] = useState({ date: '', name: '' });
-  const [msg, setMsg] = useState('');
+  const { notice, ok, fail, clear } = useNotice();
+  const [busy, setBusy] = useState(false);
   const loadCals = () => api.calendars().then((c) => { setCals(c); setCalId((p) => p || c[0]?.id || ''); });
   useEffect(() => { loadCals(); }, []);
   useEffect(() => { if (calId) api.holidays(calId).then(setHols); }, [calId]);
-  const addCal = async () => { try { await api.createCalendar({ name: newCal, isDefault: cals.length === 0 }); setNewCal(''); loadCals(); } catch (e) { setMsg((e as Error).message); } };
-  const addHol = async () => { try { await api.createHoliday({ calendarId: calId, date: h.date, name: h.name }); setH({ date: '', name: '' }); api.holidays(calId).then(setHols); } catch (e) { setMsg((e as Error).message); } };
+  const guard = async (fn: () => Promise<string>) => {
+    if (busy) return;
+    setBusy(true); clear();
+    try { ok(await fn()); } catch (e) { fail(e); } finally { setBusy(false); }
+  };
+  const addCal = () => guard(async () => {
+    const name = newCal;
+    await api.createCalendar({ name, isDefault: cals.length === 0 });
+    setNewCal('');
+    await loadCals();
+    return `Dodano kalendarz „${name}".`;
+  });
+  const addHol = () => guard(async () => {
+    const { date, name } = h;
+    await api.createHoliday({ calendarId: calId, date, name });
+    setH({ date: '', name: '' });
+    setHols(await api.holidays(calId));
+    return `Dodano dzień wolny: ${date} — ${name}.`;
+  });
   return (
     <Section title="Święta i dni wolne">
-      <div style={row}>
-        <select style={field} value={calId} onChange={(e) => setCalId(e.target.value)}>
-          {cals.map((c) => <option key={c.id} value={c.id}>{c.name}{c.isDefault ? ' (domyślny)' : ''}</option>)}
-        </select>
-        <input style={field} placeholder="Nowy kalendarz" value={newCal} onChange={(e) => setNewCal(e.target.value)} />
-        <Button variant="secondary" onClick={addCal} disabled={!newCal}>Dodaj kalendarz</Button>
+      <div style={{ ...row, alignItems: 'flex-end' }}>
+        <Field label="Kalendarz" hint="Dni z tego kalendarza nie są naliczane przy wpisach.">
+          <select style={field} value={calId} onChange={(e) => setCalId(e.target.value)} disabled={cals.length === 0}>
+            {cals.length === 0 && <option value="">— brak kalendarzy —</option>}
+            {cals.map((c) => <option key={c.id} value={c.id}>{c.name}{c.isDefault ? ' (domyślny)' : ''}</option>)}
+          </select>
+        </Field>
+        <Field label="Nowy kalendarz"><input style={field} value={newCal} onChange={(e) => setNewCal(e.target.value)} /></Field>
+        <Button variant="secondary" onClick={addCal} disabled={!newCal.trim() || busy}>Dodaj kalendarz</Button>
       </div>
-      <div style={{ marginTop: 10 }}>{hols.map((x) => <span key={x.id} style={{ fontFamily: 'var(--font-mono)', fontSize: 12, marginRight: 10, color: 'var(--ink-2)' }}>{x.date.slice(0, 10)} {x.name}</span>)}</div>
-      <div style={{ ...row, marginTop: 10 }}>
-        <input style={field} type="date" value={h.date} onChange={(e) => setH((s) => ({ ...s, date: e.target.value }))} />
-        <input style={field} placeholder="Nazwa święta" value={h.name} onChange={(e) => setH((s) => ({ ...s, name: e.target.value }))} />
-        <Button onClick={addHol} disabled={!h.date || !h.name || !calId}>Dodaj dzień wolny</Button>
+      <div style={{ marginTop: 12, fontFamily: 'var(--font-sans)', fontSize: 13, color: 'var(--muted)' }}>
+        {!calId ? 'Najpierw dodaj kalendarz.'
+          : hols.length === 0 ? 'Ten kalendarz nie ma jeszcze dni wolnych — weekendy i tak są pomijane.'
+            : hols.map((x) => <span key={x.id} style={{ fontFamily: 'var(--font-mono)', fontSize: 12, marginRight: 10, color: 'var(--ink-2)' }}>{x.date.slice(0, 10)} {x.name}</span>)}
       </div>
-      <Notice text={msg} />
+      <div style={{ ...row, marginTop: 12, alignItems: 'flex-end' }}>
+        <Field label="Data" width={170}><input style={field} type="date" value={h.date} onChange={(e) => setH((s) => ({ ...s, date: e.target.value }))} /></Field>
+        <Field label="Nazwa dnia wolnego"><input style={field} value={h.name} onChange={(e) => setH((s) => ({ ...s, name: e.target.value }))} /></Field>
+        <Button onClick={addHol} disabled={!h.date || !h.name.trim() || !calId || busy}>Dodaj dzień wolny</Button>
+      </div>
+      <Notice {...notice} />
     </Section>
   );
 }
@@ -148,50 +220,82 @@ function Sprinty() {
   const [sprints, setSprints] = useState<Sprint[]>([]);
   const [squads, setSquads] = useState<OrgUnit[]>([]);
   const [f, setF] = useState({ name: '', dateFrom: '', dateTo: '', squadId: '' });
-  const [msg, setMsg] = useState('');
+  const { notice, ok, fail, clear } = useNotice();
+  const [busy, setBusy] = useState(false);
   const [colMap, setColMap] = useState<Record<string, string>>(sprintColDefaults);
   const fileRef = useRef<HTMLInputElement>(null);
   const load = () => api.sprints().then(setSprints);
   useEffect(() => { load(); api.orgUnits().then((u) => setSquads(u.filter((x) => x.type === 'SQUAD'))); }, []);
-  const add = async () => { try { await api.createSprint({ ...f, squadId: f.squadId || undefined }); setF({ name: '', dateFrom: '', dateTo: '', squadId: '' }); load(); } catch (e) { setMsg((e as Error).message); } };
-  const imp = async (file?: File) => { if (!file) return; try { const r = await api.importSprints(file, colMap); setMsg(`Import: utworzono ${r.created}, błędy: ${r.errors.length}`); load(); } catch (e) { setMsg((e as Error).message); } };
+  const guard = async (fn: () => Promise<string>) => {
+    if (busy) return;
+    setBusy(true); clear();
+    try { ok(await fn()); } catch (e) { fail(e); } finally { setBusy(false); }
+  };
+  // Odwrócony zakres dat przechodziłby do bazy i psuł capacity — łapiemy go przed zapisem.
+  const badRange = !!f.dateFrom && !!f.dateTo && f.dateTo < f.dateFrom;
+  const add = () => guard(async () => {
+    const name = f.name;
+    await api.createSprint({ ...f, squadId: f.squadId || undefined });
+    setF({ name: '', dateFrom: '', dateTo: '', squadId: '' });
+    await load();
+    return `Dodano sprint „${name}".`;
+  });
+  const imp = (file?: File) => {
+    if (!file) return;
+    void guard(async () => {
+      const r = await api.importSprints(file, colMap);
+      await load();
+      return `Import: utworzono ${r.created}, błędy: ${r.errors.length}`;
+    });
+  };
   return (
     <Section title="Sprinty">
-      {sprints.map((s) => <div key={s.id} style={list}>{s.name} <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--muted)' }}>{s.dateFrom.slice(0, 10)} – {s.dateTo.slice(0, 10)}</span></div>)}
-      <div style={{ ...row, marginTop: 12 }}>
-        <input style={field} placeholder="Nazwa" value={f.name} onChange={(e) => setF((s) => ({ ...s, name: e.target.value }))} />
-        <input style={field} type="date" value={f.dateFrom} onChange={(e) => setF((s) => ({ ...s, dateFrom: e.target.value }))} />
-        <input style={field} type="date" value={f.dateTo} onChange={(e) => setF((s) => ({ ...s, dateTo: e.target.value }))} />
-        <select style={field} value={f.squadId} onChange={(e) => setF((s) => ({ ...s, squadId: e.target.value }))}>
-          <option value="">— squad —</option>{squads.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
-        </select>
-        <Button onClick={add} disabled={!f.name || !f.dateFrom || !f.dateTo}>Dodaj</Button>
+      {sprints.length === 0
+        ? <div style={{ ...list, color: 'var(--muted)' }}>Brak sprintów. Bez nich capacity i heatmapa nie mają na czym się oprzeć.</div>
+        : sprints.map((s) => <div key={s.id} style={list}>{s.name} <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--muted)' }}>{s.dateFrom.slice(0, 10)} – {s.dateTo.slice(0, 10)}</span></div>)}
+      <div style={{ ...row, marginTop: 12, alignItems: 'flex-end' }}>
+        <Field label="Nazwa"><input style={field} value={f.name} onChange={(e) => setF((s) => ({ ...s, name: e.target.value }))} /></Field>
+        <Field label="Od" width={170}><input style={field} type="date" value={f.dateFrom} onChange={(e) => setF((s) => ({ ...s, dateFrom: e.target.value }))} /></Field>
+        <Field label="Do" width={170} hint={badRange ? undefined : ' '}>
+          <input style={field} type="date" min={f.dateFrom || undefined} value={f.dateTo} aria-invalid={badRange || undefined}
+            onChange={(e) => setF((s) => ({ ...s, dateTo: e.target.value }))} />
+        </Field>
+        <Field label="Squad">
+          <select style={field} value={f.squadId} onChange={(e) => setF((s) => ({ ...s, squadId: e.target.value }))}>
+            <option value="">— wszystkie —</option>{squads.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+          </select>
+        </Field>
+        <Button onClick={add} disabled={!f.name.trim() || !f.dateFrom || !f.dateTo || badRange || busy}>{busy ? 'Dodawanie…' : 'Dodaj'}</Button>
       </div>
+      {badRange && <Notice text={'Data „do" jest wcześniejsza niż „od". Popraw zakres, żeby zapisać sprint.'} tone="error" />}
       <input ref={fileRef} type="file" accept=".xlsx" style={{ display: 'none' }} onChange={(e) => { imp(e.target.files?.[0]); if (fileRef.current) fileRef.current.value = ''; }} />
       <div style={{ marginTop: 12 }}>
         <div style={{ fontFamily: 'var(--font-sans)', fontSize: 12.5, color: 'var(--ink-2)', marginBottom: 6 }}>Mapowanie kolumn .xlsx (dopasuj do nagłówków w pliku):</div>
         <ColumnMap fields={SPRINT_COLS} value={colMap} onChange={setColMap} />
-        <Button variant="secondary" onClick={() => fileRef.current?.click()}>Importuj z .xlsx</Button>
+        <Button variant="secondary" onClick={() => fileRef.current?.click()} disabled={busy}>{busy ? 'Import w toku…' : 'Importuj z .xlsx'}</Button>
       </div>
-      <Notice text={msg} />
+      <Notice {...notice} />
     </Section>
   );
 }
 
 function Przypomnienia() {
-  const [msg, setMsg] = useState('');
+  const { notice, ok, info, fail } = useNotice();
+  const [busy, setBusy] = useState(false);
   const send = async () => {
-    setMsg('Wysyłanie…');
-    try { const r = await api.sendReminders(); setMsg(`Wysłano przypomnienia: ${r.sent}.`); }
-    catch (e) { setMsg((e as Error).message); }
+    if (busy) return;
+    setBusy(true);
+    info('Wysyłanie…');
+    try { const r = await api.sendReminders(); ok(`Wysłano przypomnienia: ${r.sent} ${plural(r.sent, ['wiadomość', 'wiadomości', 'wiadomości'])}.`); }
+    catch (e) { fail(e); } finally { setBusy(false); }
   };
   return (
     <Section title="Przypomnienia o zaległym urlopie">
       <p style={{ fontFamily: 'var(--font-sans)', fontSize: 13.5, color: 'var(--ink-2)', marginBottom: 10 }}>
         Wyślij e-mail do osób z zaległym urlopem. Docelowo uruchamiane harmonogramem (cron).
       </p>
-      <Button onClick={send}>Wyślij przypomnienia</Button>
-      <Notice text={msg} />
+      <Button onClick={send} disabled={busy}>{busy ? 'Wysyłanie…' : 'Wyślij przypomnienia'}</Button>
+      <Notice {...notice} />
     </Section>
   );
 }
@@ -200,17 +304,22 @@ function Przypomnienia() {
 function Reguly() {
   const [items, setItems] = useState<AdminSetting[]>([]);
   const [draft, setDraft] = useState<Record<string, string>>({});
-  const [msg, setMsg] = useState('');
+  const { notice, ok, fail, clear } = useNotice();
+  const [savingKey, setSavingKey] = useState('');
   const load = () => api.settings().then((s) => {
     setItems(s);
     setDraft(Object.fromEntries(s.map((x) => [x.key, String(x.value)])));
   }).catch(() => {});
   useEffect(() => { load(); }, []);
 
-  const save = async (key: string) => {
-    setMsg('Zapisywanie…');
-    try { const r = await api.setSetting(key, Number(draft[key])); setMsg(`Zapisano: ${key} = ${r.value}.`); load(); }
-    catch (e) { setMsg((e as Error).message); }
+  const save = async (key: string, label: string) => {
+    if (savingKey) return;
+    const n = Number(draft[key]);
+    clear();
+    if (!Number.isFinite(n) || n < 0) { fail(new Error(`„${label}" musi być liczbą nieujemną.`)); return; }
+    setSavingKey(key);
+    try { const r = await api.setSetting(key, n); ok(`Zapisano „${label}": ${r.value}.`); await load(); }
+    catch (e) { fail(e); } finally { setSavingKey(''); }
   };
 
   return (
@@ -218,6 +327,7 @@ function Reguly() {
       <p style={{ fontFamily: 'var(--font-sans)', fontSize: 13.5, color: 'var(--ink-2)', marginBottom: 12 }}>
         Progi sterujące przypomnieniami, raportem zalegania i retencją. Zmiana obowiązuje od razu.
       </p>
+      {items.length === 0 && <div style={{ ...list, color: 'var(--muted)' }}>Wczytywanie reguł…</div>}
       {items.map((s) => (
         <div key={s.key} style={{ display: 'grid', gridTemplateColumns: '1fr 110px auto', gap: 10, alignItems: 'center', padding: '10px 0', borderTop: '1px solid var(--border)' }}>
           <div>
@@ -225,32 +335,48 @@ function Reguly() {
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--muted)' }}>{s.key} · {s.ref}</div>
           </div>
           <input
-            type="number" min={0} style={field} value={draft[s.key] ?? ''} aria-label={s.label}
+            type="number" min={0} inputMode="numeric" style={field} value={draft[s.key] ?? ''} aria-label={s.label}
             onChange={(e) => setDraft({ ...draft, [s.key]: e.target.value })}
           />
-          <Button variant="secondary" onClick={() => save(s.key)}>Zapisz</Button>
+          <Button variant="secondary" onClick={() => save(s.key, s.label)} disabled={savingKey === s.key}>
+            {savingKey === s.key ? 'Zapisywanie…' : 'Zapisz'}
+          </Button>
         </div>
       ))}
-      <Notice text={msg} />
+      <Notice {...notice} />
     </Section>
   );
 }
 
 function Retencja() {
-  const [msg, setMsg] = useState('');
+  const { notice, ok, fail, clear } = useNotice();
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
   const run = async () => {
-    if (!window.confirm('Uruchomić retencję? Byli pracownicy po okresie przechowywania zostaną zanonimizowani.')) return;
-    setMsg('Przetwarzanie…');
-    try { const r = await api.runRetention(); setMsg(`Zanonimizowano: ${r.anonymized} (okres ${r.months} mies.).`); }
-    catch (e) { setMsg((e as Error).message); }
+    setBusy(true); clear();
+    try {
+      const r = await api.runRetention();
+      setConfirming(false);
+      ok(r.anonymized === 0
+        ? `Brak osób do anonimizacji (okres przechowywania: ${r.months} mies.).`
+        : `Zanonimizowano ${r.anonymized} ${plural(r.anonymized, ['osobę', 'osoby', 'osób'])} (okres ${r.months} mies.).`);
+    } catch (e) { fail(e); } finally { setBusy(false); }
   };
   return (
     <Section title="Retencja danych (RODO)">
       <p style={{ fontFamily: 'var(--font-sans)', fontSize: 13.5, color: 'var(--ink-2)', marginBottom: 10 }}>
         Anonimizuje dane byłych pracowników po okresie przechowywania (domyślnie 24 mies.). Docelowo uruchamiane harmonogramem (cron).
       </p>
-      <Button variant="secondary" onClick={run}>Uruchom retencję</Button>
-      <Notice text={msg} />
+      <Button variant="secondary" onClick={() => setConfirming(true)}>Uruchom retencję</Button>
+      <Notice {...notice} />
+      <ConfirmDialog open={confirming} title="Uruchomić retencję danych?" confirmLabel="Uruchom retencję"
+        confirmPhrase="RETENCJA" danger busy={busy} onConfirm={run} onCancel={() => setConfirming(false)}>
+        <p style={{ margin: 0 }}>
+          Dane osobowe wszystkich byłych pracowników, u których minął okres przechowywania, zostaną trwale
+          zastąpione wartościami anonimowymi. Operacja obejmuje wiele osób naraz.
+        </p>
+        <p style={{ margin: '10px 0 0', color: 'var(--danger)' }}><b>Operacji nie da się cofnąć.</b></p>
+      </ConfirmDialog>
     </Section>
   );
 }
