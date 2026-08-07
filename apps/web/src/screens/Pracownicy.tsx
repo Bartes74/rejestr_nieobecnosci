@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronDown, Plus, Search, Upload } from 'lucide-react';
+import { Plus, Search, Upload } from 'lucide-react';
 import { api, type Employee, type OrgUnit } from '../api';
 import { useAuth } from '../current-employee';
 import { ColumnMap, ConfirmDialog, Field, Notice, PasswordDialog, field, useNotice } from '../admin/ui';
@@ -40,11 +40,12 @@ function Tree({ nodes, depth = 0 }: { nodes: TreeNode[]; depth?: number }) {
         return (
           <div key={n.id}>
             <div style={{
-              display: 'flex', alignItems: 'center', gap: 7, padding: `6px 8px 6px ${8 + depth * 16}px`, borderRadius: 7,
+              display: 'flex', alignItems: 'center', gap: 7, padding: `6px 8px 6px ${8 + depth * 16}px`, borderRadius: 'var(--radius-sm)',
               fontFamily: 'var(--font-sans)', fontSize: 13, fontWeight: isTribe ? 600 : 400,
               color: isTribe ? 'var(--brand)' : 'var(--ink-2)', background: isTribe ? 'var(--brand-tint)' : 'transparent',
             }}>
-              {n.children && n.children.length > 0 && <ChevronDown size={13} color={isTribe ? 'var(--brand)' : 'var(--muted)'} style={{ flex: 'none' }} />}
+              {/* Był tu chevron na węzłach z dziećmi — obiecywał zwijanie, którego drzewo nie ma.
+                  Hierarchię niesie wcięcie i etykieta typu; strzałka tylko kusiła do kliknięcia. */}
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9.5, letterSpacing: '.04em', color: isTribe ? 'var(--brand)' : 'var(--muted)' }}>{n.type}</span>
               {n.name}
             </div>
@@ -73,7 +74,10 @@ export function Pracownicy() {
   const [anonFor, setAnonFor] = useState<Employee | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const load = () => api.employees().then(setRows).catch(() => {});
+  // Bez tego pusta tabela mówiła „Brak pracowników. Dodaj pierwszą osobę…" administratorowi,
+  // który ma ich trzystu — zanim lista zdążyła przyjść.
+  const [loaded, setLoaded] = useState(false);
+  const load = () => api.employees().then(setRows).catch(() => {}).finally(() => setLoaded(true));
   useEffect(() => { load(); api.orgTree().then((t) => setTree(t as TreeNode[])).catch(() => setTree([])); }, []);
 
   const filtered = useMemo(() => {
@@ -139,14 +143,14 @@ export function Pracownicy() {
     });
   };
 
-  const toolBtn = { display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', fontFamily: 'var(--font-sans)', fontWeight: 600, fontSize: 13, padding: '9px 14px', borderRadius: 9 } as const;
+  const toolBtn = { display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', fontFamily: 'var(--font-sans)', fontWeight: 600, fontSize: 13, padding: '9px 14px', borderRadius: 'var(--radius-md)' } as const;
 
   return (
-    <div style={{ maxWidth: 1200, animation: 'fu .2s ease' }}>
+    <div style={{ maxWidth: 1200 }}>
       <div style={{ display: 'grid', gridTemplateColumns: '268px 1fr', gap: 18, alignItems: 'start' }}>
         {/* DRZEWO ORGANIZACJI */}
         <div style={{ ...card, padding: 18 }}>
-          <div style={{ fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 13.5, color: 'var(--ink)', marginBottom: 14 }}>Struktura organizacyjna</div>
+          <h2 style={{ fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 13.5, color: 'var(--ink)', margin: '0 0 14px' }}>Struktura organizacyjna</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {tree.length === 0 ? <div style={{ fontFamily: 'var(--font-sans)', fontSize: 12.5, color: 'var(--muted)' }}>Brak jednostek.</div> : <Tree nodes={tree} />}
           </div>
@@ -155,10 +159,17 @@ export function Pracownicy() {
         {/* PRACOWNICY */}
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 9, border: '1px solid var(--border)', borderRadius: 9, padding: '9px 12px', background: 'var(--surface)' }}>
-              <Search size={15} color="var(--muted)" style={{ flex: 'none' }} />
+            {/* `border-2`, nie `border`: to jedyna granica pola na białym tle, więc obowiązuje
+                próg 3:1 (WCAG 1.4.11) — włoskowate `--border` dawało tu 1,2:1.
+                `.ds-field` niesie pierścień fokusu, którego to pole jako jedyne w aplikacji nie miało:
+                `outline: none` w atrybucie `style` bije regułę `:focus-visible` z arkusza. */}
+            {/* `label`, nie `div`: samo pole tekstowe ma 16 px wysokości, więc celem wskaźnika
+                była wąska linijka w środku ramki. Etykieta oddaje fokus kontrolce natywnie,
+                przez co klikalna jest cała ramka (35 px) — bez ani jednej linii JavaScriptu. */}
+            <label className="ds-field" style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 9, border: '1px solid var(--border-2)', borderRadius: 'var(--radius-md)', padding: '9px 12px', background: 'var(--surface)' }}>
+              <Search size={15} color="var(--muted)" style={{ flex: 'none' }} aria-hidden="true" />
               <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Szukaj pracownika…" aria-label="Szukaj pracownika" style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', color: 'var(--ink)', fontFamily: 'var(--font-sans)', fontSize: 13, minWidth: 0 }} />
-            </div>
+            </label>
             {isAdmin && <>
               <button type="button" onClick={() => { setShowImport((v) => !v); setShowAdd(false); }} style={{ ...toolBtn, border: '1px solid var(--border-2)', background: 'var(--surface)', color: 'var(--ink-2)' }}><Upload size={15} /> Import .xlsx</button>
               <button type="button" onClick={() => { setShowAdd((v) => !v); setShowImport(false); }} style={{ ...toolBtn, border: 'none', background: 'var(--brand)', color: 'var(--on-brand)', fontWeight: 700 }}><Plus size={15} /> Dodaj</button>
@@ -204,8 +215,8 @@ export function Pracownicy() {
               komórkę z nagłówkiem — bez nich czytnik ekranu czyta ciąg wartości bez kontekstu. */}
           <div role="table" aria-label="Pracownicy" aria-rowcount={filtered.length + 1}
             style={cardClipped}>
-            <div role="row" style={{ display: 'grid', gridTemplateColumns: COLS, padding: '11px 20px', background: 'var(--surface-2)', borderBottom: '1px solid var(--border)', fontFamily: 'var(--font-mono)', fontSize: 10.5, fontWeight: 700, color: 'var(--muted)', letterSpacing: '.04em' }}>
-              <div role="columnheader">PRACOWNIK</div><div role="columnheader">FORMA</div><div role="columnheader">ROLA</div><div role="columnheader">UPRAWNIENIA</div><div role="columnheader">AKCJE</div>
+            <div role="row" style={{ display: 'grid', gridTemplateColumns: COLS, padding: '11px 20px', background: 'var(--surface-2)', borderBottom: '1px solid var(--border)', fontFamily: 'var(--font-mono)', fontSize: 10.5, fontWeight: 700, color: 'var(--muted)', letterSpacing: '.04em', textTransform: 'uppercase' }}>
+              <div role="columnheader">Pracownik</div><div role="columnheader">Forma</div><div role="columnheader">Rola</div><div role="columnheader">Uprawnienia</div><div role="columnheader">Akcje</div>
             </div>
             {filtered.map((e, i) => {
               const av = AVATARS[i % AVATARS.length]!;
@@ -230,8 +241,10 @@ export function Pracownicy() {
                   </div>
                   <div role="cell" style={{ display: 'flex', gap: 4 }}>
                     {isAdmin && SCOPES.map(([scope, label]) => (
+                      // Cel wskaźnika miał 31 × 22 px — poniżej minimum 24 × 24 (WCAG 2.5.8),
+                      // a to przełącznik nadający uprawnienie do danych o zdrowiu.
                       <button key={scope} type="button" disabled={busy} onClick={() => togglePerm(e, scope)} aria-pressed={has(e, scope)} aria-label={`${has(e, scope) ? 'Odbierz' : 'Nadaj'} uprawnienie ${scope} — ${nameOf(e)}`} style={{
-                        fontFamily: 'var(--font-mono)', fontSize: 11, padding: '3px 8px', borderRadius: 12, cursor: busy ? 'not-allowed' : 'pointer',
+                        fontFamily: 'var(--font-mono)', fontSize: 11, padding: '5px 9px', minHeight: 24, borderRadius: 'var(--radius-md)', cursor: busy ? 'not-allowed' : 'pointer',
                         border: `1px solid ${has(e, scope) ? 'var(--brand)' : 'var(--border-2)'}`,
                         background: has(e, scope) ? 'var(--brand-tint)' : 'transparent', color: has(e, scope) ? 'var(--brand)' : 'var(--muted)',
                       }}>{label}</button>
@@ -246,7 +259,8 @@ export function Pracownicy() {
                 </div>
               );
             })}
-            {filtered.length === 0 && (
+            {!loaded && <div role="row"><div role="cell" style={{ padding: 20, fontFamily: 'var(--font-sans)', fontSize: 13.5, color: 'var(--muted)' }}>Wczytywanie listy pracowników…</div></div>}
+            {loaded && filtered.length === 0 && (
               <div role="row"><div role="cell" style={{ padding: 20, fontFamily: 'var(--font-sans)', fontSize: 13.5, color: 'var(--muted)' }}>
                 {rows.length === 0 ? 'Brak pracowników. Dodaj pierwszą osobę albo zaimportuj listę z pliku .xlsx.' : `Brak wyników dla „${query.trim()}". Zmień frazę lub wyczyść pole wyszukiwania.`}
               </div></div>

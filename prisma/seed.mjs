@@ -29,11 +29,15 @@ async function main() {
     update: {},
   });
 
-  for (const t of [
-    { name: 'Urlop wypoczynkowy' },
-    { name: 'Urlop na żądanie' },
-    { name: 'L4', affectsPool: false, specialCategory: true },
-  ]) {
+  // Kolejność listy bierze się z `sortOrder`, nie z alfabetu — stąd jawne numery zamiast
+  // polegania na pozycji w tablicy. Urlop wypoczynkowy pierwszy, bo to on jest domyślnym
+  // wyborem w formularzu wpisu; L4 na końcu, bo nie planuje się choroby z wyprzedzeniem.
+  const TYPES = [
+    { name: 'Urlop wypoczynkowy', sortOrder: 0 },
+    { name: 'Urlop na żądanie', sortOrder: 1 },
+    { name: 'L4', affectsPool: false, specialCategory: true, sortOrder: 2 },
+  ];
+  for (const t of TYPES) {
     if (!(await prisma.absenceType.findFirst({ where: { name: t.name } }))) {
       await prisma.absenceType.create({ data: t });
     }

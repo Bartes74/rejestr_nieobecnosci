@@ -6,8 +6,10 @@ import { panel } from '../design-system/surfaces';
 
 const inputWrap = {
   display: 'flex', alignItems: 'center', gap: 10, border: '1px solid var(--border-2)', background: 'var(--surface)',
-  borderRadius: 10, padding: '12px 14px', marginBottom: 16,
+  borderRadius: 'var(--radius-md)', padding: '12px 14px', marginBottom: 16,
 } as const;
+// `outline: none` zostaje na samym <input>, bo pierścień fokusu należy się ramce (.ds-field),
+// a nie kontrolce schowanej w jej środku — inaczej obwódka rysuje się wewnątrz obramowania.
 const inputEl = {
   flex: 1, border: 'none', outline: 'none', background: 'transparent', color: 'var(--ink)',
   fontFamily: 'var(--font-sans)', fontSize: 14, minWidth: 0,
@@ -70,24 +72,24 @@ export function Login() {
           <p style={{ fontFamily: 'var(--font-sans)', color: 'var(--muted)', fontSize: 14, margin: '0 0 30px' }}>Użyj konta służbowego, aby kontynuować.</p>
 
           <label htmlFor="login" style={labelEl}>Login</label>
-          <div style={inputWrap}>
+          <div className="ds-field" style={inputWrap}>
             <User size={17} color="var(--muted)" style={{ flex: 'none' }} aria-hidden="true" />
             <input id="login" style={inputEl} value={l} onChange={(e) => setL(e.target.value)} autoComplete="username"
               placeholder="np. anna" required aria-invalid={!!err || undefined} aria-describedby={err ? 'login-error' : undefined} />
           </div>
 
           <label htmlFor="haslo" style={labelEl}>Hasło</label>
-          <div style={{ ...inputWrap, marginBottom: 22 }}>
+          <div className="ds-field" style={{ ...inputWrap, marginBottom: 22 }}>
             <Lock size={17} color="var(--muted)" style={{ flex: 'none' }} aria-hidden="true" />
             <input id="haslo" type="password" style={inputEl} value={p} onChange={(e) => setP(e.target.value)} autoComplete="current-password"
               placeholder="••••••••" required aria-invalid={!!err || undefined} aria-describedby={err ? 'login-error' : undefined} />
           </div>
 
           <div id="login-error" role="alert" aria-live="assertive">
-            {err && <div style={{ marginBottom: 14, padding: '9px 12px', borderRadius: 10, background: 'var(--danger-tint)', border: '1px solid var(--danger)', color: 'var(--danger)', fontFamily: 'var(--font-sans)', fontSize: 13, lineHeight: 1.45 }}>{err}</div>}
+            {err && <div style={{ marginBottom: 14, padding: '9px 12px', borderRadius: 'var(--radius-md)', background: 'var(--danger-tint)', border: '1px solid var(--danger)', color: 'var(--danger)', fontFamily: 'var(--font-sans)', fontSize: 13, lineHeight: 1.45 }}>{err}</div>}
           </div>
 
-          <button type="submit" disabled={busy || !l.trim() || !p} style={{ width: '100%', border: 'none', cursor: busy || !l.trim() || !p ? 'not-allowed' : 'pointer', background: 'var(--brand)', color: 'var(--on-brand)', fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 14.5, padding: 13, borderRadius: 10, boxShadow: 'var(--shadow-sm)', opacity: busy || !l.trim() || !p ? 0.7 : 1 }}>
+          <button type="submit" className="ds-primary" disabled={busy || !l.trim() || !p} style={{ width: '100%', border: 'none', cursor: busy || !l.trim() || !p ? 'not-allowed' : 'pointer', background: 'var(--brand)', color: 'var(--on-brand)', fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 14.5, padding: 13, borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-sm)', opacity: busy || !l.trim() || !p ? 0.7 : 1 }}>
             {busy ? 'Logowanie…' : 'Zaloguj się'}
           </button>
 

@@ -71,20 +71,6 @@ rounded:
   md: "10px"
   lg: "14px"
   xl: "16px"
-spacing:
-  "1": "4px"
-  "2": "6px"
-  "3": "8px"
-  "4": "10px"
-  "5": "12px"
-  "6": "14px"
-  "7": "16px"
-  "8": "18px"
-  "9": "20px"
-  "10": "22px"
-  "12": "24px"
-  "14": "28px"
-  "16": "30px"
 components:
   button-primary:
     backgroundColor: "{colors.brand}"
@@ -258,13 +244,15 @@ Skala pośrednia: 11 / 12,5 / 13,5 / 14,5 / 16 / 19 / 23 / 34 / 58 px. Wartości
 
 Powłoka aplikacji jest stała: sidebar 250 px (nierozciągliwy, `position: sticky`, pełna wysokość), topbar 64 px (przyklejony, `z-index` 5), obszar treści przewijany z paddingiem 28–30 px i dolnym zapasem 60 px. Treść dociąga do 1180 px na ekranach szerokich (1080 px tam, gdzie kolumna jest jedna); powyżej tej szerokości rośnie margines, nie kolumny.
 
-Rytm opiera się na siatce 4 px (skala `spacing.1`–`spacing.16`, od 4 do 30 px). Odstępy realizuje `gap` w flexie i gridzie, nie marginesy — to reguła, dzięki której usunięcie elementu nie zostawia dziury. Karty mają 20–24 px wewnętrznego oddechu, panele wewnętrzne 16–18 px, wiersze tabel 12–15 px w pionie i 16–20 px w poziomie.
+Rytm opiera się na siatce 4 px: każdy odstęp jest wielokrotnością czwórki, z dopuszczonym krokiem 6 px tam, gdzie 4 jest za ciasne, a 8 za luźne. Odstępy realizuje `gap` w flexie i gridzie, nie marginesy — to reguła, dzięki której usunięcie elementu nie zostawia dziury. Karty mają 20–24 px wewnętrznego oddechu, panele wewnętrzne 16–18 px, wiersze tabel 12–15 px w pionie i 16–20 px w poziomie.
+
+Siatka jest **regułą przeglądu, nie zmienną CSS**. Skala `--space-*` istniała w arkuszu przez cały czas życia projektu i nie miała ani jednego konsumenta — odstępy w tych ekranach są liczbami w atrybucie `style` i takie zostają. Token, po który nikt nie sięga, nie opisuje systemu, tylko obiecuje coś, czego kod nie robi; został usunięty (2026-08-07). Promienie (`--radius-*`) są odwrotnym przypadkiem: mają realnych konsumentów i obowiązują jako tokeny.
 
 Układy dwukolumnowe używają proporcji ważonych, nie równych: 1,35 fr / 1 fr na pulpicie (balans dominuje nad przypomnieniami), 1,25 fr / 0,95 fr przy nowym wpisie (formularz nad podglądem), 268 px / 1 fr w administracji (drzewo organizacji jest wąskie i stałe). Kafle capacity układają się w `auto-fill` z minimum 280 px.
 
 Aplikacja jest **desktop-only** — decyzja produktowa, nie przeoczenie. W systemie istnieje jeden breakpoint (860 px) i służy wyłącznie ukryciu panelu marki na ekranie logowania, który jako jedyna powierzchnia działa na wąskim ekranie. Nowe prace nie muszą projektować układów mobilnych, ale nie wolno im też dodawać sztywnych szerokości poza wymienionymi: jeśli coś może być elastyczne bez kosztu, ma być.
 
-**Uwaga o adopcji:** skala `spacing` jest zadeklarowana, ale w kodzie produktu jeszcze niewykorzystana — wartości są dziś wpisane liczbowo w stylach. Nowy kod ma sięgać po tokeny; to nie jest opis stanu, tylko cel.
+**Uwaga o adopcji:** w warstwie tokenów nie ma już deklaracji bez konsumenta. `--control-h` (minimalny cel dotykowy) został usunięty razem ze skalą odstępów — aplikacja jest desktop-only, więc czekał na konsumenta, którego nie miało być. Minimalny rozmiar celu wskaźnika obowiązuje jako reguła przeglądu: **24 × 24 px** (WCAG 2.5.8), egzekwowane przy okazji audytu, nie zmienną CSS.
 
 ### Named Rules
 
@@ -346,7 +334,7 @@ Charakter całej rodziny: **precyzyjne i powściągliwe**. Krawędzie robią rob
 
 ### Coverage heatmap (signature)
 
-Siatka kafli 40 px wysokości, promień 8 px, odstęp 6 px, pierwsza kolumna 150 px na nazwę squadu, kolumny sprintów `minmax(46px, 1fr)`. Każdy kafel niesie własną wartość procentową w monospace 10,5 px w wadze 700, w kolorze `heat-N-ink` dobranym do wypełnienia. Kafle bez danych są neutralne (`surface-3`, znak „–"), nie zerowe — brak pomiaru nie jest tym samym co brak nieobecności. Kafel ≥ 50% dostaje wewnętrzny pierścień `heat-5-ring`. Pod siatką stoi legenda: gradient 170 × 11 px od `heat-1` do `heat-5` podpisany „Spokojnie / Wymaga uwagi" oraz próbka kafla wysokiego ryzyka.
+Siatka kafli 40 px wysokości, promień `rounded.sm` (7 px), odstęp 6 px, pierwsza kolumna 150 px na nazwę squadu, kolumny sprintów `minmax(46px, 1fr)`. Kafle nosiły wcześniej 8 px — piąty stopień promienia, którego reguła zaokrąglonego kwadratu nie przewiduje; przy 40 px wysokości różnica jest niewidoczna, a skala zostaje czterostopniowa. Siatka jest tabelą i przedstawia się rolami `table`/`row`/`columnheader`/`rowheader`/`cell`; nagłówek kolumny niesie widoczny skrót („S13") i pełną nazwę sprintu dla czytnika ekranu, kafel bez danych mówi „brak danych", kafel wysokiego ryzyka — „wysokie ryzyko", bo pierścień jest sygnałem czysto wizualnym. Każdy kafel niesie własną wartość procentową w monospace 10,5 px w wadze 700, w kolorze `heat-N-ink` dobranym do wypełnienia. Kafle bez danych są neutralne (`surface-3`, znak „–"), nie zerowe — brak pomiaru nie jest tym samym co brak nieobecności. Kafel ≥ 50% dostaje wewnętrzny pierścień `heat-5-ring`. Pod siatką stoi legenda: gradient 170 × 11 px od `heat-1` do `heat-5` podpisany „Spokojnie / Wymaga uwagi" oraz próbka kafla wysokiego ryzyka.
 
 ### Balance counter (signature)
 
@@ -361,7 +349,7 @@ Etykieta 13 px, liczba w rozmiarze display, mianownik („/ 26 dni") 16 px w `mu
 - **Do** budować głębię tonalnie (`canvas` → `surface` → `surface-2/3`) i włoskowatą linią 1 px, zanim sięgniesz po cień.
 - **Do** trzymać zieleń marki poniżej ~10% powierzchni ekranu i zawsze wiązać ją ze znaczeniem: akcja główna, stan aktywny, wykorzystana pula.
 - **Do** używać zaokrąglonych kwadratów na awatary i kafle ikon (promień ≈ 26% boku) oraz inicjałów zamiast zdjęć.
-- **Do** ograniczać treść do 1180 px i realizować odstępy przez `gap`, w krokach skali 4 px.
+- **Do** ograniczać treść do 1180 px i realizować odstępy przez `gap`, w krokach siatki 4 px.
 - **Do** dawać stanom pustym pełne zdanie w `muted` („Nikt nieobecny w tym tygodniu."), a nie samą kreskę.
 - **Do** odróżniać brak danych od wartości zerowej — neutralny kafel i „–" zamiast `heat-1` i „0%".
 

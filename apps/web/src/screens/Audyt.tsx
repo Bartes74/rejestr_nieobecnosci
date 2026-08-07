@@ -23,7 +23,7 @@ export function Audyt() {
     <div>
       <AdminOnly ok={isAdmin}>
         <div role="alert" aria-live="assertive">
-          {err && <div style={{ padding: '10px 14px', marginBottom: 14, borderRadius: 10, background: 'var(--danger-tint)', border: '1px solid var(--danger)', color: 'var(--danger)', fontFamily: 'var(--font-sans)', fontSize: 13.5 }}>{err}</div>}
+          {err && <div style={{ padding: '10px 14px', marginBottom: 14, borderRadius: 'var(--radius-md)', background: 'var(--danger-tint)', border: '1px solid var(--danger)', color: 'var(--danger)', fontFamily: 'var(--font-sans)', fontSize: 13.5 }}>{err}</div>}
         </div>
         <div style={cardClipped}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>

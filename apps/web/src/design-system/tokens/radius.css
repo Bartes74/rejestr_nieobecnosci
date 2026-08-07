@@ -1,0 +1,16 @@
+/* ============================================================
+   RADIUS
+   Cztery stopnie, bez piątego. Promień rośnie z rozmiarem elementu.
+
+   Skala odstępów (--space-1…16) mieszkała tutaj przez cały czas życia projektu
+   i nie miała ani jednego konsumenta: odstępy w tym produkcie są liczbami w atrybucie
+   `style`, bo takie są te ekrany. Token, po który nikt nie sięga, nie jest systemem —
+   jest obietnicą, którą kod codziennie łamie. Rytm 4 px zostaje regułą w DESIGN.md,
+   egzekwowaną przy przeglądzie, a nie martwą deklaracją w arkuszu.
+   ============================================================ */
+:root {
+  --radius-sm: 7px;
+  --radius-md: 10px;  /* buttons, inputs, chips        */
+  --radius-lg: 14px;  /* inner cards                   */
+  --radius-xl: 16px;  /* primary cards / panels        */
+}

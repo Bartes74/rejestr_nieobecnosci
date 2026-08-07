@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react';
 import { count, plural } from '@nieobecnosci/core/plural';
+import { dateRange } from '../format';
 import { api, type Absence, type AbsenceType, type Employee } from '../api';
 import { Button } from '../design-system/components/core/Button';
 import { ConfirmDialog, Field, Section, Notice, field, th, td, useNotice } from '../admin/ui';
 import { cardClipped } from '../design-system/surfaces';
 
 const today = () => new Date().toISOString().slice(0, 10);
-const range = (a: Absence) => (a.dateFrom.slice(0, 10) === a.dateTo.slice(0, 10) ? a.dateFrom.slice(0, 10) : `${a.dateFrom.slice(0, 10)} – ${a.dateTo.slice(0, 10)}`);
+// Zakres szedł dotąd w surowym ISO („2026-08-03 – 2026-08-05") — jedyny ekran korygujący
+// cudze wpisy pokazywał daty inaczej niż wszystkie pozostałe.
+const range = (a: Absence) => dateRange(a.dateFrom, a.dateTo, { long: true });
 
 // FR-A5 — lider/uprawniony koryguje nieobecności swojego zespołu. Typy są zamaskowane na serwerze,
 // gdy brak uprawnienia VIEW_L4 (L4 niewyróżniane) — tu prezentujemy je jednolicie. Każda zmiana jest audytowana.
@@ -38,7 +41,15 @@ export function Zespol() {
     });
   }, []);
 
-  const load = (id: string) => (id ? api.absences(id).then(setRows).catch((e) => { setRows([]); fail(e); }) : Promise.resolve());
+  // Pusta tabela ogłaszała „Ta osoba nie ma zapisanych nieobecności", zanim cokolwiek przyszło
+  // z serwera — zdanie fałszywe dla każdego, kto jakieś ma, i to na ekranie, na którym lider
+  // decyduje o cudzych wpisach.
+  const [rowsLoading, setRowsLoading] = useState(false);
+  const load = (id: string) => {
+    if (!id) return Promise.resolve();
+    setRowsLoading(true);
+    return api.absences(id).then(setRows).catch((e) => { setRows([]); fail(e); }).finally(() => setRowsLoading(false));
+  };
   useEffect(() => { setEdit(null); clear(); load(memberId); }, [memberId]);
 
   const partial = add.dayPart !== 'FULL';
@@ -101,7 +112,8 @@ export function Zespol() {
     } catch (e) { bulkNotice.fail(e); } finally { setBusy(false); }
   };
 
-  const btn = { ...field, cursor: 'pointer', fontSize: 12, padding: '4px 10px' } as const;
+  // Minimum 24 px wysokości celu wskaźnika (WCAG 2.5.8) — te przyciski usuwają cudze wpisy.
+  const btn = { ...field, cursor: 'pointer', fontSize: 12, padding: '5px 10px', minHeight: 24, boxSizing: 'border-box' as const } as const;
 
   return (
     <div>
@@ -150,7 +162,8 @@ export function Zespol() {
                     </td>
                   </tr>
                 ))}
-                {rows.length === 0 && <tr><td style={{ ...td, color: 'var(--muted)' }} colSpan={3}>Ta osoba nie ma zapisanych nieobecności. Dodaj pierwszą w sekcji poniżej.</td></tr>}
+                {rowsLoading && <tr><td style={{ ...td, color: 'var(--muted)' }} colSpan={3}>Wczytywanie nieobecności…</td></tr>}
+                {!rowsLoading && rows.length === 0 && <tr><td style={{ ...td, color: 'var(--muted)' }} colSpan={3}>Ta osoba nie ma zapisanych nieobecności. Dodaj pierwszą w sekcji poniżej.</td></tr>}
               </tbody>
             </table>
           </div>

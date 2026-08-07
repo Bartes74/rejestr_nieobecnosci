@@ -4,16 +4,21 @@
    Two themes: light (default) and dark ([data-theme="dark"]).
    Use SEMANTIC tokens in product code, not raw brand swatches.
    ============================================================ */
-:root {
-  /* --- Brand identity swatches (reference; from visual-identity palette) --- */
-  --brand-p341: #007A53;  /* primary green        */
-  --brand-p342: #006A4E;  /* primary green, dark  */
-  --brand-p7459:#4298B5;  /* accent blue          */
-  --brand-p646: #5E8AB4;  /* muted steel blue     */
-  --brand-p276: #221C35;  /* deep navy            */
-  --brand-p485: #ED1B2F;  /* alert red            */
-  --brand-p1215:#FBD872;  /* warm yellow          */
+/* Oficjalna paleta Pantone zamawiającego — ŹRÓDŁO, nie tokeny do użycia w kodzie.
+   Stała tu wcześniej jako siedem zmiennych CSS bez ani jednego konsumenta; token, po który nikt
+   nie sięga, nie opisuje systemu. Wartości zostają zapisane, bo dokumentują pochodzenie palety
+   (PRODUCT.md: wywiedziona z palety Pantone i wiążąca), ale wchodzą do produktu wyłącznie przez
+   tokeny semantyczne niżej — nigdy wprost.
 
+     P341  #007A53  zieleń podstawowa      → --brand
+     P342  #006A4E  zieleń ciemna          → --brand-dark
+     P7459 #4298B5  błękit akcentowy       → (bez konsumenta; --blue wywiedziony osobno pod kontrast)
+     P646  #5E8AB4  stalowy błękit         → (bez konsumenta)
+     P276  #221C35  granat                 → (bez konsumenta)
+     P485  #ED1B2F  czerwień alertu        → (bez konsumenta; --danger osobno pod kontrast 4,5:1)
+     P1215 #FBD872  ciepła żółć            → (bez konsumenta)
+*/
+:root {
   /* --- Surfaces & neutrals --- */
   --canvas:   #EAEEEC;  /* app background behind cards   */
   --surface:  #FFFFFF;  /* card / panel background       */

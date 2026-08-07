@@ -1,20 +1,44 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CalendarDays, TriangleAlert } from 'lucide-react';
-import { api, type AbsenceType, type Balance, type Preview } from '../api';
+import { count, plural } from '@nieobecnosci/core/plural';
+import { dateRange } from '../format';
+import { api, type AbsenceType, type Preview } from '../api';
 import { useAuth } from '../current-employee';
-import { Field, Notice, useNotice } from '../admin/ui';
+import { Notice, useNotice } from '../admin/ui';
 import { card } from '../design-system/surfaces';
 
 const today = () => new Date().toISOString().slice(0, 10);
 const nf = (n: number) => String(n).replace('.', ','); // ułamki po polsku (0,5)
-const label = { display: 'block', fontFamily: 'var(--font-sans)', fontSize: 12.5, fontWeight: 600, color: 'var(--ink-2)', marginBottom: 7 } as const;
-const inputBox = { display: 'flex', alignItems: 'center', gap: 10, border: '1px solid var(--border-2)', background: 'var(--surface)', borderRadius: 10, padding: '11px 14px' } as const;
+const labelStyle = { display: 'block', fontFamily: 'var(--font-sans)', fontSize: 12.5, fontWeight: 600, color: 'var(--ink-2)', marginBottom: 7 } as const;
+const inputBox = { display: 'flex', alignItems: 'center', gap: 10, border: '1px solid var(--border-2)', background: 'var(--surface)', borderRadius: 'var(--radius-md)', padding: '11px 14px' } as const;
+// `outline: none` zostaje: pierścień fokusu rysuje ramka `.ds-field`, nie kontrolka w jej środku.
 const inputEl = { flex: 1, border: 'none', outline: 'none', background: 'transparent', color: 'var(--ink)', fontFamily: 'var(--font-sans)', fontSize: 14, minWidth: 0 } as const;
 
 const PARTS: [string, string][] = [['FULL', 'Cały dzień'], ['AM', 'Przed poł. (AM)'], ['PM', 'Po poł. (PM)'], ['HOURS', 'Godziny']];
 const WD = ['P', 'W', 'Ś', 'C', 'P', 'S', 'N'];
-const MONTHS = ['stycznia', 'lutego', 'marca', 'kwietnia', 'maja', 'czerwca', 'lipca', 'sierpnia', 'września', 'października', 'listopada', 'grudnia'];
+// Mianownik, bo to nagłówek miesiąca, a nie data — „SIERPNIA 2026" czyta się jak urwane zdanie.
+const MONTHS = ['styczeń', 'luty', 'marzec', 'kwiecień', 'maj', 'czerwiec', 'lipiec', 'sierpień', 'wrzesień', 'październik', 'listopad', 'grudzień'];
+
+/** Pole daty: ikona marki po lewej otwiera natywny wybór, natywny wskaźnik jest ukryty (patrz styles.css). */
+function DateField({ label, value, min, disabled, invalid, onChange }: {
+  label: string; value: string; min?: string; disabled?: boolean; invalid?: boolean; onChange: (v: string) => void;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  return (
+    <label>
+      <span style={labelStyle}>{label}</span>
+      <span className="ds-field" style={{ ...inputBox, opacity: disabled ? 0.5 : 1 }}>
+        <button type="button" tabIndex={-1} aria-hidden="true" disabled={disabled} onClick={() => ref.current?.showPicker?.()}
+          style={{ display: 'flex', border: 'none', background: 'transparent', padding: 0, flex: 'none', cursor: disabled ? 'not-allowed' : 'pointer', color: 'var(--brand)' }}>
+          <CalendarDays size={16} />
+        </button>
+        <input ref={ref} className="ds-datefield" type="date" value={value} min={min} disabled={disabled}
+          aria-invalid={invalid || undefined} onChange={(e) => onChange(e.target.value)} style={inputEl} />
+      </span>
+    </label>
+  );
+}
 
 // mini-kalendarz miesiąca daty „od" z zaznaczonym zakresem (Pon-first)
 function MiniCal({ from, to }: { from: string; to: string }) {
@@ -27,8 +51,8 @@ function MiniCal({ from, to }: { from: string; to: string }) {
   for (let dnum = 1; new Date(Date.UTC(y, m, dnum)).getUTCMonth() === m; dnum++) cells.push(new Date(Date.UTC(y, m, dnum)));
   const iso = (d: Date) => d.toISOString().slice(0, 10);
   return (
-    <div style={{ ...card, padding: 16, borderRadius: 14 }}>
-      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 600, color: 'var(--muted)', letterSpacing: '.04em', textTransform: 'uppercase', marginBottom: 11 }}>{MONTHS[m]} {y}</div>
+    <div style={{ ...card, padding: 16, borderRadius: 'var(--radius-lg)' }}>
+      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, fontWeight: 700, color: 'var(--muted)', letterSpacing: '.04em', textTransform: 'uppercase', marginBottom: 11 }}>{MONTHS[m]} {y}</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 4, fontFamily: 'var(--font-sans)', fontSize: 11.5 }}>
         {WD.map((w, i) => <div key={i} style={{ textAlign: 'center', color: 'var(--muted)', paddingBottom: 3 }}>{w}</div>)}
         {cells.map((d, i) => {
@@ -45,7 +69,7 @@ function MiniCal({ from, to }: { from: string; to: string }) {
             if (isStart || isEnd) col = 'var(--on-brand)';
             radius = isStart && isEnd ? '7px' : isStart ? '7px 0 0 7px' : isEnd ? '0 7px 7px 0' : '0';
           } else if (weekend) { bg = 'var(--surface-3)'; radius = '7px'; }
-          return <div key={i} style={{ textAlign: 'center', padding: '6px 0', background: bg, color: col, borderRadius: radius, fontWeight: weight }}>{d.getUTCDate()}</div>;
+          return <div key={i} style={{ textAlign: 'center', padding: '6px 0', background: bg, color: col, borderRadius: radius, fontWeight: weight, fontVariantNumeric: 'tabular-nums' }}>{d.getUTCDate()}</div>;
         })}
       </div>
     </div>
@@ -63,9 +87,9 @@ export function Wpis() {
   const [hourFrom, setHourFrom] = useState('09:00');
   const [hourTo, setHourTo] = useState('13:00');
   const [preview, setPreview] = useState<Preview | null>(null);
-  const [bal, setBal] = useState<Balance | null>(null);
   const { notice, ok, fail, clear } = useNotice();
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(0);
 
   const partial = dayPart !== 'FULL';
   const effTo = partial ? from : to;
@@ -74,12 +98,19 @@ export function Wpis() {
   const hf = dayPart === 'HOURS' ? hourFrom : undefined;
   const ht = dayPart === 'HOURS' ? hourTo : undefined;
 
-  const loadBalance = () => { if (current) api.balance(current.id).then(setBal).catch(() => {}); };
-  useEffect(() => { api.types().then((t) => { setTypes(t); setTypeId((p) => p || t[0]?.id || ''); }); }, []);
-  useEffect(loadBalance, [current?.id]);
+  // Domyślny typ pomija kategorię szczególną (L4). Lista wraca z serwera posortowana po nazwie,
+  // więc pierwsze bywało zwolnienie lekarskie — ekran planowania urlopu otwierał się z wpisem
+  // o stanie zdrowia gotowym do zapisania jednym kliknięciem.
+  useEffect(() => {
+    api.types()
+      .then((t) => { setTypes(t); setTypeId((p) => p || (t.find((x) => !x.specialCategory) ?? t[0])?.id || ''); })
+      .catch(() => setTypes([]));
+  }, []);
+  // `saved` w zależnościach: po zapisie podgląd musi policzyć się od nowa. Bez tego karta
+  // „Balans po zapisie" pokazywała nieaktualne „26 → 25" obok komunikatu, że zapis już nastąpił.
   useEffect(() => {
     if (current && from && effTo) api.preview(current.id, from, effTo, dayPart, hf, ht).then(setPreview).catch(() => setPreview(null));
-  }, [current?.id, from, effTo, dayPart, hf, ht]);
+  }, [current?.id, from, effTo, dayPart, hf, ht, saved]);
 
   const skipped = useMemo(() => {
     if (!preview || partial) return 0;
@@ -88,72 +119,88 @@ export function Wpis() {
     return Math.max(0, total - preview.workingDays);
   }, [preview, from, effTo, partial]);
 
+  // Wzorzec radiogroup: strzałki przenoszą wybór między segmentami, a z całej grupy wychodzi się
+  // jednym Tabem (tabIndex −1 na nieaktywnych). Bez tego `role="radio"` obiecywało czytnikowi
+  // ekranu zachowanie, którego kontrolka nie miała.
+  const movePart = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    const step = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 0;
+    if (!step) return;
+    e.preventDefault();
+    const i = PARTS.findIndex(([k]) => k === dayPart);
+    const next = PARTS[(i + step + PARTS.length) % PARTS.length]?.[0];
+    if (!next) return;
+    setDayPart(next);
+    (e.currentTarget.parentElement?.querySelector(`[data-part="${next}"]`) as HTMLElement | null)?.focus();
+  };
+
   const blocked = !typeId || !!preview?.collision || badRange || badHours;
   const save = async () => {
     if (!current || blocked || saving) return;
     setSaving(true); clear();
     try {
       await api.createAbsence({ employeeId: current.id, typeId, dateFrom: from, dateTo: effTo, dayPart, hourFrom: hf, hourTo: ht });
-      const days = preview ? nf(preview.workingDays) : '';
-      ok(`Zapisano nieobecność${days ? ` — ${days} dni roboczych` : ''}. Wpis obowiązuje od razu i jest już widoczny w kalendarzu zespołu.`);
-      loadBalance();
+      const days = preview ? ` — ${nf(preview.workingDays)} ${plural(preview.workingDays, ['dzień roboczy', 'dni robocze', 'dni roboczych'])}` : '';
+      ok(`Zapisano nieobecność${days}. Wpis obowiązuje od razu i jest już widoczny w kalendarzu zespołu.`);
+      setSaved((n) => n + 1);
     } catch (e) { fail(e); } finally { setSaving(false); }
   };
 
   return (
-    <div style={{ maxWidth: 1080, animation: 'fu .2s ease' }}>
+    <div style={{ maxWidth: 1080 }}>
       <div style={{ display: 'grid', gridTemplateColumns: '1.25fr .95fr', gap: 18, alignItems: 'start' }}>
         {/* FORMULARZ */}
         <div style={{ ...card, padding: 24 }}>
-          <h2 style={{ fontFamily: 'var(--font-sans)', fontSize: 18, fontWeight: 700, margin: '0 0 20px', color: 'var(--ink)' }}>Zgłoś nieobecność</h2>
+          {/* Nazwę ekranu niesie już nagłówek w topbarze — karta nazywa własną zawartość.
+              Wcześniej stało tu „Zgłoś nieobecność": czasownik obiecywał akceptację, której
+              w tym produkcie nie ma (decyzja D3), a potem duplikował H1 co do słowa. */}
+          <h2 style={{ fontFamily: 'var(--font-sans)', fontSize: 18, fontWeight: 700, margin: '0 0 20px', color: 'var(--ink)' }}>Szczegóły nieobecności</h2>
 
-          <Field label="Typ nieobecności">
-            <div style={{ ...inputBox, marginBottom: 20 }}>
-              <select value={typeId} onChange={(e) => setTypeId(e.target.value)} style={{ ...inputEl, fontWeight: 500, cursor: 'pointer' }}>
-                {types.length === 0 && <option value="">Brak zdefiniowanych typów</option>}
+          <label style={{ display: 'block', marginBottom: 20 }}>
+            <span style={labelStyle}>Typ nieobecności</span>
+            <span className="ds-field" style={inputBox}>
+              <select value={typeId} disabled={types.length === 0} onChange={(e) => setTypeId(e.target.value)} style={{ ...inputEl, fontWeight: 500, cursor: types.length === 0 ? 'progress' : 'pointer' }}>
+                {types.length === 0 && <option value="">Wczytywanie typów…</option>}
                 {types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
               </select>
-            </div>
-          </Field>
+            </span>
+          </label>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 20 }}>
-            <label>
-              <span style={label}>{partial ? 'Data' : 'Data od'}</span>
-              <span style={inputBox}><CalendarDays size={16} color="var(--brand)" style={{ flex: 'none' }} aria-hidden="true" /><input type="date" value={from} onChange={(e) => setFrom(e.target.value)} style={inputEl} /></span>
-            </label>
-            <label>
-              <span style={label}>Data do</span>
-              <span style={{ ...inputBox, opacity: partial ? 0.5 : 1 }}><CalendarDays size={16} color="var(--brand)" style={{ flex: 'none' }} aria-hidden="true" /><input type="date" value={effTo} min={from} disabled={partial} aria-invalid={badRange || undefined} onChange={(e) => setTo(e.target.value)} style={inputEl} /></span>
-            </label>
+            <DateField label={partial ? 'Data' : 'Data od'} value={from} onChange={setFrom} />
+            <DateField label="Data do" value={effTo} min={from} disabled={partial} invalid={badRange} onChange={setTo} />
           </div>
 
           {/* Grupa wyboru zachowuje się jak radio, więc i nazywa się jak radio — inaczej czytnik
               ekranu czyta cztery niezależne przyciski bez informacji, który jest wybrany. */}
+          {/* Grupa zachowuje się jak radio, więc odpowiada też za klawiaturę: strzałki przenoszą
+              wybór, a poza grupę wychodzi się jednym Tabem (roving tabindex, wzorzec WAI-ARIA).
+              Bez tego `role="radio"` obiecywało czytnikowi ekranu zachowanie, którego nie było. */}
           <div role="radiogroup" aria-label="Wymiar dnia">
-            <div style={label}>Wymiar dnia</div>
+            <div style={labelStyle}>Wymiar dnia</div>
             <div style={{ display: 'flex', gap: 8, marginBottom: dayPart === 'HOURS' ? 14 : 24 }}>
               {PARTS.map(([k, lbl]) => {
                 const active = dayPart === k;
-                return <button key={k} type="button" role="radio" aria-checked={active} onClick={() => setDayPart(k)} style={{
-                  flex: 1, textAlign: 'center', borderRadius: 9, padding: 10, cursor: 'pointer', fontFamily: 'var(--font-sans)', fontSize: 12.5, fontWeight: 600,
-                  border: active ? '1.5px solid var(--brand)' : '1px solid var(--border-2)', background: active ? 'var(--brand-tint)' : 'var(--surface)', color: active ? 'var(--brand)' : 'var(--ink-2)',
-                }}>{lbl}</button>;
+                return <button key={k} type="button" role="radio" data-part={k} aria-checked={active} tabIndex={active ? 0 : -1}
+                  className={active ? undefined : 'ds-quiet'} onClick={() => setDayPart(k)} onKeyDown={movePart} style={{
+                    flex: 1, textAlign: 'center', borderRadius: 'var(--radius-md)', padding: 10, cursor: 'pointer', fontFamily: 'var(--font-sans)', fontSize: 12.5, fontWeight: 600,
+                    border: active ? '1.5px solid var(--brand)' : '1px solid var(--border-2)', background: active ? 'var(--brand-tint)' : 'var(--surface)', color: active ? 'var(--brand)' : 'var(--ink-2)',
+                  }}>{lbl}</button>;
               })}
             </div>
           </div>
           {dayPart === 'HOURS' && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 24 }}>
-              <label><span style={label}>Od godz.</span><span style={inputBox}><input type="time" value={hourFrom} onChange={(e) => setHourFrom(e.target.value)} style={inputEl} /></span></label>
-              <label><span style={label}>Do godz.</span><span style={inputBox}><input type="time" value={hourTo} aria-invalid={badHours || undefined} onChange={(e) => setHourTo(e.target.value)} style={inputEl} /></span></label>
+              <label><span style={labelStyle}>Od godz.</span><span className="ds-field" style={inputBox}><input type="time" value={hourFrom} onChange={(e) => setHourFrom(e.target.value)} style={inputEl} /></span></label>
+              <label><span style={labelStyle}>Do godz.</span><span className="ds-field" style={inputBox}><input type="time" value={hourTo} aria-invalid={badHours || undefined} onChange={(e) => setHourTo(e.target.value)} style={inputEl} /></span></label>
             </div>
           )}
 
           <div style={{ display: 'flex', gap: 10 }}>
-            <button type="button" onClick={save} disabled={saving || blocked} aria-describedby={blocked ? 'wpis-blokada' : undefined}
-              style={{ border: 'none', cursor: saving || blocked ? 'not-allowed' : 'pointer', background: 'var(--brand)', color: 'var(--on-brand)', fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 14, padding: '12px 22px', borderRadius: 10, boxShadow: 'var(--shadow-sm)', opacity: saving || blocked ? 0.6 : 1 }}>
+            <button type="button" className="ds-primary" onClick={save} disabled={saving || blocked} aria-describedby={blocked ? 'wpis-blokada' : undefined}
+              style={{ border: 'none', cursor: saving || blocked ? 'not-allowed' : 'pointer', background: 'var(--brand)', color: 'var(--on-brand)', fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 14, padding: '12px 22px', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-sm)', opacity: saving || blocked ? 0.6 : 1 }}>
               {saving ? 'Zapisywanie…' : 'Zapisz nieobecność'}
             </button>
-            <button type="button" onClick={() => navigate('/pulpit')} style={{ border: '1px solid var(--border-2)', cursor: 'pointer', background: 'var(--surface)', color: 'var(--ink-2)', fontFamily: 'var(--font-sans)', fontWeight: 600, fontSize: 14, padding: '12px 22px', borderRadius: 10 }}>Anuluj</button>
+            <button type="button" className="ds-quiet" onClick={() => navigate('/pulpit')} style={{ border: '1px solid var(--border-2)', cursor: 'pointer', background: 'var(--surface)', color: 'var(--ink-2)', fontFamily: 'var(--font-sans)', fontWeight: 600, fontSize: 14, padding: '12px 22px', borderRadius: 'var(--radius-md)' }}>Anuluj</button>
           </div>
           {/* Wyłączony przycisk nie da się sfokusować, więc powód blokady musi stać obok niego
               we własnym regionie live — inaczej użytkownik klawiatury nie dowie się, co poprawić. */}
@@ -171,23 +218,23 @@ export function Wpis() {
           <div style={{ ...card, padding: 20 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
               <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--brand)' }} />
-              <span style={{ fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 13.5, color: 'var(--ink)' }}>Podgląd na żywo</span>
+              <h2 style={{ fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 13.5, color: 'var(--ink)', margin: 0 }}>Podgląd na żywo</h2>
             </div>
             <Row label="Dni robocze w zakresie" value={preview ? nf(preview.workingDays) : '—'} />
             <Row label="Pominięto (weekend / święta)" value={partial ? '—' : String(skipped)} muted />
             <Row label="Balans po zapisie" value={preview ? `${nf(preview.remaining)} → ${nf(preview.remainingAfter)}` : '—'} accent last />
             {/* `&&` na liczbie renderuje samo „0", gdy minimum wynosi zero — stąd jawne porównanie. */}
             {!!preview && (preview.minimumToLeave ?? 0) > 0 && preview.remainingAfter >= 0 && preview.remainingAfter < (preview.minimumToLeave ?? 0) && (
-              <div style={{ background: 'var(--surface-3)', borderRadius: 9, padding: '10px 12px', marginTop: 10, fontFamily: 'var(--font-sans)', fontSize: 11.5, color: 'var(--amber)', lineHeight: 1.5 }}>Zejdziesz poniżej minimum do pozostawienia ({preview.minimumToLeave} dni).</div>
+              <div style={{ background: 'var(--surface-3)', borderRadius: 'var(--radius-sm)', padding: '10px 12px', marginTop: 10, fontFamily: 'var(--font-sans)', fontSize: 11.5, color: 'var(--amber)', lineHeight: 1.5 }}>Zejdziesz poniżej minimum do pozostawienia ({count(preview.minimumToLeave ?? 0, ['dzień', 'dni', 'dni'])}).</div>
             )}
           </div>
 
           {preview?.collision && (
-            <div style={{ background: 'var(--amber-tint)', border: '1px solid var(--amber)', borderRadius: 14, padding: 16, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-              <TriangleAlert size={18} color="var(--amber)" style={{ flex: 'none', marginTop: 1 }} />
+            <div style={{ background: 'var(--amber-tint)', border: '1px solid var(--amber)', borderRadius: 'var(--radius-lg)', padding: 16, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <TriangleAlert size={18} color="var(--amber)" style={{ flex: 'none', marginTop: 1 }} aria-hidden="true" />
               <div>
                 <div style={{ fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 13, color: 'var(--ink)', marginBottom: 3 }}>Kolizja z istniejącym wpisem</div>
-                <div style={{ fontFamily: 'var(--font-sans)', fontSize: 12.5, lineHeight: 1.5, color: 'var(--ink-2)' }}>Masz już nieobecność w terminie {preview.collisionFrom} – {preview.collisionTo}. Zmień daty, aby zapisać.</div>
+                <div style={{ fontFamily: 'var(--font-sans)', fontSize: 12.5, lineHeight: 1.5, color: 'var(--ink-2)' }}>Masz już nieobecność w terminie {preview.collisionFrom && preview.collisionTo ? dateRange(preview.collisionFrom, preview.collisionTo, { long: true }) : '—'}. Zmień daty, aby zapisać.</div>
               </div>
             </div>
           )}

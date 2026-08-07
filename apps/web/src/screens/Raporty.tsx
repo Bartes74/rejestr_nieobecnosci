@@ -33,6 +33,9 @@ export function Raporty() {
   const [overdue, setOverdue] = useState<{ rows: OverdueRow[] } | null>(null);
   const [pool, setPool] = useState<number | null>(null);
   const [err, setErr] = useState('');
+  // Dotąd ekran po prostu nic nie pokazywał do czasu odpowiedzi — ani kart, ani informacji,
+  // że coś się dzieje. Przy raporcie dla całego pionu to kilka sekund pustej strony.
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     api.orgUnits().then((u) => { setUnits(u); setUnitId((p) => p || u[0]?.id || ''); }).catch(() => {});
@@ -42,9 +45,12 @@ export function Raporty() {
   useEffect(() => {
     if (!unitId) return;
     setErr('');
-    api.reportUsage(unitId).then(setUsage).catch((e: Error) => { setUsage(null); setErr(/403|uprawnie/.test(e.message) ? 'Brak uprawnień do raportów.' : e.message); });
-    api.reportTree(unitId).then(setTree).catch(() => setTree(null));
-    api.reportOverdue(unitId).then(setOverdue).catch(() => setOverdue(null));
+    setLoading(true);
+    void Promise.all([
+      api.reportUsage(unitId).then(setUsage).catch((e: Error) => { setUsage(null); setErr(/403|uprawnie/.test(e.message) ? 'Brak uprawnień do raportów.' : e.message); }),
+      api.reportTree(unitId).then(setTree).catch(() => setTree(null)),
+      api.reportOverdue(unitId).then(setOverdue).catch(() => setOverdue(null)),
+    ]).finally(() => setLoading(false));
   }, [unitId]);
 
   const stats = useMemo(() => {
@@ -78,20 +84,23 @@ export function Raporty() {
   };
 
   return (
-    <div style={{ maxWidth: 1180, animation: 'fu .2s ease' }}>
+    <div style={{ maxWidth: 1180 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18, flexWrap: 'wrap' }}>
-        <select value={unitId} onChange={(e) => setUnitId(e.target.value)} aria-label="Jednostka" style={{ padding: '9px 12px', borderRadius: 9, border: '1px solid var(--border-2)', background: 'var(--surface)', color: 'var(--ink)', fontFamily: 'var(--font-sans)', fontWeight: 600, fontSize: 13.5 }}>
+        <select value={unitId} onChange={(e) => setUnitId(e.target.value)} aria-label="Jednostka" style={{ padding: '9px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-2)', background: 'var(--surface)', color: 'var(--ink)', fontFamily: 'var(--font-sans)', fontWeight: 600, fontSize: 13.5 }}>
           {units.length === 0 && <option value="">Brak jednostek</option>}
           {units.map((u) => <option key={u.id} value={u.id}>{u.type} · {u.name}</option>)}
         </select>
         <div style={{ flex: 1 }} />
-        <button type="button" onClick={exportXlsx} disabled={!usage} style={{ display: 'flex', alignItems: 'center', gap: 7, border: '1px solid var(--brand)', cursor: usage ? 'pointer' : 'default', background: 'var(--brand-tint)', color: 'var(--brand)', fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 13, padding: '9px 15px', borderRadius: 9, opacity: usage ? 1 : 0.5 }}>
+        <button type="button" onClick={exportXlsx} disabled={!usage} style={{ display: 'flex', alignItems: 'center', gap: 7, border: '1px solid var(--brand)', cursor: usage ? 'pointer' : 'default', background: 'var(--brand-tint)', color: 'var(--brand)', fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 13, padding: '9px 15px', borderRadius: 'var(--radius-md)', opacity: usage ? 1 : 0.5 }}>
           <Upload size={15} /> Eksport .xlsx
         </button>
       </div>
 
       <div role="alert" aria-live="assertive">
-        {err && <div style={{ padding: '10px 14px', marginBottom: 14, borderRadius: 10, background: 'var(--danger-tint)', border: '1px solid var(--danger)', color: 'var(--danger)', fontFamily: 'var(--font-sans)', fontSize: 13.5, lineHeight: 1.45 }}>{err}</div>}
+        {err && <div style={{ padding: '10px 14px', marginBottom: 14, borderRadius: 'var(--radius-md)', background: 'var(--danger-tint)', border: '1px solid var(--danger)', color: 'var(--danger)', fontFamily: 'var(--font-sans)', fontSize: 13.5, lineHeight: 1.45 }}>{err}</div>}
+      </div>
+      <div role="status" aria-live="polite">
+        {loading && !err && <div style={{ fontFamily: 'var(--font-sans)', fontSize: 14, color: 'var(--muted)', padding: '4px 0 14px' }}>Wczytywanie raportu…</div>}
       </div>
 
       {stats && (
@@ -105,7 +114,7 @@ export function Raporty() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.1fr', gap: 16, marginBottom: 18 }}>
         {/* WYKRES per jednostka */}
         <div style={{ ...card, padding: 22 }}>
-          <div style={{ fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 14.5, color: 'var(--ink)', marginBottom: 18 }}>Wykorzystanie urlopu wg jednostki</div>
+          <h2 style={{ fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 14.5, color: 'var(--ink)', margin: '0 0 18px' }}>Wykorzystanie urlopu wg jednostki</h2>
           {bars.length === 0 ? <div style={{ fontFamily: 'var(--font-sans)', fontSize: 13, color: 'var(--muted)' }}>Brak jednostek podrzędnych.</div> : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
               {bars.map((b) => (
@@ -123,20 +132,25 @@ export function Raporty() {
         {/* KTO ZALEGA */}
         <div style={{ ...card, overflow: 'hidden' }}>
           <div style={{ padding: '18px 20px 12px' }}>
-            <div style={{ fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 14.5, color: 'var(--ink)' }}>Kto zalega z urlopem</div>
+            <h2 style={{ fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 14.5, color: 'var(--ink)', margin: 0 }}>Kto zalega z urlopem</h2>
             <div style={{ fontFamily: 'var(--font-sans)', fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>Osoby z zaległym / niewybranym urlopem</div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1.7fr .9fr 1fr', padding: '8px 20px', background: 'var(--surface-2)', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', fontFamily: 'var(--font-mono)', fontSize: 10.5, fontWeight: 700, color: 'var(--muted)', letterSpacing: '.04em' }}>
-            <div>OSOBA</div><div>ZALEGA</div><div style={{ textAlign: 'right' }}>POZOSTAŁO</div>
-          </div>
-          {overdueRows.length === 0 && <div style={{ padding: '16px 20px', fontFamily: 'var(--font-sans)', fontSize: 13, color: 'var(--muted)' }}>Nikt nie zalega w tej jednostce.</div>}
-          {overdueRows.map((r, i) => (
-            <div key={r.employeeId} style={{ display: 'grid', gridTemplateColumns: '1.7fr .9fr 1fr', padding: '12px 20px', borderBottom: i < overdueRows.length - 1 ? '1px solid var(--border)' : 'none', alignItems: 'center', fontSize: 13 }}>
-              <div style={{ fontFamily: 'var(--font-sans)', fontWeight: 600, color: 'var(--ink)' }}>{r.name}</div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: r.carriedOver >= 7 ? 'var(--danger)' : 'var(--amber)' }}>{r.carriedOver} dni</div>
-              <div style={{ fontFamily: 'var(--font-mono)', color: 'var(--ink-2)', textAlign: 'right' }}>{r.remaining}</div>
+          {/* Ostatnia siatka w aplikacji, która udawała tabelę bez ról — czytnik ekranu czytał
+              ciąg nazwisk i liczb bez informacji, która liczba jest zaległością, a która resztą.
+              Wersaliki robi teraz CSS, nie treść: „OSOBA" bywa literowane głoska po głosce. */}
+          <div role="table" aria-label="Osoby zalegające z urlopem">
+            <div role="row" style={{ display: 'grid', gridTemplateColumns: '1.7fr .9fr 1fr', padding: '8px 20px', background: 'var(--surface-2)', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', fontFamily: 'var(--font-mono)', fontSize: 10.5, fontWeight: 700, color: 'var(--muted)', letterSpacing: '.04em', textTransform: 'uppercase' }}>
+              <div role="columnheader">Osoba</div><div role="columnheader">Zalega</div><div role="columnheader" style={{ textAlign: 'right' }}>Pozostało</div>
             </div>
-          ))}
+            {overdueRows.length === 0 && <div role="row"><div role="cell" style={{ padding: '16px 20px', fontFamily: 'var(--font-sans)', fontSize: 13, color: 'var(--muted)' }}>Nikt nie zalega w tej jednostce.</div></div>}
+            {overdueRows.map((r, i) => (
+              <div key={r.employeeId} role="row" style={{ display: 'grid', gridTemplateColumns: '1.7fr .9fr 1fr', padding: '12px 20px', borderBottom: i < overdueRows.length - 1 ? '1px solid var(--border)' : 'none', alignItems: 'center', fontSize: 13 }}>
+                <div role="rowheader" style={{ fontFamily: 'var(--font-sans)', fontWeight: 600, color: 'var(--ink)' }}>{r.name}</div>
+                <div role="cell" style={{ fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: r.carriedOver >= 7 ? 'var(--danger)' : 'var(--amber)' }}>{count(r.carriedOver, ['dzień', 'dni', 'dni'])}</div>
+                <div role="cell" style={{ fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', color: 'var(--ink-2)', textAlign: 'right' }}>{r.remaining}</div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -165,7 +179,7 @@ export function Raporty() {
       {/* DRĄŻENIE HIERARCHII (FR-F3) */}
       {tree && (
         <div style={{ ...card, overflow: 'hidden' }}>
-          <div style={{ padding: '16px 16px 4px', fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 14, color: 'var(--ink)' }}>Drążenie hierarchii</div>
+          <h2 style={{ padding: '16px 16px 4px', fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 14, color: 'var(--ink)', margin: 0 }}>Drążenie hierarchii</h2>
           <div style={{ paddingBottom: 8 }}><TreeRows node={tree} /></div>
         </div>
       )}

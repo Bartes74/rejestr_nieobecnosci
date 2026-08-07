@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
+import { dateRange } from './format';
 import { api, type CalEntry, type Employee } from './api';
 import { AbsencePill } from './design-system/components/data/AbsencePill';
 
 const HORIZON_DAYS = 60;
 const iso = (d: Date) => d.toISOString().slice(0, 10);
-const dm = (s: string) => `${Number(s.slice(8, 10))}.${s.slice(5, 7)}`;
-const range = (e: CalEntry) => (e.dateFrom === e.dateTo ? dm(e.dateFrom) : `${dm(e.dateFrom)}–${dm(e.dateTo)}`);
+const range = (e: CalEntry) => dateRange(e.dateFrom, e.dateTo);
 
 /**
  * Wyszukiwarka osób w topbarze. Odpowiada na pytanie, które faktycznie zadaje ktoś wpisujący
@@ -83,7 +83,8 @@ export function TopSearch() {
 
   return (
     <div ref={boxRef} style={{ position: 'relative', flex: '0 1 260px', minWidth: 44 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, border: '1px solid var(--border-2)', borderRadius: 'var(--radius-md)', padding: '8px 12px', background: 'var(--surface)' }}>
+      {/* Etykieta zamiast diva — klikalna jest cała ramka, nie sama linijka tekstu w środku. */}
+      <label className="ds-field" style={{ display: 'flex', alignItems: 'center', gap: 10, border: '1px solid var(--border-2)', borderRadius: 'var(--radius-md)', padding: '8px 12px', background: 'var(--surface)' }}>
         <Search size={16} color="var(--muted)" style={{ flex: 'none' }} aria-hidden="true" />
         <input
           ref={inputRef} role="combobox" aria-expanded={showList} aria-controls="topsearch-list"
@@ -94,7 +95,7 @@ export function TopSearch() {
           onFocus={() => setOpen(true)} onKeyDown={onKeyDown}
           style={{ flex: 1, minWidth: 0, border: 'none', outline: 'none', background: 'transparent', color: 'var(--ink)', fontFamily: 'var(--font-sans)', fontSize: 13 }}
         />
-      </div>
+      </label>
 
       {showList && (
         <div id="topsearch-list" role="listbox" aria-label="Wyniki wyszukiwania"

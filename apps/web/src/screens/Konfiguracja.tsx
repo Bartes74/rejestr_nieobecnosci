@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { plural } from '@nieobecnosci/core/plural';
+import { dateRange, fullDate } from '../format';
 import { api, type AbsenceType, type Adoption, type Calendar, type Employee, type OrgUnit, type ProcessingActivity, type Sprint, type AdminSetting } from '../api';
 import { useAuth } from '../current-employee';
 import { Button } from '../design-system/components/core/Button';
@@ -21,20 +22,64 @@ function Typy() {
   const add = async () => {
     if (busy) return;
     setBusy(true); clear();
-    try { await api.createType(f); setF({ name: '', affectsPool: true, affectsCapacity: true, specialCategory: false }); await load(); ok(`Dodano typ „${f.name}".`); }
+    try { await api.createType(f); setF({ name: '', affectsPool: true, affectsCapacity: true, specialCategory: false }); await load(); ok(`Dodano typ „${f.name}" na końcu listy.`); }
     catch (e) { fail(e); } finally { setBusy(false); }
   };
+
+  /**
+   * Przestawienie o jedno miejsce. Optymistycznie, bo administrator zwykle klika kilka razy
+   * z rzędu i czekanie na odpowiedź po każdym kroku zamieniłoby układanie listy w szarpaninę;
+   * błąd cofa stan do tego, co naprawdę stoi w bazie.
+   */
+  const move = async (i: number, dir: -1 | 1) => {
+    const j = i + dir;
+    if (busy || j < 0 || j >= types.length) return;
+    const next = [...types];
+    [next[i], next[j]] = [next[j] as AbsenceType, next[i] as AbsenceType];
+    const moved = types[i];
+    setTypes(next);
+    setBusy(true); clear();
+    try {
+      setTypes(await api.reorderTypes(next.map((t) => t.id)));
+      ok(`„${moved?.name}" — pozycja ${j + 1} z ${types.length}.`);
+    } catch (e) { fail(e); await load(); } finally { setBusy(false); }
+  };
+
   const cb = (k: 'affectsPool' | 'affectsCapacity' | 'specialCategory') => (
     <label style={{ fontFamily: 'var(--font-sans)', fontSize: 12.5, color: 'var(--ink-2)', display: 'flex', gap: 5, alignItems: 'center' }}>
       <input type="checkbox" checked={f[k]} onChange={(e) => setF((s) => ({ ...s, [k]: e.target.checked }))} />
       {k === 'affectsPool' ? 'obniża pulę' : k === 'affectsCapacity' ? 'obniża capacity' : 'kategoria szczególna (L4)'}
     </label>
   );
+  const moveBtn = { ...field, padding: '3px 8px', cursor: 'pointer', color: 'var(--ink-2)', lineHeight: 1.2 } as const;
+
   return (
     <Section title="Typy nieobecności">
+      <p style={{ fontFamily: 'var(--font-sans)', fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.5, margin: '0 0 12px', maxWidth: 620 }}>
+        Kolejność na tej liście jest kolejnością na liście wyboru przy dodawaniu nieobecności.
+        Pierwszy typ spoza kategorii szczególnej jest wyborem domyślnym — warto, żeby to był
+        ten, który zespół wybiera najczęściej.
+      </p>
       {types.length === 0
         ? <div style={{ ...list, color: 'var(--muted)' }}>Brak typów. Dodaj pierwszy — bez niego nikt nie zapisze nieobecności.</div>
-        : types.map((t) => <div key={t.id} style={list}>{t.name} {t.specialCategory && <em style={{ color: 'var(--amber)' }}>· szczególna</em>} {!t.affectsPool && <span style={{ color: 'var(--muted)' }}>· bez puli</span>}</div>)}
+        : (
+          <ol style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+            {types.map((t, i) => (
+              <li key={t.id} style={{ ...list, display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--muted)', width: 18, flex: 'none' }}>{i + 1}</span>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  {t.name} {t.specialCategory && <em style={{ color: 'var(--amber)' }}>· szczególna</em>} {!t.affectsPool && <span style={{ color: 'var(--muted)' }}>· bez puli</span>}
+                </span>
+                {/* Nazwa typu w etykiecie, bo bez niej czytnik ekranu ogłasza tuzin identycznych
+                    „przenieś wyżej" i nie da się powiedzieć, który przycisk co przesuwa. */}
+                <button type="button" className="ds-quiet" style={moveBtn} disabled={busy || i === 0}
+                  aria-label={`Przenieś „${t.name}" wyżej`} onClick={() => move(i, -1)}>↑</button>
+                <button type="button" className="ds-quiet" style={moveBtn} disabled={busy || i === types.length - 1}
+                  aria-label={`Przenieś „${t.name}" niżej`} onClick={() => move(i, 1)}>↓</button>
+              </li>
+            ))}
+          </ol>
+        )}
       <div style={{ ...row, marginTop: 12, alignItems: 'flex-end' }}>
         <Field label="Nazwa typu"><input style={field} value={f.name} onChange={(e) => setF((s) => ({ ...s, name: e.target.value }))} /></Field>
         {cb('affectsPool')}{cb('affectsCapacity')}{cb('specialCategory')}
@@ -204,7 +249,7 @@ function Swieta() {
       <div style={{ marginTop: 12, fontFamily: 'var(--font-sans)', fontSize: 13, color: 'var(--muted)' }}>
         {!calId ? 'Najpierw dodaj kalendarz.'
           : hols.length === 0 ? 'Ten kalendarz nie ma jeszcze dni wolnych — weekendy i tak są pomijane.'
-            : hols.map((x) => <span key={x.id} style={{ fontFamily: 'var(--font-mono)', fontSize: 12, marginRight: 10, color: 'var(--ink-2)' }}>{x.date.slice(0, 10)} {x.name}</span>)}
+            : hols.map((x) => <span key={x.id} style={{ fontFamily: 'var(--font-mono)', fontSize: 12, marginRight: 10, color: 'var(--ink-2)' }}>{fullDate(x.date)} {x.name}</span>)}
       </div>
       <div style={{ ...row, marginTop: 12, alignItems: 'flex-end' }}>
         <Field label="Data" width={170}><input style={field} type="date" value={h.date} onChange={(e) => setH((s) => ({ ...s, date: e.target.value }))} /></Field>
@@ -252,7 +297,7 @@ function Sprinty() {
     <Section title="Sprinty">
       {sprints.length === 0
         ? <div style={{ ...list, color: 'var(--muted)' }}>Brak sprintów. Bez nich capacity i heatmapa nie mają na czym się oprzeć.</div>
-        : sprints.map((s) => <div key={s.id} style={list}>{s.name} <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--muted)' }}>{s.dateFrom.slice(0, 10)} – {s.dateTo.slice(0, 10)}</span></div>)}
+        : sprints.map((s) => <div key={s.id} style={list}>{s.name} <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--muted)' }}>{dateRange(s.dateFrom, s.dateTo, { long: true })}</span></div>)}
       <div style={{ ...row, marginTop: 12, alignItems: 'flex-end' }}>
         <Field label="Nazwa"><input style={field} value={f.name} onChange={(e) => setF((s) => ({ ...s, name: e.target.value }))} /></Field>
         <Field label="Od" width={170}><input style={field} type="date" value={f.dateFrom} onChange={(e) => setF((s) => ({ ...s, dateFrom: e.target.value }))} /></Field>

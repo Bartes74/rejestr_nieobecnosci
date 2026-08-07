@@ -1,22 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
+import { plural } from '@nieobecnosci/core/plural';
+import { dateRange } from '../format';
 import { api, type Absence, type AbsenceType } from '../api';
 import { useAuth } from '../current-employee';
-import { ConfirmDialog, Notice, useNotice } from '../admin/ui';
+import { ConfirmDialog, Notice, field, useNotice } from '../admin/ui';
 import { cardClipped } from '../design-system/surfaces';
+import { SegmentedControl } from '../design-system/components/forms/SegmentedControl';
 
 const d = (iso: string) => iso.slice(0, 10);
-const dm = (s: string) => `${Number(s.slice(8, 10))}.${s.slice(5, 7)}.${s.slice(0, 4)}`;
 const today = () => new Date().toISOString().slice(0, 10);
-const field = { padding: '6px 9px', borderRadius: 8, border: '1px solid var(--border-2)', background: 'var(--surface)', color: 'var(--ink)', fontFamily: 'var(--font-sans)', fontSize: 12.5 } as const;
 const COLS = '1.6fr .6fr 1.6fr 1.1fr 1fr .9fr';
 
 // Dni robocze liczy serwer (z kalendarzem świąt osoby) — ta sama liczba, którą widzi balans.
 const workdays = (n: number) => String(n).replace('.', ','); // ułamki po polsku (0,5)
-const rangeLabel = (a: Absence) => {
-  const f = d(a.dateFrom), t = d(a.dateTo);
-  if (f === t) return dm(f);
-  return `${Number(f.slice(8, 10))}–${dm(t)}`;
-};
+const rangeLabel = (a: Absence) => dateRange(a.dateFrom, a.dateTo, { long: true });
 
 export function Historia() {
   const { current } = useAuth();
@@ -28,8 +25,11 @@ export function Historia() {
   const [busy, setBusy] = useState(false);
   const { notice, fail, clear } = useNotice();
   const [filter, setFilter] = useState<'all' | 'upcoming' | 'done'>('all');
+  // Bez tego stanu pusta tabela w trakcie wczytywania ogłaszała „Nie masz jeszcze żadnych wpisów"
+  // — zdanie fałszywe dla każdego, kto jakieś ma.
+  const [loaded, setLoaded] = useState(false);
 
-  const load = () => { if (current) api.absences(current.id).then(setRows).catch(fail); };
+  const load = () => { if (current) api.absences(current.id).then(setRows).catch(fail).finally(() => setLoaded(true)); };
   useEffect(load, [current?.id]);
   useEffect(() => { api.types().then(setTypes).catch(() => {}); }, []);
 
@@ -68,32 +68,25 @@ export function Historia() {
     return sorted;
   }, [rows, filter]);
 
-  // Stan „wybrany" jest zakodowany kolorem, więc czytnik ekranu potrzebuje aria-pressed —
-  // bez tego wszystkie trzy filtry brzmią identycznie.
-  const tab = (k: typeof filter, label: string) => (
-    <button type="button" onClick={() => setFilter(k)} aria-pressed={filter === k} style={{
-      padding: '8px 15px', borderRadius: 9, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)', fontSize: 13, fontWeight: 600,
-      background: filter === k ? 'var(--brand-tint)' : 'transparent', color: filter === k ? 'var(--brand)' : 'var(--muted)',
-    }}>{label}</button>
-  );
-  const hcell = { fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 700, color: 'var(--muted)', letterSpacing: '.04em' } as const;
+  // Nagłówek kolumny wg DESIGN.md (mono 10,5 WERSALIKI). Wersaliki robi CSS, nie treść —
+  // czytnik ekranu ma usłyszeć „zakres", a nie literowane „Z-A-K-R-E-S".
+  const hcell = { fontFamily: 'var(--font-mono)', fontSize: 10.5, fontWeight: 700, color: 'var(--muted)', letterSpacing: '.04em', textTransform: 'uppercase' } as const;
 
   return (
-    <div style={{ maxWidth: 1080, animation: 'fu .2s ease' }}>
+    <div style={{ maxWidth: 1080 }}>
       <div role="status" aria-live="polite">
         {undo && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, padding: '10px 14px', borderRadius: 10, background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
-            <span style={{ fontFamily: 'var(--font-sans)', fontSize: 13.5, color: 'var(--ink-2)', flex: 1 }}>Usunięto wpis {dm(d(undo.dateFrom))} – {dm(d(undo.dateTo))}. Dni wróciły do puli.</span>
-            <button type="button" onClick={doUndo} disabled={busy} style={{ ...field, cursor: 'pointer', color: 'var(--brand)', borderColor: 'var(--brand)', fontWeight: 600 }}>{busy ? 'Przywracanie…' : 'Cofnij'}</button>
-            <button type="button" onClick={() => setUndo(null)} aria-label="Zamknij komunikat" style={{ background: 'transparent', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 16, padding: 8, margin: -8, borderRadius: 7 }}>×</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, padding: '10px 14px', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
+            <span style={{ fontFamily: 'var(--font-sans)', fontSize: 13.5, color: 'var(--ink-2)', flex: 1 }}>Usunięto wpis {rangeLabel(undo)}. Dni wróciły do puli.</span>
+            <button type="button" className="ds-quiet" onClick={doUndo} disabled={busy} style={{ ...field, cursor: 'pointer', color: 'var(--brand)', borderColor: 'var(--brand)', fontWeight: 600 }}>{busy ? 'Przywracanie…' : 'Cofnij'}</button>
+            <button type="button" className="ds-quiet" onClick={() => setUndo(null)} aria-label="Zamknij komunikat" style={{ background: 'transparent', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 16, padding: 8, margin: -8, borderRadius: 'var(--radius-sm)' }}>×</button>
           </div>
         )}
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 18 }}>
-        <div role="group" aria-label="Filtr wpisów" style={{ display: 'flex', gap: 6 }}>
-          {tab('all', 'Wszystkie')}{tab('upcoming', 'Nadchodzące')}{tab('done', 'Zrealizowane')}
-        </div>
+        <SegmentedControl label="Filtr wpisów" value={filter} onChange={(v) => setFilter(v as typeof filter)}
+          options={[{ value: 'all', label: 'Wszystkie' }, { value: 'upcoming', label: 'Nadchodzące' }, { value: 'done', label: 'Zrealizowane' }]} />
         <div style={{ flex: 1 }} />
         <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12.5, color: 'var(--muted)' }}>{new Date().getFullYear()} · rok rozliczeniowy</span>
       </div>
@@ -101,9 +94,10 @@ export function Historia() {
 
       <div role="table" aria-label="Moje nieobecności" style={{ ...cardClipped, marginTop: 12 }}>
         <div role="row" style={{ display: 'grid', gridTemplateColumns: COLS, padding: '13px 20px', borderBottom: '1px solid var(--border)', background: 'var(--surface-2)' }}>
-          <div role="columnheader" style={hcell}>ZAKRES</div><div role="columnheader" style={hcell}>DNI</div><div role="columnheader" style={hcell}>TYP</div><div role="columnheader" style={hcell}>ŹRÓDŁO</div><div role="columnheader" style={hcell}>STATUS</div><div role="columnheader" style={hcell}><span style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>Akcje</span></div>
+          <div role="columnheader" style={hcell}>Zakres</div><div role="columnheader" style={hcell}>Dni</div><div role="columnheader" style={hcell}>Typ</div><div role="columnheader" style={hcell}>Źródło</div><div role="columnheader" style={hcell}>Status</div><div role="columnheader" style={hcell}><span className="ds-sr">Akcje</span></div>
         </div>
-        {filtered.length === 0 && (
+        {!loaded && <div role="row"><div role="cell" style={{ padding: 20, color: 'var(--muted)', fontFamily: 'var(--font-sans)', fontSize: 14 }}>Wczytywanie wpisów…</div></div>}
+        {loaded && filtered.length === 0 && (
           <div role="row"><div role="cell" style={{ padding: 20, color: 'var(--muted)', fontFamily: 'var(--font-sans)', fontSize: 14 }}>
             {rows.length === 0 ? 'Nie masz jeszcze żadnych wpisów. Zaplanuj pierwszą nieobecność w „Nowa nieobecność".'
               : filter === 'upcoming' ? 'Brak nadchodzących nieobecności.' : 'Brak zrealizowanych nieobecności w tym okresie.'}
@@ -118,27 +112,27 @@ export function Historia() {
                 <select style={field} aria-label="Typ nieobecności" value={edit.typeId} onChange={(e) => setEdit({ ...edit, typeId: e.target.value })}>{types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select>
                 <input type="date" style={field} aria-label="Data od" value={edit.dateFrom} onChange={(e) => setEdit({ ...edit, dateFrom: e.target.value })} />
                 <input type="date" style={field} aria-label="Data do" value={edit.dateTo} min={edit.dateFrom} onChange={(e) => setEdit({ ...edit, dateTo: e.target.value })} />
-                <button type="button" onClick={saveEdit} disabled={busy || edit.dateTo < edit.dateFrom} style={{ ...field, cursor: 'pointer', color: 'var(--brand)', borderColor: 'var(--brand)', fontWeight: 600 }}>{busy ? 'Zapisywanie…' : 'Zapisz'}</button>
-                <button type="button" onClick={() => setEdit(null)} style={{ ...field, cursor: 'pointer' }}>Anuluj</button>
+                <button type="button" className="ds-quiet" onClick={saveEdit} disabled={busy || edit.dateTo < edit.dateFrom} style={{ ...field, cursor: 'pointer', color: 'var(--brand)', borderColor: 'var(--brand)', fontWeight: 600 }}>{busy ? 'Zapisywanie…' : 'Zapisz'}</button>
+                <button type="button" className="ds-quiet" onClick={() => setEdit(null)} style={{ ...field, cursor: 'pointer' }}>Anuluj</button>
               </div>
             );
           }
           return (
-            <div key={a.id} role="row" style={{ display: 'grid', gridTemplateColumns: COLS, padding: '15px 20px', borderTop: i === 0 ? 'none' : '1px solid var(--border)', alignItems: 'center', fontFamily: 'var(--font-sans)', fontSize: 13 }}>
+            <div key={a.id} role="row" className="ds-row" style={{ display: 'grid', gridTemplateColumns: COLS, padding: '15px 20px', borderTop: i === 0 ? 'none' : '1px solid var(--border)', alignItems: 'center', fontFamily: 'var(--font-sans)', fontSize: 13 }}>
               <div role="rowheader" style={{ fontWeight: 600, color: 'var(--ink)' }}>{rangeLabel(a)}<span style={{ color: 'var(--muted)', fontWeight: 400 }}>{part}</span></div>
-              <div role="cell" style={{ fontFamily: 'var(--font-mono)', color: 'var(--ink-2)' }}>{workdays(a.workingDays)}</div>
+              <div role="cell" style={{ fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', color: 'var(--ink-2)' }}>{workdays(a.workingDays)}</div>
               <div role="cell" style={{ color: 'var(--ink-2)' }}>
                 {a.type.name}
-                {a.type.specialCategory && <span style={{ fontSize: 10, color: 'var(--muted)', background: 'var(--surface-3)', padding: '1px 6px', borderRadius: 5, marginLeft: 6 }}>widoczne tylko dla Ciebie</span>}
+                {a.type.specialCategory && <span style={{ fontSize: 11, color: 'var(--muted)', background: 'var(--surface-3)', padding: '1px 6px', borderRadius: 'var(--radius-sm)', marginLeft: 6 }}>widoczne tylko dla Ciebie</span>}
               </div>
               <div role="cell" style={{ color: 'var(--muted)', fontSize: 12.5 }}>{a.source === 'DELEGATE' ? 'W imieniu' : 'Samodzielny'}</div>
               <div role="cell">
-                <span style={{ fontSize: 11.5, fontWeight: 600, padding: '3px 9px', borderRadius: 7, color: isUpcoming ? 'var(--blue)' : 'var(--muted)', background: isUpcoming ? 'var(--blue-tint)' : 'var(--surface-3)' }}>{isUpcoming ? 'Zaplanowane' : 'Zrealizowane'}</span>
+                <span style={{ fontSize: 11.5, fontWeight: 600, padding: '3px 9px', borderRadius: 'var(--radius-sm)', color: isUpcoming ? 'var(--blue)' : 'var(--muted)', background: isUpcoming ? 'var(--blue-tint)' : 'var(--surface-3)' }}>{isUpcoming ? 'Zaplanowane' : 'Zrealizowane'}</span>
               </div>
               <div role="cell" style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
                 {isUpcoming && <>
-                  <button type="button" disabled={busy} aria-label={`Edytuj nieobecność ${rangeLabel(a)}`} onClick={() => setEdit({ id: a.id, typeId: a.type.id, dateFrom: d(a.dateFrom), dateTo: d(a.dateTo) })} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)', fontSize: 12.5, fontWeight: 600, color: 'var(--ink-2)' }}>Edytuj</button>
-                  <button type="button" disabled={busy} aria-label={`Wycofaj nieobecność ${rangeLabel(a)}`} onClick={() => setConfirmDel(a)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)', fontSize: 12.5, fontWeight: 600, color: 'var(--danger)' }}>Wycofaj</button>
+                  <button type="button" className="ds-quiet" disabled={busy} aria-label={`Edytuj nieobecność ${rangeLabel(a)}`} onClick={() => setEdit({ id: a.id, typeId: a.type.id, dateFrom: d(a.dateFrom), dateTo: d(a.dateTo) })} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)', fontSize: 12.5, fontWeight: 600, color: 'var(--ink-2)', padding: '5px 7px', minHeight: 24, boxSizing: 'border-box', margin: '-5px -3px', borderRadius: 'var(--radius-sm)' }}>Edytuj</button>
+                  <button type="button" className="ds-danger" disabled={busy} aria-label={`Wycofaj nieobecność ${rangeLabel(a)}`} onClick={() => setConfirmDel(a)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)', fontSize: 12.5, fontWeight: 600, color: 'var(--danger)', padding: '5px 7px', minHeight: 24, boxSizing: 'border-box', margin: '-5px -7px', borderRadius: 'var(--radius-sm)' }}>Wycofaj</button>
                 </>}
               </div>
             </div>
@@ -150,9 +144,11 @@ export function Historia() {
         onConfirm={remove} onCancel={() => setConfirmDel(null)}>
         <p style={{ margin: 0 }}>
           Wpis <b style={{ fontFamily: 'var(--font-mono)', color: 'var(--ink)' }}>{confirmDel ? rangeLabel(confirmDel) : ''}</b>
-          {confirmDel ? ` (${workdays(confirmDel.workingDays)} dni roboczych)` : ''} zniknie z kalendarza zespołu, a dni wrócą do Twojej puli.
+          {confirmDel ? ` (${workdays(confirmDel.workingDays)} ${plural(confirmDel.workingDays, ['dzień roboczy', 'dni robocze', 'dni roboczych'])})` : ''} zniknie z kalendarza zespołu, a dni wrócą do Twojej puli.
         </p>
-        <p style={{ margin: '10px 0 0' }}>Po usunięciu przez chwilę będzie można cofnąć tę operację.</p>
+        {/* Cofnięcie nie wygasa samo — komunikat czeka, aż zamkniesz go albo opuścisz ekran.
+            Wcześniejsze „przez chwilę" obiecywało licznik, którego nie ma. */}
+        <p style={{ margin: '10px 0 0' }}>Zaraz po usunięciu pojawi się nad tabelą przycisk „Cofnij" — będzie tam, dopóki nie zamkniesz komunikatu.</p>
       </ConfirmDialog>
     </div>
   );

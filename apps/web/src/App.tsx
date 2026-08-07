@@ -35,7 +35,7 @@ const SCREENS: Record<string, LazyExoticComponent<() => JSX.Element>> = {
 function ScreenFallback() {
   return (
     <div style={{ minHeight: 280 }} role="status" aria-live="polite">
-      <span style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>Wczytywanie ekranu…</span>
+      <span className="ds-sr">Wczytywanie ekranu…</span>
     </div>
   );
 }
@@ -90,7 +90,7 @@ function NotAvailable() {
   const location = useLocation();
   const known = allItems.some((n) => n.to === location.pathname);
   return (
-    <div style={{ animation: 'fu .2s ease' }}>
+    <div>
       <p style={{ fontFamily: 'var(--font-sans)', color: 'var(--ink)', fontSize: 15, fontWeight: 600, marginBottom: 6 }}>
         {known ? 'Nie masz dostępu do tej sekcji' : 'Nie znaleziono strony'}
       </p>
@@ -105,9 +105,8 @@ function NotAvailable() {
 }
 
 const navA = (active: boolean) => ({
-  display: 'flex', alignItems: 'center', gap: 11, padding: '9px 11px', margin: '1px 0', borderRadius: 9,
+  display: 'flex', alignItems: 'center', gap: 11, padding: '9px 11px', margin: '1px 0', borderRadius: 'var(--radius-sm)',
   fontFamily: 'var(--font-sans)', fontWeight: 600, fontSize: 13.5, letterSpacing: '.005em', textDecoration: 'none',
-  transition: 'background .14s, color .14s',
   color: active ? 'var(--brand)' : 'var(--ink-2)', background: active ? 'var(--brand-tint)' : 'transparent',
 } as const);
 
@@ -117,7 +116,7 @@ function Sidebar() {
   return (
     <aside style={{ width: 250, flex: 'none', background: 'var(--surface)', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', padding: '20px 14px', position: 'sticky', top: 0, height: '100vh' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '4px 8px 18px' }}>
-        <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--brand)', color: 'var(--on-brand)', display: 'grid', placeItems: 'center' }}>
+        <div style={{ width: 36, height: 36, borderRadius: 'var(--radius-md)', background: 'var(--brand)', color: 'var(--on-brand)', display: 'grid', placeItems: 'center' }}>
           <Calendar size={19} aria-hidden="true" />
         </div>
         <span style={{ fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 15, color: 'var(--ink)' }}>Nieobecności</span>
@@ -127,7 +126,7 @@ function Sidebar() {
           <div key={group}>
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, letterSpacing: '.13em', textTransform: 'uppercase', color: 'var(--muted)', padding: '16px 11px 6px' }}>{group}</div>
             {items.map(({ to, label, icon: Icon }) => (
-              <NavLink key={to} to={to} style={({ isActive }) => navA(isActive)}>
+              <NavLink key={to} to={to} className="ds-nav" style={({ isActive }) => navA(isActive)}>
                 <Icon size={18} aria-hidden="true" /> {label}
               </NavLink>
             ))}
@@ -140,7 +139,7 @@ function Sidebar() {
           <div style={{ fontFamily: 'var(--font-sans)', fontWeight: 600, fontSize: 13, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{current ? `${current.firstName} ${current.lastName}` : ''}</div>
           <div style={{ fontFamily: 'var(--font-sans)', fontSize: 11, color: 'var(--muted)' }}>{current ? (ROLE_LABEL[current.role] ?? current.role) : ''}</div>
         </div>
-        <button type="button" aria-label="Wyloguj" title="Wyloguj" onClick={logout} style={{ cursor: 'pointer', color: 'var(--muted)', display: 'flex', padding: 6, borderRadius: 7, border: 'none', background: 'transparent' }}><LogOut size={17} aria-hidden="true" /></button>
+        <button type="button" className="ds-quiet" aria-label="Wyloguj" title="Wyloguj" onClick={logout} style={{ cursor: 'pointer', color: 'var(--muted)', display: 'flex', padding: 6, borderRadius: 'var(--radius-sm)', border: 'none', background: 'transparent' }}><LogOut size={17} aria-hidden="true" /></button>
       </div>
     </aside>
   );
@@ -171,7 +170,7 @@ function Topbar({ dark, onToggleTheme }: { dark: boolean; onToggleTheme: () => v
     return () => document.removeEventListener('keydown', onKey);
   }, [notifOpen]);
 
-  const iconBtn = { width: 38, height: 38, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--ink-2)', display: 'grid', placeItems: 'center', cursor: 'pointer' } as const;
+  const iconBtn = { width: 38, height: 38, flex: 'none', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-2)', background: 'var(--surface)', color: 'var(--ink-2)', display: 'grid', placeItems: 'center', cursor: 'pointer' } as const;
   return (
     <header style={{ height: 64, flex: 'none', borderBottom: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', alignItems: 'center', gap: 18, padding: '0 26px', position: 'sticky', top: 0, zIndex: 5 }}>
       <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
@@ -180,16 +179,16 @@ function Topbar({ dark, onToggleTheme }: { dark: boolean; onToggleTheme: () => v
         </div>
       </div>
       <TopSearch />
-      <button type="button" aria-label={dark ? 'Tryb jasny' : 'Tryb ciemny'} title="Przełącz motyw" onClick={onToggleTheme} style={iconBtn}>
+      <button type="button" className="ds-quiet" aria-label={dark ? 'Tryb jasny' : 'Tryb ciemny'} title="Przełącz motyw" onClick={onToggleTheme} style={iconBtn}>
         {dark ? <Sun size={18} aria-hidden="true" /> : <Moon size={18} aria-hidden="true" />}
       </button>
       <div style={{ position: 'relative' }}>
-        <button ref={bellRef} type="button" aria-expanded={notifOpen} aria-haspopup="true"
+        <button ref={bellRef} type="button" className="ds-quiet" aria-expanded={notifOpen} aria-haspopup="true"
           aria-label={notif.count > 0 ? `Powiadomienia: ${notif.count} ${plural(notif.count, ['nowe', 'nowe', 'nowych'])}` : 'Powiadomienia: brak nowych'}
           onClick={() => { if (!notifOpen) loadNotif(); setNotifOpen((v) => !v); }} style={{ ...iconBtn, position: 'relative' }}>
           <Bell size={18} aria-hidden="true" />
           {notif.count > 0 && (
-            <span aria-hidden="true" style={{ position: 'absolute', top: -5, right: -5, minWidth: 16, height: 16, padding: '0 4px', borderRadius: 8, background: 'var(--danger)', color: 'var(--on-danger)', fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, display: 'grid', placeItems: 'center', border: '2px solid var(--surface)' }}>{notif.count}</span>
+            <span aria-hidden="true" style={{ position: 'absolute', top: -5, right: -5, minWidth: 16, height: 16, padding: '0 4px', borderRadius: 'var(--radius-sm)', background: 'var(--danger)', color: 'var(--on-danger)', fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, display: 'grid', placeItems: 'center', border: '2px solid var(--surface)' }}>{notif.count}</span>
           )}
         </button>
         {notifOpen && (
@@ -222,12 +221,22 @@ function Topbar({ dark, onToggleTheme }: { dark: boolean; onToggleTheme: () => v
   );
 }
 
+// Wybór motywu przeżywa przeładowanie — bez tego każde odświeżenie wracało do jasnego,
+// a przełącznik wyglądał na zepsuty. Pierwsze uruchomienie idzie za ustawieniem systemu.
+const THEME_KEY = 'theme';
+const initialDark = () => {
+  const saved = localStorage.getItem(THEME_KEY);
+  if (saved) return saved === 'dark';
+  return window.matchMedia('(prefers-color-scheme: dark)').matches;
+};
+
 export function App() {
   const { current, ready } = useAuth();
   const location = useLocation();
-  const [dark, setDark] = useState(false);
+  const [dark, setDark] = useState(initialDark);
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+    localStorage.setItem(THEME_KEY, dark ? 'dark' : 'light');
   }, [dark]);
 
   if (!ready) return null;
@@ -235,11 +244,16 @@ export function App() {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--canvas)', color: 'var(--ink)', fontFamily: 'var(--font-sans)' }}>
+      <a className="ds-skip" href="#tresc">Przejdź do treści</a>
       <Sidebar />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <Topbar dark={dark} onToggleTheme={() => setDark((v) => !v)} />
-        <main style={{ flex: 1, overflowY: 'auto', padding: '28px 30px 60px' }}>
-          <ErrorBoundary key={location.pathname}>
+        {/* Klucz na trasie: każde wejście na ekran to nowy węzeł, więc animacja wejścia gra raz
+            i w jednym miejscu — ekrany nie noszą już własnych kopii `animation: fu`. */}
+        {/* `tabIndex={-1}` jest warunkiem działania linku pomijającego: bez niego skok pod
+            kotwicę przewija stronę, ale fokus zostaje w nawigacji i następny Tab wraca na jej środek. */}
+        <main id="tresc" tabIndex={-1} key={location.pathname} className="ds-screen" style={{ flex: 1, overflowY: 'auto', padding: '28px 30px 60px', outline: 'none' }}>
+          <ErrorBoundary>
             <Suspense fallback={<ScreenFallback />}>
             <Routes>
               <Route path="/" element={<Navigate to="/pulpit" replace />} />

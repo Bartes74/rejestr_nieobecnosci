@@ -69,6 +69,8 @@ Do tego: wdrożenie **on-premise**, bez zależności od zewnętrznych usług —
 
 **Decyzja o zasięgu urządzeń:** aplikacja jest **desktop-only**. NFR-6 w wersji 2.0 dokumentu wymaga interfejsu responsywnego dla desktopu i urządzeń mobilnych — ten punkt został zdescope'owany decyzją prowadzącego projekt (2026-08-07). Wymaganie „maks. 3 kliknięcia", pochodzące z tego samego NFR-6, **pozostaje wiążące**. Przyszłe prace projektowe mogą zakładać stację roboczą; nie zwalnia to z obsługi klawiatury i czytnika ekranu (NFR-7).
 
+**Konsekwencja tej decyzji dla NFR-7 (rozstrzygnięte 2026-08-07):** desktop-only i pełne WCAG 2.1 AA wykluczają się w dwóch punktach, więc deklaracja została zawężona — patrz sekcja o zgodności niżej. Powłoka ma stały sidebar 250 px, a siatki tabel i układy dwukolumnowe nie przelewają się; poniżej ~1000 px treść przewija się poziomo wewnątrz obszaru głównego, a przy 400 px aplikacja przestaje być użyteczna. Domknięcie tych kryteriów wymagałoby przelewania treści na wszystkich jedenastu ekranach, czyli cofnięcia decyzji desktop-only. Wybrano zawężenie deklaracji, nie ciche pozostawienie sprzeczności.
+
 **Otwarte, nierozstrzygnięte u zamawiającego** — przyszłe prace mają je traktować jako niewiadome, nie zgadywać:
 
 - dokładne granice roku budżetowego dla B2B/OUT,
@@ -121,6 +123,8 @@ Czego **nie ma** i czego nie wolno wymyślać:
 ## Accessibility & Inclusion
 
 - **WCAG 2.1 na poziomie AA (NFR-7)** — wymaganie kontraktowe, nie aspiracja. Obejmuje kontrast, obsługę z klawiatury i czytnik ekranu.
+- **Zawężenie deklaracji (2026-08-07):** z zakresu wyłączone są dwa kryteria sukcesu — **1.4.10 Reflow** i **1.4.4 Resize Text** — jako bezpośrednia konsekwencja decyzji desktop-only. Uzasadnienie: aplikacja pracuje wyłącznie na stacjach roboczych w sieci wewnętrznej instytucji; domknięcie tych kryteriów oznaczałoby przelewanie treści na wszystkich ekranach, czyli cofnięcie zdescope'owanego NFR-6. **Wyłączenie dotyczy wyłącznie tych dwóch punktów.** Pozostałe kryteria AA — w tym 1.4.3 Contrast, 1.4.11 Non-text Contrast, 1.3.1 Info and Relationships, 2.4.7 Focus Visible, 2.4.1 Bypass Blocks i 4.1.3 Status Messages — obowiązują bez zmian i nie podlegają negocjacji przy kolejnych pracach.
+- Zawężenie jest **do zgłoszenia zamawiającemu**, nie do cichego przyjęcia: NFR-7 jest wymaganiem kontraktowym, więc zmiana jego zakresu wymaga potwierdzenia po stronie Credit Agricole. Do czasu potwierdzenia traktować jako propozycję zespołu, nie jako stan uzgodniony.
 - Interakcje mają się opierać na natywnych elementach (`<button>`, `<a>`, `<input type="date/time">`, `<select>`), bo to najtańsza droga do zgodności z klawiaturą i AT.
 - `<html lang="pl">`; kontrolki bez widocznej etykiety mają dostępną nazwę.
 - Aplikacja jest desktop-only (patrz Capabilities and Constraints), więc obsługa dotyku nie jest wymagana — **obsługa klawiatury i czytnika ekranu pozostaje wymagana w pełni**.

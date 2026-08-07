@@ -116,8 +116,14 @@ model AbsenceType {
   affectsCapacity Boolean @default(true)
   specialCategory Boolean @default(false) // FR-J1 — dana o zdrowiu (np. L4), chroniona
   active          Boolean @default(true)
+  // Kolejność na liście wyboru, ustawiana przez administratora. Sortowanie po nazwie stawiało
+  // „L4" przed urlopami, więc formularz planowania otwierał się na typie z kategorii szczególnej.
+  // O tym, co jest wyborem domyślnym, decyduje organizacja, nie alfabet.
+  sortOrder       Int     @default(0)
 
   absences Absence[]
+
+  @@index([sortOrder, name])
 }
 
 model Absence {
