@@ -161,6 +161,17 @@ export function Wpis() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(0);
 
+  // Komunikat po zapisie opisuje wpis, który już powstał. Po zmianie czegokolwiek w formularzu
+  // dotyczy innego terminu niż ten na ekranie — i wtedy „Zapisano nieobecność" potrafi stanąć
+  // obok „Zapis zablokowany", jak przy ręcznej zmianie dat po udanym zapisie. Kasujemy go przy
+  // edycji, a nie efektem na stanie: zapis sam przestawia daty na dziś, więc efekt skasowałby
+  // własne „Zapisano" chwilę po tym, jak je pokazał.
+  const edit = <T,>(set: (v: T) => void) => (v: T) => { clear(); set(v); };
+  const editType = edit(setTypeId);
+  const editFrom = edit(setFrom);
+  const editTo = edit(setTo);
+  const editPart = edit(setDayPart);
+
   const partial = dayPart !== 'FULL';
   const effTo = partial ? from : to;
   const badRange = !partial && !!to && to < from;
@@ -205,9 +216,16 @@ export function Wpis() {
     const i = PARTS.findIndex(([k]) => k === dayPart);
     const next = PARTS[(i + step + PARTS.length) % PARTS.length]?.[0];
     if (!next) return;
-    setDayPart(next);
+    editPart(next);
     (e.currentTarget.parentElement?.querySelector(`[data-part="${next}"]`) as HTMLElement | null)?.focus();
   };
+
+  // Poza UoP żaden wpis nie ustępuje wcześniejszemu (FR-B5), więc kolizja jest tu regułą, a nie
+  // pomyłką użytkownika: ta sama operacja u osoby na UoP skróciłaby zaplanowaną nieobecność.
+  // Bez tego zdania ekran blokuje bez powodu, o który nie da się zapytać. Warunek na fladze
+  // `affectsPool`, nie na nazwie typu (D1) — komunikat nie nazywa L4.
+  const selectedType = types.find((t) => t.id === typeId);
+  const noPrecedence = !!current && current.employmentType !== 'UOP' && !!selectedType && !selectedType.affectsPool;
 
   const blocked = !typeId || !!preview?.collision || badRange || badHours;
   const save = async () => {
@@ -239,7 +257,7 @@ export function Wpis() {
           <label style={{ display: 'block', marginBottom: 20 }}>
             <span style={labelStyle}>Typ nieobecności</span>
             <span className="ds-field" style={inputBox}>
-              <select value={typeId} disabled={types.length === 0} onChange={(e) => setTypeId(e.target.value)} style={{ ...inputEl, fontWeight: 500, cursor: types.length === 0 ? 'progress' : 'pointer' }}>
+              <select value={typeId} disabled={types.length === 0} onChange={(e) => editType(e.target.value)} style={{ ...inputEl, fontWeight: 500, cursor: types.length === 0 ? 'progress' : 'pointer' }}>
                 {types.length === 0 && <option value="">Wczytywanie typów…</option>}
                 {types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
               </select>
@@ -247,8 +265,8 @@ export function Wpis() {
           </label>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 20 }}>
-            <DateField label={partial ? 'Data' : 'Data od'} value={from} onChange={setFrom} />
-            <DateField label="Data do" value={effTo} min={from} disabled={partial} invalid={badRange} onChange={setTo} />
+            <DateField label={partial ? 'Data' : 'Data od'} value={from} onChange={editFrom} />
+            <DateField label="Data do" value={effTo} min={from} disabled={partial} invalid={badRange} onChange={editTo} />
           </div>
 
           {/* Grupa wyboru zachowuje się jak radio, więc i nazywa się jak radio — inaczej czytnik
@@ -262,7 +280,7 @@ export function Wpis() {
               {PARTS.map(([k, lbl]) => {
                 const active = dayPart === k;
                 return <button key={k} type="button" role="radio" data-part={k} aria-checked={active} tabIndex={active ? 0 : -1}
-                  className={active ? undefined : 'ds-quiet'} onClick={() => setDayPart(k)} onKeyDown={movePart} style={{
+                  className={active ? undefined : 'ds-quiet'} onClick={() => editPart(k)} onKeyDown={movePart} style={{
                     flex: 1, textAlign: 'center', borderRadius: 'var(--radius-md)', padding: 10, cursor: 'pointer', fontFamily: 'var(--font-sans)', fontSize: 12.5, fontWeight: 600,
                     border: active ? '1.5px solid var(--brand)' : '1px solid var(--border-2)', background: active ? 'var(--brand-tint)' : 'var(--surface)', color: active ? 'var(--brand)' : 'var(--ink-2)',
                   }}>{lbl}</button>;
@@ -271,8 +289,8 @@ export function Wpis() {
           </div>
           {dayPart === 'HOURS' && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 24 }}>
-              <label><span style={labelStyle}>Od godz.</span><span className="ds-field" style={inputBox}><input type="time" value={hourFrom} onChange={(e) => setHourFrom(e.target.value)} style={inputEl} /></span></label>
-              <label><span style={labelStyle}>Do godz.</span><span className="ds-field" style={inputBox}><input type="time" value={hourTo} aria-invalid={badHours || undefined} onChange={(e) => setHourTo(e.target.value)} style={inputEl} /></span></label>
+              <label><span style={labelStyle}>Od godz.</span><span className="ds-field" style={inputBox}><input type="time" value={hourFrom} onChange={(e) => { clear(); setHourFrom(e.target.value); }} style={inputEl} /></span></label>
+              <label><span style={labelStyle}>Do godz.</span><span className="ds-field" style={inputBox}><input type="time" value={hourTo} aria-invalid={badHours || undefined} onChange={(e) => { clear(); setHourTo(e.target.value); }} style={inputEl} /></span></label>
             </div>
           )}
 
@@ -316,6 +334,9 @@ export function Wpis() {
               <div>
                 <div style={{ fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 13, color: 'var(--ink)', marginBottom: 3 }}>Kolizja z istniejącym wpisem</div>
                 <div style={{ fontFamily: 'var(--font-sans)', fontSize: 12.5, lineHeight: 1.5, color: 'var(--ink-2)' }}>Masz już nieobecność w terminie {preview.collisionFrom && preview.collisionTo ? dateRange(preview.collisionFrom, preview.collisionTo, { long: true }) : '—'}. Zmień daty, aby zapisać.</div>
+                {noPrecedence && (
+                  <div style={{ fontFamily: 'var(--font-sans)', fontSize: 12.5, lineHeight: 1.5, color: 'var(--ink-2)', marginTop: 6 }}>Przy Twojej formie zatrudnienia ten wpis nie ma pierwszeństwa przed wcześniejszą nieobecnością — nie skróci jej za Ciebie. Zwolnij termin, zmieniając tamten wpis.</div>
+                )}
               </div>
             </div>
           )}
