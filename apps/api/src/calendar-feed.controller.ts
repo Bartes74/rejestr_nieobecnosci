@@ -1,6 +1,6 @@
 import { Controller, Get, Header, NotFoundException, Query } from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
-import { toICS, type ICalEvent } from '@nieobecnosci/core';
+import { isoDate, mergeRanges, toICS, type ICalEvent } from '@nieobecnosci/core';
 import { PrismaService } from './prisma.service';
 import { OrgService } from './org.service';
 import { Public } from './auth/decorators';
@@ -49,8 +49,24 @@ export class CalendarFeedController {
       include: { employee: { select: { firstName: true, lastName: true } } },
       orderBy: { dateFrom: 'asc' },
     });
-    // Jednolicie — typ NIE opuszcza serwera (jak calendar.controller.ts).
-    const events: ICalEvent[] = abs.map((a) => ({ uid: `${a.id}@nieobecnosci`, summary: `Nieobecność – ${a.employee.firstName} ${a.employee.lastName}`, dateFrom: a.dateFrom, dateTo: a.dateTo }));
+    // Jednolicie — typ NIE opuszcza serwera (jak calendar.controller.ts). Zakresy jednej osoby
+    // scalone w ciągłe bloki: wpisy mogą się nakładać (L4 na zaplanowanej nieobecności), a dwa
+    // wydarzenia na ten sam dzień zdradzają, że wydarzyło się „coś jeszcze" — typ nie wycieka,
+    // ale struktura tak. Klient kalendarza sam ich nie scali, bo UID-y są różne.
+    const byEmp = new Map<string, { name: string; ranges: { dateFrom: Date; dateTo: Date }[] }>();
+    for (const a of abs) {
+      const at = byEmp.get(a.employeeId) ?? { name: `${a.employee.firstName} ${a.employee.lastName}`, ranges: [] };
+      at.ranges.push({ dateFrom: a.dateFrom, dateTo: a.dateTo });
+      byEmp.set(a.employeeId, at);
+    }
+    const events: ICalEvent[] = [...byEmp].flatMap(([employeeId, { name, ranges }]) =>
+      mergeRanges(ranges).map((r) => ({
+        uid: `${employeeId}-${isoDate(r.dateFrom)}@nieobecnosci`,
+        summary: `Nieobecność – ${name}`,
+        dateFrom: r.dateFrom,
+        dateTo: r.dateTo,
+      })),
+    );
     return toICS(events, 'Kalendarz zespołu');
   }
 }

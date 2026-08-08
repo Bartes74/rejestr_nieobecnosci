@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { balance, consumesPool, countWorkingDays, dayFraction, isoDate, proratePool, resolveBillingPeriod, todayUtc, usedLeaveDays } from '@nieobecnosci/core';
+import { balance, consumesPool, countOverlaidDays, dayFraction, isoDate, proratePool, resolveBillingPeriod, todayUtc, usedLeaveDays } from '@nieobecnosci/core';
 import ExcelJS from 'exceljs';
 import { PrismaService } from './prisma.service';
 import { OrgService } from './org.service';
@@ -9,7 +9,7 @@ import type { AuthUser } from './auth/current-user.decorator';
 import { canViewL4 } from './auth/rbac';
 
 // FR-F6 — stabilny, wersjonowany schemat eksportu dla płac/PMO. Zmiany → bump wersji.
-const PAYROLL_SCHEMA_VERSION = '1.0';
+const PAYROLL_SCHEMA_VERSION = '1.1';
 
 export interface UsageRow {
   employeeId: string;
@@ -66,6 +66,7 @@ export class ReportsService {
         (absByEmp.get(e.id) ?? []).map((a) => ({
           dateFrom: a.dateFrom, dateTo: a.dateTo,
           affectsPool: consumesPool(e.employmentType, a.type.affectsPool), // FR-B5 — jak w BalanceService
+          overrides: !a.type.affectsPool,
           fraction: dayFraction(a.dayPart, a.hourFrom ?? undefined, a.hourTo ?? undefined),
         })),
         period,
@@ -160,12 +161,20 @@ export class ReportsService {
       const period = resolveBillingPeriod(e.employmentType, now);
       const holidays = new Set((e.holidayCalendar?.holidays ?? []).map((h) => isoDate(h.date)));
       const inPeriod = (absByEmp.get(e.id) ?? []).filter((a) => a.dateFrom <= period.to && a.dateTo >= period.from);
+      // Kubełki liczone przez atrybucję dnia, nie każdy osobno: dzień pokryty i urlopem, i L4
+      // należy wyłącznie do L4, więc trafia do jednej kolumny. Sumowane osobno dałyby te same
+      // dni rozliczone dwa razy — raz jako urlop, raz jako chorobowe.
       const daysOf = (pred: (t: { affectsPool: boolean; specialCategory: boolean }) => boolean) =>
-        inPeriod.filter((a) => pred(a.type)).reduce((s, a) => {
-          const from = a.dateFrom > period.from ? a.dateFrom : period.from;
-          const to = a.dateTo < period.to ? a.dateTo : period.to;
-          return s + countWorkingDays(from, to, holidays) * dayFraction(a.dayPart, a.hourFrom ?? undefined, a.hourTo ?? undefined);
-        }, 0);
+        countOverlaidDays(
+          inPeriod.map((a) => ({
+            dateFrom: a.dateFrom, dateTo: a.dateTo,
+            overrides: !a.type.affectsPool,
+            counts: pred(a.type),
+            fraction: dayFraction(a.dayPart, a.hourFrom ?? undefined, a.hourTo ?? undefined),
+          })),
+          period,
+          holidays,
+        );
       const rec: Record<string, unknown> = {
         employeeId: e.id, firstName: e.firstName, lastName: e.lastName, employmentType: e.employmentType,
         periodFrom: isoDate(period.from), periodTo: isoDate(period.to),
@@ -188,7 +197,7 @@ export class ReportsService {
         { name: 'employmentType', type: 'enum(UOP|B2B|OUT)', desc: 'Forma zatrudnienia' },
         { name: 'periodFrom', type: 'date', desc: 'Początek okresu rozliczeniowego' },
         { name: 'periodTo', type: 'date', desc: 'Koniec okresu rozliczeniowego' },
-        { name: 'leaveDaysUsed', type: 'number', desc: 'Wykorzystane dni urlopu (typy obniżające pulę)' },
+        { name: 'leaveDaysUsed', type: 'number', desc: 'Wykorzystane dni urlopu (typy obniżające pulę); dni pokryte kategorią szczególną liczą się do niej, nie tutaj' },
         { name: 'specialCategoryDays', type: 'number', desc: 'Dni kategorii szczególnej (np. L4) — tylko dla uprawnionych (VIEW_L4)', conditional: 'VIEW_L4' },
       ],
     };

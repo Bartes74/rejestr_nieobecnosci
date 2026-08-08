@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CalendarDays, ChevronLeft, ChevronRight, RotateCcw, TriangleAlert } from 'lucide-react';
 import { count, plural } from '@nieobecnosci/core/plural';
-import { dateRange, todayIso } from '../format';
+import { dateRange, mergeIsoRanges, todayIso } from '../format';
 import { api, type Absence, type AbsenceType, type Preview } from '../api';
 import { useAuth } from '../current-employee';
 import { Notice, useNotice } from '../admin/ui';
@@ -76,7 +76,9 @@ function MiniCal({ from, to, existing }: { from: string; to: string; existing: {
   // jak `/calendar` — stąd `slice`. Bez niego doklejenie „T00:00:00Z" dawało `NaN` i pętla dni
   // nie wykonywała się ani razu, a filtr miesiąca wychodził dobrze wyłącznie przypadkiem,
   // na leksykalnym porównaniu napisów.
-  const ranges = existing.map((a) => ({ from: a.dateFrom.slice(0, 10), to: a.dateTo.slice(0, 10) }));
+  // Scalone: L4 może nakładać się na zaplanowaną nieobecność, a siatka mówi wyłącznie o tym,
+  // które dni są już zajęte — dwa zakresy na tych samych dniach niosłyby tu zero informacji.
+  const ranges = mergeIsoRanges(existing.map((a) => ({ from: a.dateFrom.slice(0, 10), to: a.dateTo.slice(0, 10) })));
   const monthFrom = iso(first), monthTo = iso(new Date(Date.UTC(y, m + 1, 0)));
   // Sortowanie po dacie startu: `GET /absences` oddaje wpisy w kolejności utworzenia, więc zdanie
   // pod siatką czytało się „24.08…, 10.08…" — wstecz względem tego, co widać w kalendarzu.

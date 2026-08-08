@@ -32,12 +32,12 @@ const aPmo = as(await login('f6pmo', 'haslo123'));
 
 // schemat — stabilny i wersjonowany
 const schema = await j(await aAdmin('/reports/export/payroll/schema'));
-ok(schema.version === '1.0' && schema.fields.length >= 7, 'schemat eksportu wersjonowany (1.0) i udokumentowany');
+ok(schema.version === '1.1' && schema.fields.length >= 7, 'schemat eksportu wersjonowany (1.1) i udokumentowany');
 
 // admin (VIEW_L4) widzi dni kategorii szczególnej
 const admExp = await j(await aAdmin(`/reports/export/payroll?unitId=${squad.id}`));
 const ra = admExp.records.find((r) => r.employeeId === anna.id);
-ok(admExp.schemaVersion === '1.0' && ra.leaveDaysUsed === 5, 'eksport: leaveDaysUsed = 5 (urlop)');
+ok(admExp.schemaVersion === '1.1' && ra.leaveDaysUsed === 5, 'eksport: leaveDaysUsed = 5 (urlop)');
 ok(ra.specialCategoryDays === 3, 'admin widzi specialCategoryDays = 3 (L4)');
 
 // PMO (bez VIEW_L4) — RODO-safe: brak pola specialCategoryDays

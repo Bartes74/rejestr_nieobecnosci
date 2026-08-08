@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { countWorkingDays, dayFraction, isoDate } from '@nieobecnosci/core';
+import { dayFraction, isoDate, sprintCapacity } from '@nieobecnosci/core';
 import type { DayPart } from '@prisma/client';
 import { PrismaService } from './prisma.service';
 
@@ -37,25 +37,30 @@ export class CapacityService {
       holidaysByEmp.set(m.employeeId, new Set((m.employee.holidayCalendar?.holidays ?? []).map((h) => isoDate(h.date))));
     }
 
-    // osobodni = suma dni roboczych w sprincie wg kalendarza każdego członka
-    let totalPersonDays = 0;
-    for (const m of members) {
-      totalPersonDays += countWorkingDays(sprint.dateFrom, sprint.dateTo, holidaysByEmp.get(m.employeeId));
-    }
-
     const memberIds = members.map((m) => m.employeeId);
     const absences = await this.prisma.absence.findMany({
       where: { employeeId: { in: memberIds }, dateFrom: { lte: sprint.dateTo }, dateTo: { gte: sprint.dateFrom } },
       include: { type: true, employee: true },
     });
 
-    let absentPersonDays = 0;
-    for (const a of absences) {
-      if (!a.type.affectsCapacity) continue;
-      const from = a.dateFrom > sprint.dateFrom ? a.dateFrom : sprint.dateFrom;
-      const to = a.dateTo < sprint.dateTo ? a.dateTo : sprint.dateTo;
-      absentPersonDays += countWorkingDays(from, to, holidaysByEmp.get(a.employeeId) ?? new Set()) * fractionOf(a);
-    }
+    // Liczone per osoba, nie po płaskiej liście: wpisy jednej osoby mogą się nakładać (L4 na
+    // zaplanowanej nieobecności), a suma po wpisach wykazałaby więcej osobodni nieobecności,
+    // niż ta osoba ma w ogóle dni roboczych w sprincie.
+    const absByEmp = new Map<string, typeof absences>();
+    for (const a of absences) (absByEmp.get(a.employeeId) ?? absByEmp.set(a.employeeId, []).get(a.employeeId)!).push(a);
+
+    const { totalPersonDays, absentPersonDays, available } = sprintCapacity(
+      members.map((m) => ({
+        holidays: holidaysByEmp.get(m.employeeId),
+        absences: (absByEmp.get(m.employeeId) ?? []).map((a) => ({
+          dateFrom: a.dateFrom, dateTo: a.dateTo,
+          affectsCapacity: a.type.affectsCapacity,
+          overrides: !a.type.affectsPool,
+          fraction: fractionOf(a),
+        })),
+      })),
+      { from: sprint.dateFrom, to: sprint.dateTo },
+    );
 
     const keyAbsences = absences.filter((a) => a.employee.isKeyRole);
 
@@ -65,7 +70,7 @@ export class CapacityService {
       memberCount: memberIds.length,
       totalPersonDays,
       absentPersonDays,
-      available: Math.max(0, totalPersonDays - absentPersonDays),
+      available,
       keyRoleCollisions: this.collisions(keyAbsences, sprint.dateFrom, sprint.dateTo),
     };
   }
@@ -77,6 +82,10 @@ export class CapacityService {
     sprintTo: Date,
   ): KeyRoleCollision[] {
     const out: KeyRoleCollision[] = [];
+    // Ta sama para osób i ten sam zakres mogą wyjść kilka razy, odkąd jedna osoba miewa dwa
+    // nakładające się wpisy (L4 na zaplanowanej nieobecności) — dla planującego to wciąż jedna
+    // kolizja, więc powtórki odsiewamy.
+    const seen = new Set<string>();
     for (let i = 0; i < keyAbsences.length; i++) {
       for (let j = i + 1; j < keyAbsences.length; j++) {
         const a = keyAbsences[i]!;
@@ -84,13 +93,16 @@ export class CapacityService {
         if (a.employeeId === b.employeeId) continue;
         const from = maxDate(a.dateFrom, b.dateFrom, sprintFrom);
         const to = minDate(a.dateTo, b.dateTo, sprintTo);
-        if (from <= to) {
-          out.push({
-            dateFrom: isoDate(from),
-            dateTo: isoDate(to),
-            employees: [`${a.employee.firstName} ${a.employee.lastName}`, `${b.employee.firstName} ${b.employee.lastName}`],
-          });
-        }
+        if (from > to) continue;
+        const pair = [a.employeeId, b.employeeId].sort().join('|');
+        const key = `${pair}|${isoDate(from)}|${isoDate(to)}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push({
+          dateFrom: isoDate(from),
+          dateTo: isoDate(to),
+          employees: [`${a.employee.firstName} ${a.employee.lastName}`, `${b.employee.firstName} ${b.employee.lastName}`],
+        });
       }
     }
     return out;

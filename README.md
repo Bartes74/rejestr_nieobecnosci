@@ -84,7 +84,7 @@ w kanale iCal zespołu, w powiadomieniach i w eksportach.
 
 ```bash
 pnpm run verify:offline    # build + typecheck (3 pakiety) + 27 testów silnika — bez bazy i API
-pnpm run verify:suites     # 27 suit integracyjnych (212 asercji) przeciw działającemu API
+pnpm run verify:suites     # 27 suit integracyjnych (217 asercji) przeciw działającemu API
 ```
 
 `verify:suites` wymaga **uruchomionego API** i zmiennej `API` (domyślnie `http://localhost:3100/api`).

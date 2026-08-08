@@ -11,6 +11,7 @@
 // „Dziś" liczy pakiet współdzielony, w strefie organizacji — ta sama odpowiedź po obu stronach.
 // Reeksport, żeby ekrany miały jedno miejsce, z którego biorą wszystko, co dotyczy dat.
 import { todayIso } from '@nieobecnosci/core/today';
+import { mergeRanges } from '@nieobecnosci/core/overlay';
 export { todayIso, ORG_TIMEZONE } from '@nieobecnosci/core/today';
 
 const ymd = (iso: string) => iso.slice(0, 10);
@@ -60,4 +61,19 @@ export function weekBounds(anchor: string = todayIso()): [string, string] {
 export function currentYearMonth(): { y: number; m: number } {
   const t = todayIso();
   return { y: Number(t.slice(0, 4)), m: Number(t.slice(5, 7)) - 1 };
+}
+
+/**
+ * Zakresy jednej osoby scalone w ciągłe bloki. Wpisy mogą się nakładać (L4 wchodzi na
+ * zaplanowaną nieobecność i oba rekordy zostają), a widok, który nie rozróżnia rodzaju,
+ * pokazałby wtedy dwa paski na tych samych dniach zamiast jednej nieobecności.
+ *
+ * Arytmetyka idzie z pakietu współdzielonego — to ta sama funkcja, którą serwer scala kanał
+ * iCal, więc siatka i subskrypcja nie mogą się rozjechać. Konwersja przez `T00:00:00Z` jest
+ * jawnie w UTC, zgodnie z regułą tego modułu: data nieobecności to etykieta, nie moment.
+ */
+export function mergeIsoRanges(ranges: readonly { from: string; to: string }[]): { from: string; to: string }[] {
+  const utc = (iso: string) => new Date(`${iso.slice(0, 10)}T00:00:00.000Z`);
+  return mergeRanges(ranges.map((r) => ({ dateFrom: utc(r.from), dateTo: utc(r.to) })))
+    .map((r) => ({ from: r.dateFrom.toISOString().slice(0, 10), to: r.dateTo.toISOString().slice(0, 10) }));
 }
