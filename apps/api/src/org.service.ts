@@ -1,4 +1,5 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
+import type { Role } from '@prisma/client';
 import { PrismaService } from './prisma.service';
 import type { AuthUser } from './auth/current-user.decorator';
 
@@ -34,6 +35,17 @@ export class OrgService {
     return inScope;
   }
 
+  // `tribePeers` odpowiada na pytanie o PRZYNALEŻNOŚĆ („kto stoi w Tribie tej osoby") i dlatego
+  // osobie bez przypisania zwraca ją samą. To nie to samo co WIDOCZNOŚĆ. Admin, PMO i dyrektor
+  // z reguły nie należą do żadnego squadu, więc na pytanie o widoczność tamta odpowiedź dawała
+  // jednoosobowy „kalendarz zespołu". Rozdzielone, bo zlanie tych dwóch pytań w jedno było
+  // źródłem błędu: reguła org-wide z `isOrgWide` obowiązywała w /org/units, a w kalendarzu nie.
+  async visiblePeers(user: Pick<AuthUser, 'sub' | 'role'>): Promise<string[]> {
+    if (!this.isOrgWide(user.role)) return this.tribePeers(user.sub);
+    const all = await this.prisma.employee.findMany({ select: { id: true } });
+    return all.map((e) => e.id);
+  }
+
   async tribePeers(employeeId: string): Promise<string[]> {
     const inScope = await this.scopeUnitIds(employeeId);
     if (inScope.size === 0) return [employeeId]; // poza Tribe — widzi tylko siebie
@@ -45,14 +57,14 @@ export class OrgService {
 
   // Role widzące całą organizację. Jedno miejsce, z którego korzysta i strażnik, i lista jednostek —
   // inaczej pickery w UI pokazywałyby wybory kończące się 403.
-  private isOrgWide(user: AuthUser): boolean {
-    return user.role === 'DIRECTOR' || user.role === 'ADMIN' || user.role === 'PMO';
+  private isOrgWide(role: Role): boolean {
+    return role === 'DIRECTOR' || role === 'ADMIN' || role === 'PMO';
   }
 
   // Jednostki, o które użytkownik może pytać — dokładnie te, które przepuści assertUnitInScope.
   async visibleUnits(user: AuthUser) {
     const all = await this.prisma.orgUnit.findMany({ orderBy: { name: 'asc' } });
-    if (this.isOrgWide(user)) return all;
+    if (this.isOrgWide(user.role)) return all;
     const scope = await this.scopeUnitIds(user.sub);
     return all.filter((u) => scope.has(u.id));
   }
@@ -76,7 +88,7 @@ export class OrgService {
   // H2 — autoryzacja pozioma raportów/capacity: role org-wide widzą wszystko;
   // lider/PO tylko jednostki w poddrzewie swojego Tribe.
   async assertUnitInScope(user: AuthUser, unitId: string): Promise<void> {
-    if (this.isOrgWide(user)) return;
+    if (this.isOrgWide(user.role)) return;
     const scope = await this.scopeUnitIds(user.sub);
     if (!scope.has(unitId)) throw new ForbiddenException('Brak dostępu do tej jednostki organizacyjnej.');
   }

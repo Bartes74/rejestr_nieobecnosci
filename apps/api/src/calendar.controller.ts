@@ -25,7 +25,7 @@ export class CalendarController {
     const fromD = from ? new Date(from) : new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
     const toD = to ? new Date(to) : new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0));
 
-    const peers = await this.org.tribePeers(user.sub);
+    const peers = await this.org.visiblePeers(user);
     const absences = await this.prisma.absence.findMany({
       where: { employeeId: { in: peers }, dateFrom: { lte: toD }, dateTo: { gte: fromD } },
       include: { employee: { select: { firstName: true, lastName: true } } },
@@ -50,9 +50,9 @@ export class CalendarController {
    * dostępna". To informacja, po którą sięga się przy planowaniu sprintu, i nie da się jej
    * odczytać z listy samych nieobecności.
    *
-   * Zakres widoczności bez zmian: `tribePeers` (FR-H1 — członek Tribe widzi cały Tribe,
-   * podział na squady jest w tych granicach jawny). Typ nieobecności nadal nie opuszcza
-   * serwera (D1/D2), więc kanał zostaje L4-safe.
+   * Zakres widoczności: `visiblePeers` — członek Tribe widzi cały Tribe (FR-H1, podział na
+   * squady jest w tych granicach jawny), a role ogólnofirmowe całą firmę (FR-H2). Typ
+   * nieobecności nadal nie opuszcza serwera (D1/D2), więc kanał zostaje L4-safe.
    */
   @Get('team')
   async team(
@@ -62,7 +62,7 @@ export class CalendarController {
   ) {
     const fromD = new Date(`${from}T00:00:00.000Z`);
     const toD = new Date(`${to}T00:00:00.000Z`);
-    const peers = await this.org.tribePeers(user.sub);
+    const peers = await this.org.visiblePeers(user);
 
     const [employees, memberships, absences] = await Promise.all([
       this.prisma.employee.findMany({
