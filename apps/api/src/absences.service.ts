@@ -28,12 +28,16 @@ type AbsenceWithType = Prisma.AbsenceGetPayload<{ include: { type: true } }>;
 const overrides = (a: { type: { affectsPool: boolean } }) => !a.type.affectsPool;
 
 /**
- * Kolidują wpisy tego samego rodzaju: nieobecność na nieobecności, L4 na L4. Wpis chorobowy na
- * zaplanowanym (i odwrotnie) przechodzi zawsze — choroby nie da się przełożyć, więc blokowanie
- * jej dlatego, że w kalendarzu stoi urlop, kazałoby wybierać między prawdą a zapisem.
+ * Koliduje wyłącznie zaplanowana nieobecność z zaplanowaną nieobecnością. Wpis chorobowy nie
+ * blokuje się nigdy i niczego nie blokuje: choroby nie da się przełożyć, więc blokowanie jej
+ * dlatego, że w kalendarzu coś już stoi, kazałoby wybierać między prawdą a zapisem.
+ *
+ * Dwa wpisy chorobowe na ten sam dzień też przechodzą — dzień i tak liczy się raz, więc pula
+ * i statystyki wychodzą poprawnie. Cena jest świadoma: duplikat tego samego zwolnienia nikogo
+ * nie ostrzeże, a suma dni pokazana w historii może przez to przekroczyć liczbę dni kalendarzowych.
  */
 const collidesWith = (overlaps: readonly AbsenceWithType[], incoming: { affectsPool: boolean }) =>
-  overlaps.some((o) => o.type.affectsPool === incoming.affectsPool);
+  incoming.affectsPool && overlaps.some((o) => o.type.affectsPool);
 
 @Injectable()
 export class AbsencesService {
@@ -182,7 +186,7 @@ export class AbsencesService {
       where: { employeeId, dateFrom: { lte: to }, dateTo: { gte: from } },
       include: { type: true },
     });
-    const overlap = type ? overlaps.find((o) => o.type.affectsPool === type.affectsPool) ?? null : overlaps[0] ?? null;
+    const overlap = !type || type.affectsPool ? overlaps.find((o) => o.type.affectsPool) ?? null : null;
 
     // Saldo po zapisie liczone od nowa, z hipotetycznym wpisem w zestawie — nie odejmowaniem
     // dni „na boku". Przy nakładaniu tylko pełne przeliczenie wie, które dni przechodzą na nowy

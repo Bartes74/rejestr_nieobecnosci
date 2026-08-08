@@ -60,7 +60,7 @@ Do tego: wdrożenie **on-premise**, bez zależności od zewnętrznych usług —
 **Reguły biznesowe, które muszą zostać zachowane:**
 
 - Urlop **nigdy nie przepada** — niewykorzystane dni przechodzą na kolejny okres jako zaległy, bez terminu wygaśnięcia. Rozstrzygnięcie zapadłe w trakcie prac; przypomnienia mają charakter wyłącznie informacyjny.
-- **L4 przykrywa zaplanowaną nieobecność, ale jej nie kasuje** (FR-B5/FR-B10). Zapisać je można zawsze — choroby nie da się przełożyć — a oba wpisy zostają w bazie, więc skasowanie błędnie wpisanego L4 samo przywraca pierwotny plan. Kolizją zostaje wpis tego samego rodzaju: nieobecność na nieobecności, L4 na L4. Dzień kalendarzowy liczy się najwyżej raz i należy do L4; capacity obniża każdy z nich. Rachunek dla 5 dni nieobecności i 8 dni L4 z 3 wspólnymi (suma 10 dni kalendarzowych):
+- **L4 przykrywa zaplanowaną nieobecność, ale jej nie kasuje** (FR-B5/FR-B10). Zapisać je można zawsze — choroby nie da się przełożyć — a oba wpisy zostają w bazie, więc skasowanie błędnie wpisanego L4 samo przywraca pierwotny plan. Kolizją zostaje wyłącznie nieobecność na nieobecności — zapis chorobowy nie blokuje się nigdy, także na innym zwolnieniu (dzień i tak liczy się raz). Dzień kalendarzowy liczy się najwyżej raz i należy do L4; capacity obniża każdy z nich. Rachunek dla 5 dni nieobecności i 8 dni L4 z 3 wspólnymi (suma 10 dni kalendarzowych):
 
   | | Widzi / liczy |
   | --- | --- |

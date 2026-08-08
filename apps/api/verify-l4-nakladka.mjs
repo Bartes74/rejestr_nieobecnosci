@@ -83,9 +83,10 @@ ok((await usedOf(aExt, ext.id)) === 10, 'OUT: po L4 wykorzystano 10 — każdy d
 ok((await prisma.absence.count({ where: { employeeId: ext.id } })) === 2, 'OUT: oba wpisy zostają w bazie');
 ok(sumDays(await rowsOf(aExt, ext.id)) === 10, 'OUT: widok też pokazuje 10 dni');
 
-// --- kolizją zostaje wpis tego samego rodzaju ---
+// --- kolizją zostaje wyłącznie nieobecność na nieobecności ---
 ok((await post(aUop, { employeeId: uop.id, typeId: urlop.id, dateFrom: '2026-09-08', dateTo: '2026-09-08' })).status === 409, 'nieobecność na nieobecności → 409');
-ok((await post(aUop, { employeeId: uop.id, typeId: l4type.id, dateFrom: '2026-09-14', dateTo: '2026-09-14' })).status === 409, 'L4 na L4 → 409');
+ok((await post(aUop, { employeeId: uop.id, typeId: l4type.id, dateFrom: '2026-09-14', dateTo: '2026-09-14' })).ok, 'L4 na L4 → przechodzi (zapis choroby nie blokuje się nigdy)');
+ok((await usedOf(aUop, uop.id)) === 2, 'drugie L4 na tym samym dniu nie rusza puli — dzień liczy się raz');
 // kierunek odwrotny: na istniejącym L4 da się zaplanować nieobecność
 ok((await post(aUop, { employeeId: uop.id, typeId: urlop.id, dateFrom: '2026-09-17', dateTo: '2026-09-18' })).ok, 'nieobecność na istniejącym L4 → przechodzi');
 ok((await usedOf(aUop, uop.id)) === 2, 'dni pokryte przez L4 nie zabierają z puli mimo nowej nieobecności');
