@@ -29,8 +29,7 @@ async function main() {
   // konfiguracja
   await prisma.adminSetting.create({ data: { key: 'leavePool.default', value: '26' } });
   await prisma.holidayCalendar.create({ data: { name: 'Polska', isDefault: true } });
-  const urlop = await prisma.absenceType.create({ data: { name: 'Urlop wypoczynkowy' } });
-  await prisma.absenceType.create({ data: { name: 'Urlop na żądanie' } });
+  const urlop = await prisma.absenceType.create({ data: { name: 'Nieobecność' } });
   const l4 = await prisma.absenceType.create({ data: { name: 'L4', affectsPool: false, specialCategory: true } });
   await prisma.processingActivity.createMany({ data: [
     { name: 'Ewidencja nieobecności', purpose: 'Planowanie i rozliczanie nieobecności oraz capacity zespołów.', legalBasis: 'art. 6 ust. 1 lit. f RODO oraz Kodeks pracy.', dataCategories: 'Imię, nazwisko, e-mail, forma zatrudnienia, daty i typy nieobecności.', recipients: 'Przełożeni, PO/Agile PM, PMO.', retention: 'Do 24 mies. po ustaniu zatrudnienia.', specialCategory: false },
@@ -58,9 +57,12 @@ async function main() {
   const anna = await mk('Anna', 'Kowalska', 'anna', 'EMPLOYEE', 'demo123', { key: true });
   const bartek = await mk('Bartek', 'Nowak', 'bartek', 'EMPLOYEE', 'demo123', { key: true });
   const celina = await mk('Celina', 'Zielińska', 'celina', 'EMPLOYEE', 'demo123', { emp: 'B2B' });
+  // OUT obok UoP-owego `prac` — para do porównania: inny okres rozliczeniowy i inne
+  // traktowanie L4 wobec puli (FR-B5) przy identycznej roli, czyli identycznych ekranach.
+  const ext = await mk('Damian', 'Ostrowski', 'ext', 'EMPLOYEE', 'demo123', { emp: 'OUT' });
 
   // wszyscy z zespołu w Squad A1 (lider/po też — żeby widzieli i liczyli się do capacity)
-  await prisma.orgUnitMembership.createMany({ data: [lider, po, prac, anna, bartek, celina].map((e) => ({ employeeId: e.id, orgUnitId: squad.id })) });
+  await prisma.orgUnitMembership.createMany({ data: [lider, po, prac, anna, bartek, celina, ext].map((e) => ({ employeeId: e.id, orgUnitId: squad.id })) });
 
   // pracownik: zaległy urlop (przypomnienie + „kto zalega")
   await prisma.leaveAllowance.create({ data: { employeeId: prac.id, periodYear: YEAR, baseDays: 26, carriedOver: 3 } });
@@ -70,6 +72,7 @@ async function main() {
     { employeeId: anna.id, typeId: urlop.id, dateFrom: d(0), dateTo: d(2) }, // kluczowa rola, bieżący tydzień
     { employeeId: bartek.id, typeId: urlop.id, dateFrom: d(1), dateTo: d(3) }, // kolizja z Anną (wt–śr) → alert
     { employeeId: celina.id, typeId: urlop.id, dateFrom: d(4), dateTo: d(4) }, // B2B, piątek
+    { employeeId: ext.id, typeId: urlop.id, dateFrom: d(3), dateTo: d(3) }, // OUT, czwartek
     { employeeId: prac.id, typeId: urlop.id, dateFrom: d(7), dateTo: d(8) }, // przyszły tydzień → „najbliższe nieobecności"
     { employeeId: anna.id, typeId: l4.id, dateFrom: d(14), dateTo: d(15) }, // L4 (nie obniża puli)
   ] });

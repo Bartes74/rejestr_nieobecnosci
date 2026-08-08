@@ -1,38 +1,44 @@
-import { useEffect, useState } from 'react';
+import { Suspense, lazy, useEffect, useRef, useState, type LazyExoticComponent } from 'react';
 import { Link, NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { plural } from '@nieobecnosci/core/plural';
+import { TopSearch } from './TopSearch';
 import { ErrorBoundary } from './ErrorBoundary';
 import {
   BarChart3, Bell, Calendar, CalendarPlus, Clock, Layers, type LucideIcon,
-  LayoutDashboard, LogOut, Moon, Search, ShieldCheck, SlidersHorizontal, Sun, UserCog, Users, Zap,
+  LayoutDashboard, LogOut, Moon, ShieldCheck, SlidersHorizontal, Sun, UserCog, Users, Zap,
 } from 'lucide-react';
 import { useAuth } from './current-employee';
 import { api, type Me, type Role } from './api';
-import { Pulpit } from './screens/Pulpit';
-import { Wpis } from './screens/Wpis';
-import { Historia } from './screens/Historia';
-import { Kalendarz } from './screens/Kalendarz';
-import { Zespol } from './screens/Zespol';
-import { Capacity } from './screens/Capacity';
-import { Raporty } from './screens/Raporty';
-import { Heatmapa } from './screens/Heatmapa';
-import { Pracownicy } from './screens/Pracownicy';
-import { Konfiguracja } from './screens/Konfiguracja';
-import { Audyt } from './screens/Audyt';
 import { Login } from './screens/Login';
+import { Avatar } from './design-system/components/core/Avatar';
 
-const SCREENS: Record<string, () => JSX.Element> = {
-  '/pulpit': Pulpit,
-  '/wpis': Wpis,
-  '/kalendarz': Kalendarz,
-  '/historia': Historia,
-  '/zespol': Zespol,
-  '/capacity': Capacity,
-  '/raporty': Raporty,
-  '/heatmapa': Heatmapa,
-  '/pracownicy': Pracownicy,
-  '/konfiguracja': Konfiguracja,
-  '/audyt': Audyt,
+// Ekrany schodzą do osobnych paczek. Pracownik z rolą EMPLOYEE widzi cztery pozycje menu,
+// a pobierał kod Raportów, Heatmapy, Audytu i całej Konfiguracji — trasy, do których backend
+// i tak by go nie wpuścił. Login zostaje w głównej paczce: to pierwszy ekran niezalogowanego.
+const SCREENS: Record<string, LazyExoticComponent<() => JSX.Element>> = {
+  '/pulpit': lazy(() => import('./screens/Pulpit').then((m) => ({ default: m.Pulpit }))),
+  '/wpis': lazy(() => import('./screens/Wpis').then((m) => ({ default: m.Wpis }))),
+  '/kalendarz': lazy(() => import('./screens/Kalendarz').then((m) => ({ default: m.Kalendarz }))),
+  '/historia': lazy(() => import('./screens/Historia').then((m) => ({ default: m.Historia }))),
+  '/zespol': lazy(() => import('./screens/Zespol').then((m) => ({ default: m.Zespol }))),
+  '/capacity': lazy(() => import('./screens/Capacity').then((m) => ({ default: m.Capacity }))),
+  '/raporty': lazy(() => import('./screens/Raporty').then((m) => ({ default: m.Raporty }))),
+  '/heatmapa': lazy(() => import('./screens/Heatmapa').then((m) => ({ default: m.Heatmapa }))),
+  '/pracownicy': lazy(() => import('./screens/Pracownicy').then((m) => ({ default: m.Pracownicy }))),
+  '/konfiguracja': lazy(() => import('./screens/Konfiguracja').then((m) => ({ default: m.Konfiguracja }))),
+  '/audyt': lazy(() => import('./screens/Audyt').then((m) => ({ default: m.Audyt }))),
 };
+
+// Zapowiedź bez migotania: rezerwujemy wysokość, żeby treść nie podskoczyła po doładowaniu,
+// a fakt wczytywania zgłaszamy wyłącznie czytnikowi ekranu. Paczka trasy w sieci wewnętrznej
+// schodzi w kilkadziesiąt milisekund — widoczny spinner byłby błyskiem, nie informacją.
+function ScreenFallback() {
+  return (
+    <div style={{ minHeight: 280 }} role="status" aria-live="polite">
+      <span className="ds-sr">Wczytywanie ekranu…</span>
+    </div>
+  );
+}
 
 // Widoczność pozycji menu odwzorowuje @Roles kontrolerów — użytkownik ma widzieć tylko to, z czego
 // realnie skorzysta. Backend pozostaje źródłem prawdy (odpowie 403); przy rozbieżności poprawiamy tutaj.
@@ -78,23 +84,13 @@ const visibleGroups = (me: Me | undefined): NavGroup[] =>
   NAV.map((g) => ({ ...g, items: g.items.filter((n) => !n.can || (me ? n.can(me) : false)) })).filter((g) => g.items.length);
 const allItems = NAV.flatMap((g) => g.items);
 
-function Placeholder({ title }: { title: string }) {
-  return (
-    <div style={{ animation: 'fu .2s ease' }}>
-      <p style={{ fontFamily: 'var(--font-sans)', color: 'var(--muted)', fontSize: 14 }}>
-        {title} — ekran zostanie zbudowany w kolejnym kroku planu.
-      </p>
-    </div>
-  );
-}
-
 // Wejście z adresu na ekran ukryty przed rolą: trasa nie istnieje, więc trafia tu. Rozróżniamy brak
 // uprawnień od literówki w adresie — „nie znaleziono" dla istniejącej sekcji byłoby nieprawdą.
 function NotAvailable() {
   const location = useLocation();
   const known = allItems.some((n) => n.to === location.pathname);
   return (
-    <div style={{ animation: 'fu .2s ease' }}>
+    <div>
       <p style={{ fontFamily: 'var(--font-sans)', color: 'var(--ink)', fontSize: 15, fontWeight: 600, marginBottom: 6 }}>
         {known ? 'Nie masz dostępu do tej sekcji' : 'Nie znaleziono strony'}
       </p>
@@ -109,9 +105,8 @@ function NotAvailable() {
 }
 
 const navA = (active: boolean) => ({
-  display: 'flex', alignItems: 'center', gap: 11, padding: '9px 11px', margin: '1px 0', borderRadius: 9,
+  display: 'flex', alignItems: 'center', gap: 11, padding: '9px 11px', margin: '1px 0', borderRadius: 'var(--radius-sm)',
   fontFamily: 'var(--font-sans)', fontWeight: 600, fontSize: 13.5, letterSpacing: '.005em', textDecoration: 'none',
-  transition: 'background .14s, color .14s',
   color: active ? 'var(--brand)' : 'var(--ink-2)', background: active ? 'var(--brand-tint)' : 'transparent',
 } as const);
 
@@ -121,30 +116,30 @@ function Sidebar() {
   return (
     <aside style={{ width: 250, flex: 'none', background: 'var(--surface)', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', padding: '20px 14px', position: 'sticky', top: 0, height: '100vh' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '4px 8px 18px' }}>
-        <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--brand)', color: 'var(--on-brand)', display: 'grid', placeItems: 'center' }}>
-          <Calendar size={19} />
+        <div style={{ width: 36, height: 36, borderRadius: 'var(--radius-md)', background: 'var(--brand)', color: 'var(--on-brand)', display: 'grid', placeItems: 'center' }}>
+          <Calendar size={19} aria-hidden="true" />
         </div>
         <span style={{ fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 15, color: 'var(--ink)' }}>Nieobecności</span>
       </div>
-      <nav style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 1 }}>
+      <nav aria-label="Menu główne" style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 1 }}>
         {visibleGroups(current).map(({ group, items }) => (
           <div key={group}>
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, letterSpacing: '.13em', textTransform: 'uppercase', color: 'var(--muted)', padding: '16px 11px 6px' }}>{group}</div>
             {items.map(({ to, label, icon: Icon }) => (
-              <NavLink key={to} to={to} style={({ isActive }) => navA(isActive)}>
-                <Icon size={18} /> {label}
+              <NavLink key={to} to={to} className="ds-nav" style={({ isActive }) => navA(isActive)}>
+                <Icon size={18} aria-hidden="true" /> {label}
               </NavLink>
             ))}
           </div>
         ))}
       </nav>
       <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, marginTop: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
-        <div style={{ width: 34, height: 34, borderRadius: 9, background: 'var(--brand-tint)', color: 'var(--brand)', display: 'grid', placeItems: 'center', fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 13 }}>{initials}</div>
+        <Avatar initials={initials} size={34} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontFamily: 'var(--font-sans)', fontWeight: 600, fontSize: 13, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{current ? `${current.firstName} ${current.lastName}` : ''}</div>
           <div style={{ fontFamily: 'var(--font-sans)', fontSize: 11, color: 'var(--muted)' }}>{current ? (ROLE_LABEL[current.role] ?? current.role) : ''}</div>
         </div>
-        <button type="button" aria-label="Wyloguj" title="Wyloguj" onClick={logout} style={{ cursor: 'pointer', color: 'var(--muted)', display: 'flex', padding: 6, borderRadius: 7, border: 'none', background: 'transparent' }}><LogOut size={17} /></button>
+        <button type="button" className="ds-quiet" aria-label="Wyloguj" title="Wyloguj" onClick={logout} style={{ cursor: 'pointer', color: 'var(--muted)', display: 'flex', padding: 6, borderRadius: 'var(--radius-sm)', border: 'none', background: 'transparent' }}><LogOut size={17} aria-hidden="true" /></button>
       </div>
     </aside>
   );
@@ -158,8 +153,24 @@ function Topbar({ dark, onToggleTheme }: { dark: boolean; onToggleTheme: () => v
   const meta = visibleGroups(current).flatMap((g) => g.items).find((n) => n.to === location.pathname);
   const [notifOpen, setNotifOpen] = useState(false);
   const [notif, setNotif] = useState<{ items: { kind: string; text: string; severity: string }[]; count: number }>({ items: [], count: 0 });
-  useEffect(() => { api.notificationsFeed().then(setNotif).catch(() => {}); }, [location.pathname]);
-  const iconBtn = { width: 38, height: 38, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--ink-2)', display: 'grid', placeItems: 'center', cursor: 'pointer' } as const;
+  const bellRef = useRef<HTMLButtonElement>(null);
+  // Kanał powiadomień odświeżamy przy wejściu i przy otwarciu panelu, a nie przy każdej zmianie
+  // trasy — to było dodatkowe żądanie do każdej nawigacji, obok pobrania paczki ekranu.
+  // ponytail: licznik może się zestarzeć w długiej sesji; jeśli zacznie to przeszkadzać,
+  //           dołóż odświeżanie co kilka minut albo kanał SSE.
+  const loadNotif = () => { api.notificationsFeed().then(setNotif).catch(() => {}); };
+  useEffect(loadNotif, []);
+
+  // Warstwa nakładana musi dać się zamknąć z klawiatury i oddać fokus temu, kto ją otworzył —
+  // bez tego użytkownik klawiatury zostaje uwięziony za otwartym panelem.
+  useEffect(() => {
+    if (!notifOpen) return undefined;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { setNotifOpen(false); bellRef.current?.focus(); } };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [notifOpen]);
+
+  const iconBtn = { width: 38, height: 38, flex: 'none', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-2)', background: 'var(--surface)', color: 'var(--ink-2)', display: 'grid', placeItems: 'center', cursor: 'pointer' } as const;
   return (
     <header style={{ height: 64, flex: 'none', borderBottom: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', alignItems: 'center', gap: 18, padding: '0 26px', position: 'sticky', top: 0, zIndex: 5 }}>
       <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
@@ -167,35 +178,41 @@ function Topbar({ dark, onToggleTheme }: { dark: boolean; onToggleTheme: () => v
           <h1 style={{ fontFamily: 'var(--font-sans)', fontSize: 19, fontWeight: 700, margin: 0, letterSpacing: '-.01em', whiteSpace: 'nowrap', color: 'var(--ink)' }}>{meta?.label ?? 'Nieobecności'}</h1>
         </div>
       </div>
-      {/* ponytail: wyszukiwarka wizualna wg prototypu; filtrowanie dołożymy, gdy będzie potrzebne */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, border: '1px solid var(--border)', borderRadius: 9, padding: '8px 12px', color: 'var(--muted)', fontFamily: 'var(--font-sans)', fontSize: 13, flex: '0 1 220px', minWidth: 44, whiteSpace: 'nowrap', overflow: 'hidden' }}>
-        <Search size={16} style={{ flex: 'none' }} /> Szukaj osoby…
-      </div>
-      <button type="button" aria-label={dark ? 'Tryb jasny' : 'Tryb ciemny'} title="Przełącz motyw" onClick={onToggleTheme} style={iconBtn}>
-        {dark ? <Sun size={18} /> : <Moon size={18} />}
+      <TopSearch />
+      <button type="button" className="ds-quiet" aria-label={dark ? 'Tryb jasny' : 'Tryb ciemny'} title="Przełącz motyw" onClick={onToggleTheme} style={iconBtn}>
+        {dark ? <Sun size={18} aria-hidden="true" /> : <Moon size={18} aria-hidden="true" />}
       </button>
       <div style={{ position: 'relative' }}>
-        <button type="button" aria-label="Powiadomienia" onClick={() => setNotifOpen((v) => !v)} style={{ ...iconBtn, position: 'relative' }}>
-          <Bell size={18} />
+        <button ref={bellRef} type="button" className="ds-quiet" aria-expanded={notifOpen} aria-haspopup="true"
+          aria-label={notif.count > 0 ? `Powiadomienia: ${notif.count} ${plural(notif.count, ['nowe', 'nowe', 'nowych'])}` : 'Powiadomienia: brak nowych'}
+          onClick={() => { if (!notifOpen) loadNotif(); setNotifOpen((v) => !v); }} style={{ ...iconBtn, position: 'relative' }}>
+          <Bell size={18} aria-hidden="true" />
           {notif.count > 0 && (
-            <span style={{ position: 'absolute', top: -5, right: -5, minWidth: 16, height: 16, padding: '0 4px', borderRadius: 8, background: 'var(--danger)', color: '#fff', fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, display: 'grid', placeItems: 'center', border: '2px solid var(--surface)' }}>{notif.count}</span>
+            <span aria-hidden="true" style={{ position: 'absolute', top: -5, right: -5, minWidth: 16, height: 16, padding: '0 4px', borderRadius: 'var(--radius-sm)', background: 'var(--danger)', color: 'var(--on-danger)', fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, display: 'grid', placeItems: 'center', border: '2px solid var(--surface)' }}>{notif.count}</span>
           )}
         </button>
         {notifOpen && (
           <>
-            <button type="button" aria-label="Zamknij powiadomienia" onClick={() => setNotifOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 19, border: 'none', background: 'transparent', cursor: 'default' }} />
-            <div style={{ position: 'absolute', top: 46, right: 0, width: 320, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, boxShadow: 'var(--shadow)', zIndex: 20, overflow: 'hidden' }}>
-              <div style={{ padding: '12px 14px', borderBottom: '1px solid var(--border)', fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 13.5, color: 'var(--ink)' }}>Powiadomienia</div>
+            {/* Kliknięcie obok zamyka panel; z klawiatury robi to Esc, dlatego tło jest poza
+                kolejnością tabulacji — pełnoekranowy przycisk w tabulacji byłby pułapką. */}
+            <button type="button" tabIndex={-1} aria-hidden="true" onClick={() => setNotifOpen(false)}
+              style={{ position: 'fixed', inset: 0, zIndex: 19, border: 'none', background: 'transparent', cursor: 'default' }} />
+            <div role="region" aria-label="Powiadomienia" style={{ position: 'absolute', top: 46, right: 0, width: 320, maxHeight: 'min(60vh, 420px)', overflowY: 'auto', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow)', zIndex: 20 }}>
+              <div style={{ padding: '12px 14px', borderBottom: '1px solid var(--border)', fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 13.5, color: 'var(--ink)', position: 'sticky', top: 0, background: 'var(--surface)' }}>Powiadomienia</div>
               {notif.items.length === 0 && <div style={{ padding: 16, fontFamily: 'var(--font-sans)', fontSize: 13, color: 'var(--muted)' }}>Brak nowych powiadomień.</div>}
-              {notif.items.map((it, i) => {
-                const col = it.severity === 'danger' ? 'var(--danger)' : it.severity === 'warning' ? 'var(--amber)' : 'var(--blue)';
-                return (
-                  <div key={i} style={{ display: 'flex', gap: 10, padding: '11px 14px', borderTop: i ? '1px solid var(--border)' : 'none' }}>
-                    <span style={{ width: 7, height: 7, borderRadius: '50%', background: col, marginTop: 5, flex: 'none' }} />
-                    <span style={{ fontFamily: 'var(--font-sans)', fontSize: 12.8, color: 'var(--ink-2)', lineHeight: 1.45 }}>{it.text}</span>
-                  </div>
-                );
-              })}
+              {notif.items.length > 0 && (
+                <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+                  {notif.items.map((it, i) => {
+                    const col = it.severity === 'danger' ? 'var(--danger)' : it.severity === 'warning' ? 'var(--amber)' : 'var(--blue)';
+                    return (
+                      <li key={i} style={{ display: 'flex', gap: 10, padding: '11px 14px', borderTop: i ? '1px solid var(--border)' : 'none' }}>
+                        <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: '50%', background: col, marginTop: 5, flex: 'none' }} />
+                        <span style={{ fontFamily: 'var(--font-sans)', fontSize: 12.8, color: 'var(--ink-2)', lineHeight: 1.45, overflowWrap: 'anywhere' }}>{it.text}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </div>
           </>
         )}
@@ -204,12 +221,22 @@ function Topbar({ dark, onToggleTheme }: { dark: boolean; onToggleTheme: () => v
   );
 }
 
+// Wybór motywu przeżywa przeładowanie — bez tego każde odświeżenie wracało do jasnego,
+// a przełącznik wyglądał na zepsuty. Pierwsze uruchomienie idzie za ustawieniem systemu.
+const THEME_KEY = 'theme';
+const initialDark = () => {
+  const saved = localStorage.getItem(THEME_KEY);
+  if (saved) return saved === 'dark';
+  return window.matchMedia('(prefers-color-scheme: dark)').matches;
+};
+
 export function App() {
   const { current, ready } = useAuth();
   const location = useLocation();
-  const [dark, setDark] = useState(false);
+  const [dark, setDark] = useState(initialDark);
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+    localStorage.setItem(THEME_KEY, dark ? 'dark' : 'light');
   }, [dark]);
 
   if (!ready) return null;
@@ -217,19 +244,26 @@ export function App() {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--canvas)', color: 'var(--ink)', fontFamily: 'var(--font-sans)' }}>
+      <a className="ds-skip" href="#tresc">Przejdź do treści</a>
       <Sidebar />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <Topbar dark={dark} onToggleTheme={() => setDark((v) => !v)} />
-        <main style={{ flex: 1, overflowY: 'auto', padding: '28px 30px 60px' }}>
-          <ErrorBoundary key={location.pathname}>
+        {/* Klucz na trasie: każde wejście na ekran to nowy węzeł, więc animacja wejścia gra raz
+            i w jednym miejscu — ekrany nie noszą już własnych kopii `animation: fu`. */}
+        {/* `tabIndex={-1}` jest warunkiem działania linku pomijającego: bez niego skok pod
+            kotwicę przewija stronę, ale fokus zostaje w nawigacji i następny Tab wraca na jej środek. */}
+        <main id="tresc" tabIndex={-1} key={location.pathname} className="ds-screen" style={{ flex: 1, overflowY: 'auto', padding: '28px 30px 60px', outline: 'none' }}>
+          <ErrorBoundary>
+            <Suspense fallback={<ScreenFallback />}>
             <Routes>
               <Route path="/" element={<Navigate to="/pulpit" replace />} />
-              {visibleGroups(current).flatMap((g) => g.items).map(({ to, label }) => {
+              {visibleGroups(current).flatMap((g) => g.items).map(({ to }) => {
                 const Screen = SCREENS[to];
-                return <Route key={to} path={to} element={Screen ? <Screen /> : <Placeholder title={label} />} />;
+                return Screen ? <Route key={to} path={to} element={<Screen />} /> : null;
               })}
               <Route path="*" element={<NotAvailable />} />
             </Routes>
+            </Suspense>
           </ErrorBoundary>
         </main>
       </div>

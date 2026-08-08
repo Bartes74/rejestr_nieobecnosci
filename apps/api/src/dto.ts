@@ -17,6 +17,10 @@ export class UpdateAbsenceTypeDto {
   @IsOptional() @IsBoolean() specialCategory?: boolean;
   @IsOptional() @IsBoolean() active?: boolean;
 }
+/** Pełna kolejność typów — tablica identyfikatorów od pierwszego do ostatniego. */
+export class ReorderAbsenceTypesDto {
+  @IsArray() @IsString({ each: true }) ids!: string[];
+}
 
 // FR-G3/G7 — kalendarze i święta
 export class CreateCalendarDto {

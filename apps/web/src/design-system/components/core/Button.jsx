@@ -10,7 +10,7 @@ const VARIANTS = {
   secondary: { background: 'var(--surface)', color: 'var(--ink-2)', border: '1px solid var(--border-2)' },
   ghost:     { background: 'transparent', color: 'var(--brand)', border: '1px solid transparent' },
   tint:      { background: 'var(--brand-tint)', color: 'var(--brand)', border: '1px solid var(--brand)' },
-  danger:    { background: 'var(--danger)', color: '#fff', border: '1px solid var(--danger)' },
+  danger:    { background: 'var(--danger)', color: 'var(--on-danger)', border: '1px solid var(--danger)' },
 };
 
 export function Button({ variant = 'primary', size = 'md', icon, children, disabled = false, onClick, type = 'button', style, ...rest }) {

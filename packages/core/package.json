@@ -3,8 +3,20 @@
   "version": "0.0.0",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "exports": { ".": "./dist/index.js" },
-  "files": ["dist"],
+  "exports": {
+    ".": "./dist/index.js",
+    "./plural": {
+      "types": "./dist/plural.d.ts",
+      "default": "./dist/plural.js"
+    },
+    "./today": {
+      "types": "./dist/today.d.ts",
+      "default": "./dist/today.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "test": "vitest run",

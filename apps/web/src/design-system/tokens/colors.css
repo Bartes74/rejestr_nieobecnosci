@@ -4,43 +4,47 @@
    Two themes: light (default) and dark ([data-theme="dark"]).
    Use SEMANTIC tokens in product code, not raw brand swatches.
    ============================================================ */
-:root {
-  /* --- Brand identity swatches (reference; from visual-identity palette) --- */
-  --brand-p341: #007A53;  /* primary green        */
-  --brand-p342: #006A4E;  /* primary green, dark  */
-  --brand-p7459:#4298B5;  /* accent blue          */
-  --brand-p646: #5E8AB4;  /* muted steel blue     */
-  --brand-p276: #221C35;  /* deep navy            */
-  --brand-p485: #ED1B2F;  /* alert red            */
-  --brand-p1215:#FBD872;  /* warm yellow          */
+/* Oficjalna paleta Pantone zamawiającego — ŹRÓDŁO, nie tokeny do użycia w kodzie.
+   Stała tu wcześniej jako siedem zmiennych CSS bez ani jednego konsumenta; token, po który nikt
+   nie sięga, nie opisuje systemu. Wartości zostają zapisane, bo dokumentują pochodzenie palety
+   (PRODUCT.md: wywiedziona z palety Pantone i wiążąca), ale wchodzą do produktu wyłącznie przez
+   tokeny semantyczne niżej — nigdy wprost.
 
+     P341  #007A53  zieleń podstawowa      → --brand
+     P342  #006A4E  zieleń ciemna          → --brand-dark
+     P7459 #4298B5  błękit akcentowy       → (bez konsumenta; --blue wywiedziony osobno pod kontrast)
+     P646  #5E8AB4  stalowy błękit         → (bez konsumenta)
+     P276  #221C35  granat                 → (bez konsumenta)
+     P485  #ED1B2F  czerwień alertu        → (bez konsumenta; --danger osobno pod kontrast 4,5:1)
+     P1215 #FBD872  ciepła żółć            → (bez konsumenta)
+*/
+:root {
   /* --- Surfaces & neutrals --- */
   --canvas:   #EAEEEC;  /* app background behind cards   */
   --surface:  #FFFFFF;  /* card / panel background       */
   --surface-2:#F5F8F6;  /* subtle inset panel            */
   --surface-3:#EEF3F0;  /* track / chip / hover fill     */
   --border:   #E1E7E4;  /* hairline divider              */
-  --border-2: #D2DAD7;  /* stronger control border       */
+  --border-2: #838A88;  /* control border — 3:1 vs surface i canvas (WCAG 1.4.11) */
 
   /* --- Text --- */
   --ink:    #15201C;    /* primary text                  */
   --ink-2:  #3C4A45;    /* secondary text                */
-  --muted:  #6A7570;    /* tertiary / captions           */
+  --muted:  #636E69;    /* tertiary / captions — 4.5:1 na canvas, najciemniejszym tle */
 
   /* --- Primary (brand) --- */
   --brand:      #007A53;
   --brand-dark: #006A4E; /* hover / pressed              */
   --brand-tint: #E1F0E9; /* soft brand background        */
-  --brand-tint-2:#CFE6DC;/* stronger brand background    */
   --on-brand:   #FFFFFF; /* text/icon on brand fill      */
+  --on-danger:  #FFFFFF; /* text/icon on danger fill     */
 
   /* --- Accent (data viz / links; never encodes absence type) --- */
-  --blue:      #2F7FA8;
+  --blue:      #1F729B;   /* 4.5:1 na surface i na blue-tint */
   --blue-tint: #E2EEF3;
-  --info:      #41B6E6;
 
   /* --- Semantic status --- */
-  --amber:      #B57E0F;  /* warning / attention         */
+  --amber:      #946502;  /* warning / attention — 4.5:1 na surface/2/3 */
   --amber-tint: #F8EED4;
   --danger:     #C81F2D;  /* error / over-limit / risk   */
   --danger-tint:#FAE4E6;
@@ -55,9 +59,9 @@
   --heat-2: #A8D9B4;  /* 12-24% ok          */
   --heat-3: #F1DC8E;  /* 25-37% watch       */
   --heat-4: #ED9F52;  /* 38-49% elevated    */
-  --heat-5: #D8493B;  /* >=50%  at risk     */
+  --heat-5: #D34437;  /* >=50%  at risk     */
   --heat-1-ink:#1C6B49; --heat-2-ink:#13593A; --heat-3-ink:#735312;
-  --heat-4-ink:#5E2F08; --heat-5-ink:#FFFFFF; --heat-5-ring:#8E1B12;
+  --heat-4-ink:#5E2F08; --heat-5-ink:#FFFFFF; --heat-5-ring:#640100;
 
   /* --- Elevation --- */
   --shadow-sm: 0 1px 2px rgba(16,40,32,.07);
@@ -70,21 +74,20 @@
   --surface-2:#1E2925;
   --surface-3:#243029;
   --border:   #2B3833;
-  --border-2: #384842;
+  --border-2: #5C6D66;
 
   --ink:    #E9F0EC;
   --ink-2:  #B5C1BC;
-  --muted:  #7E8D87;
+  --muted:  #889892;
 
   --brand:      #2FB888;
   --brand-dark: #27A579;
   --brand-tint: rgba(47,184,136,.15);
-  --brand-tint-2:rgba(47,184,136,.26);
   --on-brand:   #0E1413;
+  --on-danger:  #0E1413;
 
   --blue:      #5DB2D6;
   --blue-tint: rgba(93,178,214,.15);
-  --info:      #41B6E6;
 
   --amber:      #E0AC4C;
   --amber-tint: rgba(224,172,76,.15);
@@ -94,6 +97,13 @@
   --absence:        rgba(47,184,136,.20);
   --absence-ink:    #7BD9B4;
   --absence-border: rgba(47,184,136,.40);
+
+  /* --- Coverage heatmap (dark) — komponowana osobno, nie odwrócona.
+         Spokój wtapia się w powierzchnię, ryzyko świeci; każdy atrament ≥4.5:1. --- */
+  --heat-1: #323A34;  --heat-2: #3B5B44;  --heat-3: #927F37;
+  --heat-4: #D08435;  --heat-5: #DE4F40;
+  --heat-1-ink:#E9F0EC; --heat-2-ink:#E9F0EC; --heat-3-ink:#0E1413;
+  --heat-4-ink:#0E1413; --heat-5-ink:#0E1413; --heat-5-ring:#FFD7D4;
 
   --shadow-sm: 0 1px 2px rgba(0,0,0,.35);
   --shadow:    0 12px 34px rgba(0,0,0,.45);

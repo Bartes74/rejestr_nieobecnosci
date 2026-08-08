@@ -43,7 +43,7 @@ export class CalendarFeedController {
   async teamFeed(@Query('token') token: string) {
     const emp = token ? await this.prisma.employee.findUnique({ where: { feedToken: token } }) : null;
     if (!emp) throw new NotFoundException();
-    const peers = await this.org.tribePeers(emp.id);
+    const peers = await this.org.visiblePeers({ sub: emp.id, role: emp.role });
     const abs = await this.prisma.absence.findMany({
       where: { employeeId: { in: peers } },
       include: { employee: { select: { firstName: true, lastName: true } } },

@@ -1,5 +1,5 @@
 import { Controller, Get } from '@nestjs/common';
-import { isoDate } from '@nieobecnosci/core';
+import { isoDate, todayUtc } from '@nieobecnosci/core';
 import { PrismaService } from './prisma.service';
 import { BalanceService } from './balance.service';
 import { CapacityService } from './capacity.service';
@@ -21,7 +21,9 @@ export class NotificationsFeedController {
   @Get('feed')
   async feed(@CurrentUser() user: AuthUser) {
     const items: FeedItem[] = [];
-    const today = new Date(); today.setUTCHours(0, 0, 0, 0);
+    // Północ dnia bieżącego w strefie organizacji — po lokalnej północy przypomnienia
+    // dotyczyły jeszcze wczorajszego okna siedmiodniowego.
+    const today = todayUtc();
     const in7 = new Date(today.getTime() + 7 * 86_400_000);
 
     // 1) zaległy urlop (FR-E3)

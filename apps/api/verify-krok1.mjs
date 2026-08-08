@@ -24,7 +24,7 @@ await prisma.employee.create({ data: { firstName: 'Adm', lastName: 'K1', email: 
 token = (await j(await fetch(`${API}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ login: 'k1admin', password: 'haslo123' }) }))).token;
 
 // FR-G1 — typy nieobecności
-const urlop = await j(await fetch(`${API}/absence-types`, { method: 'POST', headers: H(), body: JSON.stringify({ name: 'Urlop wypoczynkowy' }) }));
+const urlop = await j(await fetch(`${API}/absence-types`, { method: 'POST', headers: H(), body: JSON.stringify({ name: 'Nieobecność' }) }));
 const l4 = await j(await fetch(`${API}/absence-types`, { method: 'POST', headers: H(), body: JSON.stringify({ name: 'L4', affectsPool: false, specialCategory: true }) }));
 ok(urlop.affectsPool === true && l4.affectsPool === false && l4.specialCategory === true, 'POST /absence-types → urlop (pula) + L4 (bez puli, special)');
 

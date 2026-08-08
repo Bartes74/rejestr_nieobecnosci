@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { api, getToken, setToken, type Me } from './api';
+import { api, getToken, setToken, UNAUTHORIZED, type Me } from './api';
 
 // Auth: zalogowany pracownik z tokenu JWT (FR-H5). Zastępuje wcześniejszy stand-in selektora.
 interface AuthCtx {
@@ -29,6 +29,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .then((m) => setCurrent(m ?? undefined))
       .catch(() => setToken(null))
       .finally(() => setReady(true));
+  }, []);
+
+  // Wygaśnięcie tokenu po stronie serwera musi wrócić na ekran logowania — inaczej użytkownik
+  // zostaje w powłoce aplikacji, w której każde żądanie kończy się błędem.
+  useEffect(() => {
+    const onExpired = () => setCurrent(undefined);
+    window.addEventListener(UNAUTHORIZED, onExpired);
+    return () => window.removeEventListener(UNAUTHORIZED, onExpired);
   }, []);
 
   const login = async (l: string, p: string) => {

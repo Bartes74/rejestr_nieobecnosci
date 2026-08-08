@@ -5,6 +5,8 @@ export interface SegmentedControlProps {
   options: (string | SegmentOption)[];
   value: string;
   onChange?: (value: string) => void;
+  /** Nazwa grupy dla czytnika ekranu — bez niej segmenty brzmią jak luźne przyciski. */
+  label?: string;
   style?: React.CSSProperties;
 }
 export function SegmentedControl(props: SegmentedControlProps): React.JSX.Element;

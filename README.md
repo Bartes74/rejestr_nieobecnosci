@@ -58,7 +58,11 @@ i nieobecności **względem dnia uruchomienia** (bieżący tydzień, przyszły t
 | Product Owner | `po` | `demo123` |
 | Pracownik | `pracownik` | `demo123` |
 
-Dodatkowo `anna`, `bartek` (role kluczowe — generują alert kolizji) i `celina` (B2B), hasło `demo123`.
+Dodatkowo `anna`, `bartek` (role kluczowe — generują alert kolizji), `celina` (B2B) i `ext` (OUT), hasło `demo123`.
+
+`pracownik` (UoP) i `ext` (OUT) to para do porównania form zatrudnienia: ta sama rola i te same
+ekrany, ale inny okres rozliczeniowy (kalendarzowy vs budżetowy gru–lis) i inne traktowanie L4
+wobec puli urlopu (FR-B5).
 
 ### Kto co widzi (RBAC)
 
@@ -80,7 +84,7 @@ w kanale iCal zespołu, w powiadomieniach i w eksportach.
 
 ```bash
 pnpm run verify:offline    # build + typecheck (3 pakiety) + 27 testów silnika — bez bazy i API
-pnpm run verify:suites     # 23 suity integracyjne (147 asercji) przeciw działającemu API
+pnpm run verify:suites     # 27 suit integracyjnych (212 asercji) przeciw działającemu API
 ```
 
 `verify:suites` wymaga **uruchomionego API** i zmiennej `API` (domyślnie `http://localhost:3100/api`).

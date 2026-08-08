@@ -1,8 +1,23 @@
 // FR-B2 — licznik balansu: pula + zaległe − wykorzystano = pozostało.
-// FR-B5 — L4 (affectsPool=false) NIE obniża puli urlopu (wchodzi tylko do capacity).
+// FR-B5 — L4 (affectsPool=false) NIE obniża puli urlopu — ale wyłącznie na UoP (patrz `consumesPool`).
 // FR-B7 — urlop zaległy zawsze powiększa dostępną pulę (nigdy nie przepada).
 
+import type { EmploymentType } from './period.js';
 import { countWorkingDays } from './workdays.js';
+
+/**
+ * Czy dzień takiej nieobecności zabiera dzień z puli danej osoby.
+ *
+ * FR-B5 mówi o UoP i tylko o UoP: tam L4 jest świadczeniem chorobowym, więc zaplanowany
+ * urlop musi dać się przełożyć i dni wracają do puli. Poza UoP nieobecność bez puli nie
+ * istnieje — dzień choroby zjada ten sam budżet dni co urlop, więc nic nie wraca.
+ *
+ * Reguła stoi na fladze `affectsPool`, nigdy na nazwie typu (D1), więc obejmie też każdy
+ * przyszły typ bez puli dodany przez administratora. Warunek jest po stronie „nie UoP", nie
+ * po liście form, żeby kolejna forma zatrudnienia domyślnie nie zwracała dni.
+ */
+export const consumesPool = (employmentType: EmploymentType, affectsPool: boolean): boolean =>
+  affectsPool || employmentType !== 'UOP';
 
 export interface AbsenceSpan {
   dateFrom: Date;

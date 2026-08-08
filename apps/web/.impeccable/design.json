@@ -1,0 +1,384 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-07T00:00:00.000Z",
+  "title": "Design System: Nieobecności",
+  "extensions": {
+    "colorMeta": {
+      "brand": {
+        "role": "primary",
+        "displayName": "Spokojna Zieleń Marki",
+        "canonical": "oklch(51.2% 0.112 162.4)",
+        "tonalRamp": [
+          "oklch(15% 0.059 162.4)",
+          "oklch(26% 0.073 162.4)",
+          "oklch(38% 0.089 162.4)",
+          "oklch(50% 0.105 162.4)",
+          "oklch(62% 0.103 162.4)",
+          "oklch(74% 0.087 162.4)",
+          "oklch(86% 0.071 162.4)",
+          "oklch(95% 0.059 162.4)"
+        ],
+        "note": "Pochodzi z oficjalnej palety Pantone zamawiającego (P341 #007A53 / P342 #006A4E). Wartość wiążąca — nie podlega renegocjacji w pracach projektowych."
+      },
+      "blue": {
+        "role": "secondary",
+        "displayName": "Stalowy Błękit Danych",
+        "canonical": "oklch(52.3% 0.100 235.4)",
+        "tonalRamp": [
+          "oklch(15% 0.053 235.4)",
+          "oklch(26% 0.065 235.4)",
+          "oklch(38% 0.080 235.4)",
+          "oklch(50% 0.094 235.4)",
+          "oklch(62% 0.091 235.4)",
+          "oklch(74% 0.077 235.4)",
+          "oklch(86% 0.063 235.4)",
+          "oklch(95% 0.053 235.4)"
+        ],
+        "note": "Wyłącznie wizualizacje, awatary i status „zaplanowane\". Nigdy nie koduje znaczenia ani typu nieobecności. Przyciemniony względem prototypu, żeby 11,5-punktowy tekst na blue-tint trzymał 4,5:1."
+      },
+      "amber": {
+        "role": "tertiary",
+        "displayName": "Bursztyn Uwagi",
+        "canonical": "oklch(54.3% 0.113 76.7)",
+        "tonalRamp": [
+          "oklch(15% 0.060 76.7)",
+          "oklch(26% 0.074 76.7)",
+          "oklch(38% 0.090 76.7)",
+          "oklch(50% 0.106 76.7)",
+          "oklch(62% 0.104 76.7)",
+          "oklch(74% 0.088 76.7)",
+          "oklch(86% 0.072 76.7)",
+          "oklch(95% 0.060 76.7)"
+        ],
+        "note": "Sytuacje wymagające decyzji, ale nie awaryjne. Głębszy niż w prototypie — poprzednia wartość nie unosiła tekstu 11,5–12 px na żadnej powierzchni."
+      },
+      "danger": {
+        "role": "tertiary",
+        "displayName": "Czerwień Ryzyka",
+        "canonical": "oklch(53.7% 0.201 24.1)",
+        "tonalRamp": [
+          "oklch(15% 0.106 24.1)",
+          "oklch(26% 0.132 24.1)",
+          "oklch(38% 0.160 24.1)",
+          "oklch(50% 0.189 24.1)",
+          "oklch(62% 0.184 24.1)",
+          "oklch(74% 0.156 24.1)",
+          "oklch(86% 0.127 24.1)",
+          "oklch(95% 0.106 24.1)"
+        ],
+        "note": "Błąd, przekroczenie puli, kolizja kluczowych ról, operacje nieodwracalne."
+      },
+      "absence": {
+        "role": "primary",
+        "displayName": "Jednolita Nieobecność",
+        "canonical": "oklch(90.5% 0.028 167.8)",
+        "tonalRamp": [
+          "oklch(15% 0.015 167.8)",
+          "oklch(26% 0.018 167.8)",
+          "oklch(38% 0.022 167.8)",
+          "oklch(50% 0.026 167.8)",
+          "oklch(62% 0.026 167.8)",
+          "oklch(74% 0.022 167.8)",
+          "oklch(86% 0.018 167.8)",
+          "oklch(95% 0.015 167.8)"
+        ],
+        "note": "Jeden komplet kolorów dla każdej nieobecności niezależnie od typu — wymóg art. 9 RODO (decyzje D1/D2), nie wybór estetyczny."
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Atrament z Zielonym Podkładem",
+        "canonical": "oklch(23.1% 0.017 170.3)",
+        "tonalRamp": [
+          "oklch(15% 0.009 170.3)",
+          "oklch(26% 0.011 170.3)",
+          "oklch(38% 0.014 170.3)",
+          "oklch(50% 0.016 170.3)",
+          "oklch(62% 0.016 170.3)",
+          "oklch(74% 0.014 170.3)",
+          "oklch(86% 0.011 170.3)",
+          "oklch(95% 0.009 170.3)"
+        ],
+        "note": "Nigdy czysta czerń. Najciemniejszy tekst dzieli podkład z płótnem, dzięki czemu marka nie wygląda na doklejoną. Trzeci stopień (--muted #636E69) jest dobrany do najciemniejszego tła, na jakim występuje, czyli do płótna."
+      },
+      "canvas": {
+        "role": "neutral",
+        "displayName": "Zielonkawe Płótno",
+        "canonical": "oklch(94.6% 0.005 165.0)",
+        "tonalRamp": [
+          "oklch(15% 0.003 165.0)",
+          "oklch(26% 0.003 165.0)",
+          "oklch(38% 0.004 165.0)",
+          "oklch(50% 0.005 165.0)",
+          "oklch(62% 0.005 165.0)",
+          "oklch(74% 0.004 165.0)",
+          "oklch(86% 0.003 165.0)",
+          "oklch(95% 0.003 165.0)"
+        ],
+        "note": "Tło aplikacji pod kartami. Nigdy białe — karty odcinają się od niego tonalnie, bez cienia."
+      },
+      "heat-3": {
+        "role": "tertiary",
+        "displayName": "Żółć Obserwacji (25–37% nieobecnych)",
+        "canonical": "oklch(89.5% 0.100 94.8)",
+        "tonalRamp": [
+          "oklch(15% 0.053 94.8)",
+          "oklch(26% 0.066 94.8)",
+          "oklch(38% 0.080 94.8)",
+          "oklch(50% 0.094 94.8)",
+          "oklch(62% 0.092 94.8)",
+          "oklch(74% 0.078 94.8)",
+          "oklch(86% 0.064 94.8)",
+          "oklch(95% 0.053 94.8)"
+        ],
+        "note": "Środek jedynej skali sekwencyjnej w systemie — heatmapy pokrycia."
+      },
+      "heat-5": {
+        "role": "tertiary",
+        "displayName": "Czerwień Niedoboru Obsady (≥50%)",
+        "canonical": "oklch(58.9% 0.182 28.9)",
+        "tonalRamp": [
+          "oklch(15% 0.096 28.9)",
+          "oklch(26% 0.119 28.9)",
+          "oklch(38% 0.145 28.9)",
+          "oklch(50% 0.171 28.9)",
+          "oklch(62% 0.167 28.9)",
+          "oklch(74% 0.141 28.9)",
+          "oklch(86% 0.115 28.9)",
+          "oklch(95% 0.096 28.9)"
+        ],
+        "note": "Szczyt skali pokrycia. Kafel dostaje wewnętrzny pierścień #640100 zamiast zewnętrznego obramowania, żeby nie rozsuwać siatki. W motywie ciemnym para to fill #DE4F40 z ciemnym atramentem i jasnym pierścieniem #FFD7D4."
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Licznik pozostałego urlopu na pulpicie. Najwyżej raz na ekranie — drugi taki numer kasuje hierarchię, zamiast ją tworzyć."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Powitanie i tytuł ekranu."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Nagłówki sekcji administracyjnych; tytuły kart schodzą do 14,5 px przy tej samej wadze 700."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Tekst ciągły, komórki tabel, opisy. Akapity objaśniające trzymają się ~680 px szerokości."
+      },
+      "label": {
+        "displayName": "Label (mono)",
+        "purpose": "Nagłówki kolumn i mikro-etykiety sekcji, WERSALIKAMI. W grupach nawigacji tracking rośnie do 0.13em."
+      }
+    },
+    "shadows": [
+      {
+        "name": "shadow-sm",
+        "value": "0 1px 2px rgba(16,40,32,.07)",
+        "purpose": "Cień spoczynkowy: karty, przycisk główny, aktywny segment. Ma domykać krawędź, nie unosić. W motywie ciemnym 0 1px 2px rgba(0,0,0,.35)."
+      },
+      {
+        "name": "shadow",
+        "value": "0 8px 28px rgba(16,40,32,.10)",
+        "purpose": "Wyłącznie elementy nakładające się na treść: popover powiadomień, dialog, toast, rozwinięta lista wyboru. W motywie ciemnym 0 12px 34px rgba(0,0,0,.45)."
+      },
+      {
+        "name": "heat-risk-ring",
+        "value": "0 0 0 2px var(--surface), inset 0 0 0 2px #8E1B12",
+        "purpose": "Kafel heatmapy o pokryciu ≥50%. Pierścień wewnętrzny, żeby nie zmieniać rytmu siatki."
+      }
+    ],
+    "motion": [
+      {
+        "name": "screen-enter",
+        "value": "fade + translateY(8px) → 0, 200ms ease",
+        "purpose": "Wejście ekranu przy zmianie trasy. Jedyna animacja o charakterze narracyjnym."
+      },
+      {
+        "name": "state-transition",
+        "value": "120–160ms (background, color, opacity)",
+        "purpose": "Hover i stany aktywne w nawigacji, przyciskach, przełącznikach. Bez odbić i bez opóźnień kaskadowych."
+      },
+      {
+        "name": "focus-ring",
+        "value": "outline: 2px solid var(--brand); outline-offset: 2px",
+        "purpose": "Globalny pierścień :focus-visible. WCAG 2.4.7 — obowiązkowy na każdym elemencie interaktywnym."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "login-hero-hide",
+        "value": "860px"
+      }
+    ],
+    "contrastFloor": {
+      "text": 4.5,
+      "nonText": 3.0,
+      "note": "Weryfikowane w obu motywach, po skomponowaniu tintów rgba na powierzchni. Kolor marki (Pantone P341/P342) jest wiążący i wyłączony z korekt — dopasowują się warstwy wokół niego."
+    }
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Akcja główna ekranu. Najwyżej jedna na widok; wypełnienie marką jest tym, co ją wyróżnia.",
+      "html": "<button class=\"ds-btn-primary ds-focus\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><path d=\"M12 5v14M5 12h14\"/></svg>Zaplanuj nieobecność</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; gap: 7px; font-family: var(--font-sans); font-weight: 700; font-size: 13.5px; line-height: 1; color: var(--on-brand); background: var(--brand); border: 1px solid var(--brand); border-radius: var(--radius-md); padding: 11px 16px; box-shadow: var(--shadow-sm); cursor: pointer; transition: background .14s, opacity .14s; } .ds-btn-primary:hover { background: var(--brand-dark); } .ds-btn-primary:disabled { opacity: .55; cursor: not-allowed; } .ds-focus:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Domyślny wybór dla wszystkiego, co nie jest akcją główną. Krawędź zamiast wypełnienia.",
+      "html": "<button class=\"ds-btn-secondary ds-focus\">Anuluj</button>",
+      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; gap: 7px; font-family: var(--font-sans); font-weight: 600; font-size: 13.5px; line-height: 1; color: var(--ink-2); background: var(--surface); border: 1px solid var(--border-2); border-radius: var(--radius-md); padding: 11px 16px; cursor: pointer; transition: background .14s; } .ds-btn-secondary:hover { background: var(--surface-2); } .ds-focus:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }"
+    },
+    {
+      "name": "Absence Pill",
+      "kind": "chip",
+      "refersTo": "absence-pill",
+      "description": "Jedyny wygląd nieobecności w całym systemie. Nigdy nie zmienia koloru ani kształtu w zależności od typu — to wymóg RODO, nie styl.",
+      "html": "<span class=\"ds-absence-pill\">14–18.07</span>",
+      "css": ".ds-absence-pill { display: inline-flex; align-items: center; font-family: var(--font-mono); font-size: 12px; color: var(--absence-ink); background: var(--absence); border: 1px solid var(--absence-border); padding: 3px 9px; border-radius: var(--radius-sm); white-space: nowrap; }"
+    },
+    {
+      "name": "Nav Item (active)",
+      "kind": "nav",
+      "refersTo": "nav-item-active",
+      "description": "Pozycja nawigacji bocznej. Stan aktywny to marka na tincie — jedyne miejsce, gdzie kolor marki wypełnia tło bez bycia przyciskiem.",
+      "html": "<nav class=\"ds-nav\"><div class=\"ds-nav-group\">PRACOWNIK</div><a class=\"ds-nav-item ds-nav-item--active ds-focus\" href=\"#\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"3\" y=\"3\" width=\"7\" height=\"9\" rx=\"1\"/><rect x=\"14\" y=\"3\" width=\"7\" height=\"5\" rx=\"1\"/><rect x=\"14\" y=\"12\" width=\"7\" height=\"9\" rx=\"1\"/><rect x=\"3\" y=\"16\" width=\"7\" height=\"5\" rx=\"1\"/></svg>Pulpit</a><a class=\"ds-nav-item ds-focus\" href=\"#\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"3\" y=\"4\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"M16 2v4M8 2v4M3 10h18M12 14v4M10 16h4\"/></svg>Nowa nieobecność</a></nav>",
+      "css": ".ds-nav { display: flex; flex-direction: column; gap: 1px; width: 222px; } .ds-nav-group { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .13em; text-transform: uppercase; color: var(--muted); padding: 0 11px 6px; } .ds-nav-item { display: flex; align-items: center; gap: 11px; padding: 9px 11px; margin: 1px 0; border-radius: var(--radius-sm); font-family: var(--font-sans); font-weight: 600; font-size: 13.5px; letter-spacing: .005em; text-decoration: none; color: var(--ink-2); background: transparent; transition: background .14s, color .14s; } .ds-nav-item:hover { background: var(--surface-2); } .ds-nav-item--active, .ds-nav-item--active:hover { color: var(--brand); background: var(--brand-tint); } .ds-focus:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Pole formularza z etykietą nad nim i opcjonalną ikoną kontekstową. Obramowanie border-2 jest mocniejsze niż podziały, bo pole trzeba znaleźć wzrokiem.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">Data od</span><span class=\"ds-field-box\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"var(--brand)\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"3\" y=\"4\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"M16 2v4M8 2v4M3 10h18\"/></svg><input class=\"ds-field-input ds-focus\" value=\"14.07.2026\"></span><span class=\"ds-field-hint\">Weekendy i święta nie są naliczane.</span></label>",
+      "css": ".ds-field { display: block; } .ds-field-label { display: block; font-family: var(--font-sans); font-size: 12.5px; font-weight: 600; color: var(--ink-2); margin-bottom: 7px; } .ds-field-box { display: flex; align-items: center; gap: 10px; border: 1px solid var(--border-2); background: var(--surface); border-radius: var(--radius-md); padding: 12px 14px; } .ds-field-input { border: none; outline: none; background: transparent; flex: 1; min-width: 0; font-family: var(--font-sans); font-size: 14px; color: var(--ink); } .ds-field-hint { display: block; font-family: var(--font-sans); font-size: 11.5px; color: var(--muted); margin-top: 6px; } .ds-focus:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }"
+    },
+    {
+      "name": "Stat Card",
+      "kind": "card",
+      "refersTo": "stat-card",
+      "description": "Podstawowy nośnik liczby w raportach i capacity. Liczba w Archivo 800, jednostka w muted, podpis pod spodem.",
+      "html": "<div class=\"ds-stat\"><div class=\"ds-stat-label\">Śr. wykorzystanie urlopu</div><div class=\"ds-stat-row\"><span class=\"ds-stat-value\">64</span><span class=\"ds-stat-unit\">%</span></div><div class=\"ds-stat-sub\">w jednostce · 21 osób</div></div>",
+      "css": ".ds-stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-xl); box-shadow: var(--shadow-sm); padding: 20px; font-family: var(--font-sans); } .ds-stat-label { font-size: 12.5px; color: var(--muted); font-weight: 600; margin-bottom: 10px; } .ds-stat-row { display: flex; align-items: flex-end; gap: 6px; } .ds-stat-value { font-size: 34px; font-weight: 800; line-height: .9; letter-spacing: -.01em; font-variant-numeric: tabular-nums; color: var(--ink); } .ds-stat-unit { font-size: 15px; font-weight: 700; color: var(--muted); margin-bottom: 4px; } .ds-stat-sub { font-size: 12px; color: var(--muted); margin-top: 8px; }"
+    },
+    {
+      "name": "Segmented Control",
+      "kind": "custom",
+      "refersTo": "segmented-item-active",
+      "description": "Wybór jednej opcji z krótkiej listy. Aktywny segment wyskakuje na surface z cieniem spoczynkowym — jedyne miejsce, gdzie cień oznacza wybór.",
+      "html": "<div class=\"ds-seg\"><button class=\"ds-seg-item ds-seg-item--active ds-focus\">Wszyscy</button><button class=\"ds-seg-item ds-focus\">Dziś</button><button class=\"ds-seg-item ds-focus\">Ten tydzień</button></div>",
+      "css": ".ds-seg { display: inline-flex; gap: 4px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 3px; } .ds-seg-item { border: none; cursor: pointer; font-family: var(--font-sans); font-weight: 600; font-size: 12.5px; padding: 6px 13px; border-radius: var(--radius-sm); color: var(--muted); background: transparent; transition: background .14s, color .14s; } .ds-seg-item:hover { color: var(--ink-2); } .ds-seg-item--active, .ds-seg-item--active:hover { color: var(--brand); background: var(--surface); box-shadow: var(--shadow-sm); } .ds-focus:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }"
+    },
+    {
+      "name": "Alert (amber)",
+      "kind": "custom",
+      "refersTo": null,
+      "description": "Przypomnienie wymagające decyzji, ale nie awaryjne. Tint jako tło, pełny kolor na obramowaniu i ikonie, treść w ink-2.",
+      "html": "<div class=\"ds-alert\"><span class=\"ds-alert-icon\"><svg width=\"17\" height=\"17\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01\"/></svg></span><div class=\"ds-alert-body\"><b>Masz 4 dni zaległego urlopu.</b> Zaplanuj jego wykorzystanie, aby nie zalegał.</div></div>",
+      "css": ".ds-alert { display: flex; gap: 11px; align-items: flex-start; background: var(--amber-tint); border: 1px solid var(--amber); border-radius: var(--radius-lg); padding: 12px 13px; font-family: var(--font-sans); } .ds-alert-icon { flex: none; display: flex; color: var(--amber); margin-top: 1px; } .ds-alert-body { font-size: 12.8px; line-height: 1.45; color: var(--ink-2); } .ds-alert-body b { color: var(--ink); }"
+    },
+    {
+      "name": "Heatmap Cell",
+      "kind": "custom",
+      "refersTo": null,
+      "description": "Kafel heatmapy pokrycia. Jedyne miejsce w systemie ze skalą sekwencyjną. Brak danych jest neutralny, nie zerowy. W motywie ciemnym skala jest komponowana osobno — spokój wtapia się w powierzchnię, ryzyko świeci.",
+      "html": "<div class=\"ds-heat\"><div class=\"ds-heat-cell ds-heat-1\">8%</div><div class=\"ds-heat-cell ds-heat-3\">31%</div><div class=\"ds-heat-cell ds-heat-5 ds-heat-risk\">54%</div><div class=\"ds-heat-cell ds-heat-none\">–</div></div>",
+      "css": ".ds-heat { display: grid; grid-template-columns: repeat(4, 56px); gap: 6px; } .ds-heat-cell { height: 40px; border-radius: 8px; display: grid; place-items: center; font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; } .ds-heat-1 { background: var(--heat-1); color: var(--heat-1-ink); } .ds-heat-3 { background: var(--heat-3); color: var(--heat-3-ink); } .ds-heat-5 { background: var(--heat-5); color: var(--heat-5-ink); } .ds-heat-risk { box-shadow: 0 0 0 2px var(--surface), inset 0 0 0 2px var(--heat-5-ring); } .ds-heat-none { background: var(--surface-3); color: var(--muted); font-weight: 400; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Cichy rejestr",
+    "overview": "Księga, w której każdy wpis wygląda tak samo. System nie hierarchizuje ludzi ani powodów — dwa tygodnie urlopu i jeden dzień zwolnienia dostają identyczną pigułkę w identycznym kolorze, bo prawo tego wymaga, a estetyka to podchwytuje i czyni z tego charakter. Powierzchnie są płaskie, linie włoskowate, liczby ustawione monospacem tak, żeby kolumny się zgadzały. Nic nie miga, nic nie świętuje.\n\nGęstość jest tu cechą, nie kompromisem. To narzędzie dla ludzi, którzy patrzą na nie w oknie planowania sprintu, chcą zobaczyć czterdzieści osób naraz i wyjść. Odstępy są ciasne (rytm 4 px, karty 20–24 px wewnętrznego oddechu), typografia mała (baza 13,5 px), a treść dociąga do 1180 px i nie rozlewa się dalej. Zieleń marki pojawia się rzadko i zawsze coś znaczy: aktywna pozycja nawigacji, akcja główna, wykorzystana część puli.\n\nKolor jest zarezerwowany dla znaczenia. Neutralne szarości mają lekko zielony podkład, dzięki czemu marka nie wygląda na doklejoną do obcego interfejsu. Jedyne miejsce z prawdziwą skalą sekwencyjną to heatmapa pokrycia — tam kolor koduje ryzyko obsadowe, nie typ nieobecności. Potwierdzona anty-referencja: Excel w przeglądarce. Produkt zastępuje arkusz i nie ma prawa go cytować — żadnych siatek obramowanych z każdej strony, żadnych ekranów, na których wszystkie komórki ważą tyle samo.",
+    "keyCharacteristics": [
+      "Jednolitość nieobecności jako reguła wizualna, nie tylko prawna",
+      "Gęsta, spokojna typografia z podziałem: Archivo mówi, IBM Plex Mono liczy",
+      "Kolor wyłącznie jako znaczenie — marka, uwaga, ryzyko; nigdy dekoracja",
+      "Płasko w spoczynku, cień wyłącznie jako reakcja na stan",
+      "Zaokrąglone kwadraty zamiast okręgów; włoskowate obramowania zamiast wypełnień"
+    ],
+    "rules": [
+      {
+        "name": "Reguła jednolitej nieobecności",
+        "body": "Nieobecność ma dokładnie jeden zestaw kolorów. Nigdy nie koduj typu, długości, powodu ani „ważności\" wpisu kolorem, ikoną, obramowaniem czy kolejnością. Test: jeśli patrząc na kalendarz można zgadnąć, kto był chory — regułę złamano.",
+        "section": "colors"
+      },
+      {
+        "name": "Reguła jednego głosu",
+        "body": "Zieleń marki zajmuje mniej niż 10% powierzchni ekranu. Jej rzadkość jest tym, co sprawia, że akcja główna jest widoczna bez zwiększania jej rozmiaru.",
+        "section": "colors"
+      },
+      {
+        "name": "Reguła jednej skali",
+        "body": "W całym systemie istnieje jedna skala sekwencyjna i należy do heatmapy pokrycia. Każdy inny wykres używa brand i blue naprzemiennie, bez gradientu.",
+        "section": "colors"
+      },
+      {
+        "name": "Reguła mono dla danych",
+        "body": "Wszystko, co użytkownik porównuje wzrokiem w pionie — dni, osobodni, procenty, daty, zakresy, identyfikatory, znaczniki czasu — jest ustawione w IBM Plex Mono z tabular-nums. Liczba w zdaniu zostaje w Archivo. Test: jeśli dwie liczby stoją jedna nad drugą i ich przecinki się nie pokrywają, użyto złego kroju.",
+        "section": "typography"
+      },
+      {
+        "name": "Reguła jednej wielkiej liczby",
+        "body": "Rozmiar display pojawia się najwyżej raz na ekranie. Drugi taki numer nie tworzy hierarchii, tylko ją kasuje.",
+        "section": "typography"
+      },
+      {
+        "name": "Reguła wersalików tylko w mono",
+        "body": "Wielkie litery są zastrzeżone dla mikro-etykiet w monospace. Nagłówki, przyciski i treść używają zapisu zdaniowego.",
+        "section": "typography"
+      },
+      {
+        "name": "Reguła 1180",
+        "body": "Treść nigdy nie przekracza 1180 px. Szeroki monitor daje więcej marginesu, nie dłuższe wiersze.",
+        "section": "layout"
+      },
+      {
+        "name": "Reguła gapu",
+        "body": "Odstępy między elementami tworzy gap kontenera. Marginesy na dzieciach są dopuszczalne tylko tam, gdzie kontener nie jest własnością tego samego komponentu.",
+        "section": "layout"
+      },
+      {
+        "name": "Reguła cienia jako odpowiedzi",
+        "body": "W spoczynku powierzchnia jest płaska. Cień „uniesiony\" należy się wyłącznie temu, co naprawdę nakłada się na treść pod spodem. Nowa karta z mocnym cieniem to błąd, nie akcent.",
+        "section": "elevation"
+      },
+      {
+        "name": "Reguła zaokrąglonego kwadratu",
+        "body": "Awatary, kafle ikon i znak produktu to zaokrąglone kwadraty (promień ≈ 26% boku), nigdy okręgi. Okrąg w tym systemie ma tylko jedno zastosowanie: kropka statusu o średnicy 6–7 px.",
+        "section": "shapes"
+      },
+      {
+        "name": "Reguła jednego piksela",
+        "body": "Każdy podział to 1 px. Grubsza linia oznacza, że próbujesz zbudować hierarchię obramowaniem — zbuduj ją tonalnie.",
+        "section": "shapes"
+      }
+    ],
+    "dos": [
+      "Do prezentować każdą nieobecność identycznie — jeden token absence, jeden kształt, jeden rozmiar, niezależnie od typu, długości i osoby.",
+      "Do ustawiać w IBM Plex Mono z tabular-nums każdą liczbę, którą użytkownik porównuje w kolumnie; Archivo zostaje dla treści.",
+      "Do budować głębię tonalnie (canvas → surface → surface-2/3) i włoskowatą linią 1 px, zanim sięgniesz po cień.",
+      "Do trzymać zieleń marki poniżej ~10% powierzchni ekranu i zawsze wiązać ją ze znaczeniem: akcja główna, stan aktywny, wykorzystana pula.",
+      "Do używać zaokrąglonych kwadratów na awatary i kafle ikon (promień ≈ 26% boku) oraz inicjałów zamiast zdjęć.",
+      "Do ograniczać treść do 1180 px i realizować odstępy przez gap, w krokach skali 4 px.",
+      "Do dawać stanom pustym pełne zdanie w muted („Nikt nieobecny w tym tygodniu.\"), a nie samą kreskę.",
+      "Do odróżniać brak danych od wartości zerowej — neutralny kafel i „–\" zamiast heat-1 i „0%\"."
+    ],
+    "donts": [
+      "Don't kodować typu, powodu ani „wagi\" nieobecności kolorem, ikoną, obramowaniem ani kolejnością — to naruszenie art. 9 RODO i decyzji D1/D2, nie kwestia gustu.",
+      "Don't cytować Excela: żadnych siatek obramowanych ze wszystkich stron, żadnych ekranów, na których każda komórka waży tyle samo. To potwierdzona anty-referencja produktu.",
+      "Don't używać błękitu (blue) do przekazania znaczenia. To kolor wizualizacji i awatarów; sygnały niosą marka, bursztyn i czerwień.",
+      "Don't wprowadzać drugiej skali sekwencyjnej ani gradientu poza heatmapą pokrycia.",
+      "Don't dawać kartom w spoczynku cienia „uniesionego\" — należy się wyłącznie temu, co nakłada się na treść.",
+      "Don't stosować czystej czerni ani czystej bieli na tekście; atrament i płótno mają zielonkawy podkład i kontrast liczony pod WCAG 2.1 AA.",
+      "Don't rysować obramowań grubszych niż 1 px (jedyny wyjątek: 1,5 px na aktywnym segmencie wyboru wymiaru dnia).",
+      "Don't używać okręgów poza kropką statusu 6–7 px, ani zdjęć w miejscu awatarów.",
+      "Don't dodawać emoji. Jedyne sankcjonowane to machająca dłoń w powitaniu na pulpicie.",
+      "Don't animować dekoracyjnie. Ruch to wejście ekranu (fade + 8 px w górę, 200 ms) i przejścia stanów 120–160 ms; bez odbić, bez opóźnień kaskadowych."
+    ]
+  }
+}

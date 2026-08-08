@@ -88,6 +88,22 @@ const katalogAdmina = await j(await aAdmin('/employees'));
 ok(katalogAdmina.some((e) => e.id === obcy.id) && katalogAdmina.some((e) => e.id === swoj.id),
   'admin nadal widzi cały katalog');
 
+// ── 6. Kalendarz zespołu w tym samym zasięgu co katalog ──────────────────────
+// Regresja: siatka brała skład z `tribePeers`, czyli z PRZYNALEŻNOŚCI. Admin/PMO/dyrektor
+// nie należą do żadnego squadu, więc dostawali jednoosobowy „kalendarz zespołu" — siebie.
+const dzis = new Date();
+const okno = `from=${dzis.toISOString().slice(0, 8)}01&to=${new Date(Date.UTC(dzis.getUTCFullYear(), dzis.getUTCMonth() + 1, 0)).toISOString().slice(0, 10)}`;
+const siatka = async (a) => new Set((await j(await a(`/calendar/team?${okno}`))).people.map((p) => p.id));
+
+const siatkaAdmina = await siatka(aAdmin);
+ok(siatkaAdmina.size > 1, `admin widzi w siatce cały zespół, nie tylko siebie (${siatkaAdmina.size} osób)`);
+ok(siatkaAdmina.has(swoj.id) && siatkaAdmina.has(obcy.id), 'admin widzi w siatce oba Tribe');
+ok((await siatka(aDyr)).has(obcy.id), 'dyrektor tak samo — reguła org-wide, nie przypisanie do squadu');
+
+const siatkaLidera = await siatka(aLider);
+ok(siatkaLidera.has(lider.id) && siatkaLidera.has(swoj.id), 'lider widzi w siatce siebie i osobę ze swojego Tribe');
+ok(!siatkaLidera.has(obcy.id), 'lider NIE widzi w siatce osoby z obcego Tribe — zasięg nie został rozluźniony');
+
 await prisma.$disconnect();
 console.log(failures === 0 ? '\nZAKRES JEDNOSTEK OK ✅' : `\n${failures} ASERCJI NIE PRZESZŁO ❌`);
 process.exit(failures === 0 ? 0 : 1);
