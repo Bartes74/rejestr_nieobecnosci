@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { plural } from '@nieobecnosci/core/plural';
-import { dateRange, fullDate } from '../format';
+import { dateRange, fullDate, todayIso } from '../format';
 import { api, type AbsenceType, type Adoption, type Calendar, type Employee, type EmploymentType, type OrgUnit, type ProcessingActivity, type Sprint, type AdminSetting } from '../api';
 import { useAuth } from '../current-employee';
 import { Button } from '../design-system/components/core/Button';
@@ -121,39 +121,45 @@ function Pula() {
     return n;
   };
   const saveDefault = () => guard(async () => {
-    // Zapisujemy wspólną pulę i te formy, którym administrator wpisał własną wartość.
+    // Najpierw sprawdzamy komplet wartości, dopiero potem zapisujemy którąkolwiek. Walidacja
+    // wpleciona między zapisy zostawiała pulę wspólną już zmienioną, a na ekranie czerwony
+    // komunikat o błędzie — z takiej sprzeczności nie da się odczytać, co właściwie zapisano.
     // ponytail: wyczyszczenie pola nie kasuje ustawienia formy — żeby ją zrównać ze wspólną,
     // wpisz tę samą liczbę. Kasowanie dorobić, jeśli okaże się potrzebne.
     const n = days(val, 'Pula wspólna');
+    const own = FORMY.filter((f) => byType[f.key] !== '').map((f) => ({ ...f, days: days(byType[f.key], `Pula dla ${f.label}`) }));
+
     await api.setDefaultPool(n);
-    const own = FORMY.filter((f) => byType[f.key] !== '');
-    for (const f of own) await api.setDefaultPool(days(byType[f.key], `Pula dla ${f.label}`), f.key);
+    for (const f of own) await api.setDefaultPool(f.days, f.key);
     return own.length === 0
       ? `Pula wspólna zapisana: ${n} dni.`
-      : `Zapisano: wspólna ${n} dni, własna dla ${own.map((f) => `${f.label} — ${byType[f.key]}`).join(', ')}.`;
+      : `Zapisano: wspólna ${n} dni, własna dla ${own.map((f) => `${f.label} — ${f.days}`).join(', ')}.`;
   });
   const saveAllow = () => guard(async () => {
     await api.setAllowance({ employeeId: a.employeeId, periodYear: Number(a.periodYear), baseDays: Number(a.baseDays), overrideDays: a.overrideDays ? Number(a.overrideDays) : undefined, carriedOver: Number(a.carriedOver) });
     return 'Korekta indywidualna zapisana.';
   });
-  const num = (k: 'periodYear' | 'baseDays' | 'overrideDays' | 'carriedOver') => (e: { target: { value: string } }) => setA((s) => ({ ...s, [k]: e.target.value }));
+  // Komunikat opisuje wartości, które zostały zapisane. Po zmianie któregokolwiek pola dotyczy
+  // już czegoś innego niż to, co widać na ekranie — jak zielone „Zapisano" przy formularzu
+  // opisującym inny stan. Kasuje go każda edycja w tej sekcji.
+  const num = (k: 'periodYear' | 'baseDays' | 'overrideDays' | 'carriedOver') => (e: { target: { value: string } }) => { clear(); setA((s) => ({ ...s, [k]: e.target.value })); };
   return (
     <Section title="Pula nieobecności">
       <div style={{ ...row, alignItems: 'flex-end' }}>
         <Field label="Pula wspólna — dni" hint="Obowiązuje formę zatrudnienia, dla której nie ustawiono własnej puli." width={230}>
-          <input style={field} type="number" min={0} inputMode="numeric" value={val} onChange={(e) => setVal(e.target.value)} />
+          <input style={field} type="number" min={0} inputMode="numeric" value={val} onChange={(e) => { clear(); setVal(e.target.value); }} />
         </Field>
         {FORMY.map((f) => (
           <Field key={f.key} label={`Pula dla ${f.label}`} width={110}>
             <input style={field} type="number" min={0} inputMode="numeric" placeholder={val || '—'}
-              value={byType[f.key]} onChange={(e) => setByType((s) => ({ ...s, [f.key]: e.target.value }))} />
+              value={byType[f.key]} onChange={(e) => { clear(); setByType((s) => ({ ...s, [f.key]: e.target.value })); }} />
           </Field>
         ))}
         <Button onClick={saveDefault} disabled={busy}>{busy ? 'Zapisywanie…' : 'Zapisz'}</Button>
       </div>
       <div style={{ ...row, marginTop: 18, alignItems: 'flex-end' }}>
         <Field label="Korekta indywidualna — pracownik">
-          <select style={field} value={a.employeeId} onChange={(e) => setA((s) => ({ ...s, employeeId: e.target.value }))}>
+          <select style={field} value={a.employeeId} onChange={(e) => { clear(); setA((s) => ({ ...s, employeeId: e.target.value })); }}>
             <option value="">— wybierz —</option>
             {emps.map((e) => <option key={e.id} value={e.id}>{e.firstName} {e.lastName}</option>)}
           </select>
@@ -240,7 +246,8 @@ function Swieta() {
   const [hols, setHols] = useState<{ id: string; date: string; name: string }[]>([]);
   const [newCal, setNewCal] = useState('');
   const [h, setH] = useState({ date: '', name: '' });
-  const [year, setYear] = useState(String(new Date().getFullYear()));
+  // Rok w strefie organizacji, nie z zegara przeglądarki — jak wszędzie indziej w aplikacji.
+  const [year, setYear] = useState(todayIso().slice(0, 4));
   const { notice, ok, fail, clear } = useNotice();
   const [busy, setBusy] = useState(false);
   const loadCals = () => api.calendars().then((c) => { setCals(c); setCalId((p) => p || c[0]?.id || ''); });
@@ -276,7 +283,7 @@ function Swieta() {
     <Section title="Święta i dni wolne">
       <div style={{ ...row, alignItems: 'flex-end' }}>
         <Field label="Kalendarz" hint="Dni z tego kalendarza nie są naliczane przy wpisach.">
-          <select style={field} value={calId} onChange={(e) => setCalId(e.target.value)} disabled={cals.length === 0}>
+          <select style={field} value={calId} onChange={(e) => { clear(); setCalId(e.target.value); }} disabled={cals.length === 0}>
             {cals.length === 0 && <option value="">— brak kalendarzy —</option>}
             {cals.map((c) => <option key={c.id} value={c.id}>{c.name}{c.isDefault ? ' (domyślny)' : ''}</option>)}
           </select>
@@ -296,7 +303,7 @@ function Swieta() {
       </div>
       <div style={{ ...row, marginTop: 12, alignItems: 'flex-end' }}>
         <Field label="Rok" width={100} hint="Święta ustawowe wylicza aplikacja — bez połączenia z internetem. Powtórny import nie duplikuje dni.">
-          <input style={field} type="number" inputMode="numeric" value={year} onChange={(e) => setYear(e.target.value)} />
+          <input style={field} type="number" inputMode="numeric" value={year} onChange={(e) => { clear(); setYear(e.target.value); }} />
         </Field>
         <Button variant="secondary" onClick={importPl} disabled={!calId || !year || busy}>
           {busy ? 'Import w toku…' : 'Wczytaj święta w Polsce'}

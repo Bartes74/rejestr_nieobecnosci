@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
-import { polishHolidays } from '@nieobecnosci/core';
+import { polishHolidays, todayUtc } from '@nieobecnosci/core';
 import { PrismaService } from './prisma.service';
 import { CreateCalendarDto, CreateHolidayDto } from './dto';
 import { Roles } from './auth/decorators';
@@ -37,7 +37,9 @@ export class HolidaysController {
   @Roles('ADMIN')
   @Post('holiday-calendars/:id/import-pl')
   async importPolish(@Param('id') calendarId: string, @Query('year') year?: string) {
-    const y = Number(year) || new Date().getUTCFullYear();
+    // `todayUtc()`, nie `new Date()`: o 23:30 UTC 31 grudnia w Warszawie jest już 1 stycznia,
+    // a surowy rok UTC podstawiłby tu rok poprzedni (ten sam błąd co w licznikach balansu).
+    const y = Number(year) || todayUtc().getUTCFullYear();
     const { count } = await this.prisma.holiday.createMany({
       data: polishHolidays(y).map((h) => ({ ...h, calendarId })),
       skipDuplicates: true,
