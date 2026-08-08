@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { balance, dayFraction, isoDate, proratePool, resolveBillingPeriod, todayUtc, usedLeaveDays } from '@nieobecnosci/core';
+import { balance, consumesPool, dayFraction, isoDate, proratePool, resolveBillingPeriod, todayUtc, usedLeaveDays } from '@nieobecnosci/core';
 import { PrismaService } from './prisma.service';
 
 const DEFAULT_POOL_KEY = 'leavePool.default';
@@ -54,7 +54,8 @@ export class BalanceService {
     });
     const used = usedLeaveDays(
       absences.map((a) => ({
-        dateFrom: a.dateFrom, dateTo: a.dateTo, affectsPool: a.type.affectsPool,
+        dateFrom: a.dateFrom, dateTo: a.dateTo,
+        affectsPool: consumesPool(emp.employmentType, a.type.affectsPool), // FR-B5 — brak wpływu L4 tylko na UoP
         fraction: dayFraction(a.dayPart, a.hourFrom ?? undefined, a.hourTo ?? undefined),
       })),
       period,

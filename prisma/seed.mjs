@@ -30,13 +30,25 @@ async function main() {
   });
 
   // Kolejność listy bierze się z `sortOrder`, nie z alfabetu — stąd jawne numery zamiast
-  // polegania na pozycji w tablicy. Urlop wypoczynkowy pierwszy, bo to on jest domyślnym
+  // polegania na pozycji w tablicy. Nieobecność pierwsza, bo to ona jest domyślnym
   // wyborem w formularzu wpisu; L4 na końcu, bo nie planuje się choroby z wyprzedzeniem.
+  //
+  // Dwa typy, nie trzy: „Urlop wypoczynkowy" i „Urlop na żądanie" to kategorie Kodeksu
+  // pracy, więc opisują wyłącznie UoP — dla B2B i OUT są nieprawdziwe. Systemowo i tak nic
+  // ich nie różniło (identyczne flagi), a użytkownik musiał wybierać między opcjami
+  // robiącymi to samo.
   const TYPES = [
-    { name: 'Urlop wypoczynkowy', sortOrder: 0 },
-    { name: 'Urlop na żądanie', sortOrder: 1 },
-    { name: 'L4', affectsPool: false, specialCategory: true, sortOrder: 2 },
+    { name: 'Nieobecność', sortOrder: 0 },
+    { name: 'L4', affectsPool: false, specialCategory: true, sortOrder: 1 },
   ];
+  // Zbieżność istniejących baz. Seed dopasowuje typy po nazwie, więc bez tego stara baza
+  // dostałaby czwarty wiersz obok trzech poprzednich. Zmiana nazwy w miejscu (a nie nowy
+  // typ) zachowuje `id`, więc dotychczasowe wpisy dalej wskazują na swój typ.
+  await prisma.absenceType.updateMany({ where: { name: 'Urlop wypoczynkowy' }, data: { name: 'Nieobecność', sortOrder: 0 } });
+  // Usuwamy tylko typ, którego nikt nie użył. `Absence.typeId` to klucz obcy bez kaskady —
+  // przy zajętym typie delete i tak by się wywalił, a seed ma przejść i zostawić decyzję
+  // administratorowi, nie przerwać się błędem FK.
+  await prisma.absenceType.deleteMany({ where: { name: 'Urlop na żądanie', absences: { none: {} } } });
   for (const t of TYPES) {
     if (!(await prisma.absenceType.findFirst({ where: { name: t.name } }))) {
       await prisma.absenceType.create({ data: t });

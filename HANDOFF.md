@@ -17,7 +17,7 @@ STACK (TypeScript end-to-end, on-premise, UI po polsku):
 - apps/web — React + Vite + design system przeniesiony z prototypu („Analiza dokumentów i ekranów/").
 
 STAN: MVP + Faza 2 (16 pozycji) + część Fazy 3 — zbudowane i zweryfikowane.
-Ostatni pełny przebieg: silnik 27/27 testów, 23 suity integracyjne (147 asercji), build+typecheck czysto.
+Ostatni pełny przebieg: silnik 50/50 testów, 27 suit integracyjnych (212 asercji), build+typecheck czysto.
 Działa m.in.: wpis/edycja/undo (≤3 kliknięcia), kalendarz Tribe (jednolity, bez typów), RBAC 6 ról,
 ochrona L4 (art. 9 RODO — znacznik tylko dla VIEW_L4/admin, każdy odczyt audytowany), capacity per sprint
 + alert kolizji kluczowych ról, heatmapa pokrycia, operacje masowe, raporty z drążeniem hierarchii,
@@ -30,9 +30,10 @@ URUCHOMIENIE I WERYFIKACJA (szczegóły w README.md):
 - pnpm -F @nieobecnosci/api build && PORT=3100 node apps/api/dist/main.js
 - pnpm -F @nieobecnosci/web dev            → http://localhost:5188
 - pnpm run verify:offline                  → build + typecheck + 27 testów silnika
-- API=http://localhost:3100/api pnpm run verify:suites   → 23 suity (UWAGA: czyszczą bazę)
+- API=http://localhost:3100/api pnpm run verify:suites   → 27 suit (UWAGA: czyszczą bazę)
 - node apps/api/demo-seed.mjs              → dane demo (daty względne wobec dnia uruchomienia)
-  Loginy: admin/admin; dyrektor, pmo, lider, po, pracownik, anna, bartek, celina = demo123
+  Loginy: admin/admin; dyrektor, pmo, lider, po, pracownik, anna, bartek, celina, ext = demo123
+  (pracownik = UoP, ext = OUT — para do porównania form zatrudnienia)
 
 KONWENCJE:
 - Tryb ponytail: najprostsze działające rozwiązanie; stdlib/native przed zależnościami; najkrótszy

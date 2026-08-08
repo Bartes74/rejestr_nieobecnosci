@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { balance, countWorkingDays, dayFraction, isoDate, proratePool, resolveBillingPeriod, todayUtc, usedLeaveDays } from '@nieobecnosci/core';
+import { balance, consumesPool, countWorkingDays, dayFraction, isoDate, proratePool, resolveBillingPeriod, todayUtc, usedLeaveDays } from '@nieobecnosci/core';
 import ExcelJS from 'exceljs';
 import { PrismaService } from './prisma.service';
 import { OrgService } from './org.service';
@@ -64,7 +64,8 @@ export class ReportsService {
       const holidays = new Set((e.holidayCalendar?.holidays ?? []).map((h) => isoDate(h.date)));
       const used = usedLeaveDays(
         (absByEmp.get(e.id) ?? []).map((a) => ({
-          dateFrom: a.dateFrom, dateTo: a.dateTo, affectsPool: a.type.affectsPool,
+          dateFrom: a.dateFrom, dateTo: a.dateTo,
+          affectsPool: consumesPool(e.employmentType, a.type.affectsPool), // FR-B5 — jak w BalanceService
           fraction: dayFraction(a.dayPart, a.hourFrom ?? undefined, a.hourTo ?? undefined),
         })),
         period,

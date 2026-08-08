@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { usedLeaveDays, balance, proratePool } from './balance.js';
+import { consumesPool, usedLeaveDays, balance, proratePool } from './balance.js';
 
 const d = (y: number, m: number, day: number) => new Date(Date.UTC(y, m, day));
 const period = { from: d(2026, 0, 1), to: d(2026, 11, 31) };
@@ -31,6 +31,26 @@ describe('usedLeaveDays — FR-B5 (L4 nie obniża puli)', () => {
       period,
     );
     expect(used).toBe(2); // 01.01 (czw) i 02.01 (pt) 2026
+  });
+});
+
+describe('consumesPool — FR-B5 dotyczy wyłącznie UoP', () => {
+  it('L4 nie obciąża puli na UoP, ale obciąża poza UoP', () => {
+    expect(consumesPool('UOP', false)).toBe(false);
+    expect(consumesPool('B2B', false)).toBe(true);
+    expect(consumesPool('OUT', false)).toBe(true);
+  });
+
+  it('typ obciążający pulę obciąża ją przy każdej formie', () => {
+    expect(consumesPool('UOP', true)).toBe(true);
+    expect(consumesPool('B2B', true)).toBe(true);
+  });
+
+  it('ten sam wpis L4: pominięty na UoP, policzony na B2B', () => {
+    const l4 = { dateFrom: d(2026, 6, 1), dateTo: d(2026, 6, 3) }; // śr–pt, 3 dni robocze
+    const spanFor = (t: 'UOP' | 'B2B') => [{ ...l4, affectsPool: consumesPool(t, false) }];
+    expect(usedLeaveDays(spanFor('UOP'), period)).toBe(0);
+    expect(usedLeaveDays(spanFor('B2B'), period)).toBe(3);
   });
 });
 

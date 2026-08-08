@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CalendarDays, ChevronLeft, ChevronRight, TriangleAlert } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight, RotateCcw, TriangleAlert } from 'lucide-react';
 import { count, plural } from '@nieobecnosci/core/plural';
 import { dateRange, todayIso } from '../format';
 import { api, type Absence, type AbsenceType, type Preview } from '../api';
@@ -179,8 +179,8 @@ export function Wpis() {
   // `saved` w zależnościach: po zapisie podgląd musi policzyć się od nowa. Bez tego karta
   // „Balans po zapisie" pokazywała nieaktualne „26 → 25" obok komunikatu, że zapis już nastąpił.
   useEffect(() => {
-    if (current && from && effTo) api.preview(current.id, from, effTo, dayPart, hf, ht).then(setPreview).catch(() => setPreview(null));
-  }, [current?.id, from, effTo, dayPart, hf, ht, saved]);
+    if (current && from && effTo) api.preview(current.id, from, effTo, dayPart, hf, ht, typeId).then(setPreview).catch(() => setPreview(null));
+  }, [current?.id, from, effTo, dayPart, hf, ht, typeId, saved]);
   // Własne wpisy do mini-kalendarza. Istniejący `GET /absences?employeeId=` wystarcza — to lista
   // jednej osoby, więc filtrowanie do widocznego miesiąca robi się po stronie ekranu.
   // `saved` w zależnościach z tego samego powodu co wyżej: świeżo zapisany wpis ma się pokazać.
@@ -316,6 +316,23 @@ export function Wpis() {
               <div>
                 <div style={{ fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 13, color: 'var(--ink)', marginBottom: 3 }}>Kolizja z istniejącym wpisem</div>
                 <div style={{ fontFamily: 'var(--font-sans)', fontSize: 12.5, lineHeight: 1.5, color: 'var(--ink-2)' }}>Masz już nieobecność w terminie {preview.collisionFrom && preview.collisionTo ? dateRange(preview.collisionFrom, preview.collisionTo, { long: true }) : '—'}. Zmień daty, aby zapisać.</div>
+              </div>
+            </div>
+          )}
+
+          {/* Wpis bez puli (L4) ma pierwszeństwo przed zaplanowanym urlopem — serwer nie zgłasza
+              wtedy kolizji, tylko wycina dni wspólne. Karta mówi to wprost przed zapisem, bo
+              inaczej wcześniejszy wpis zmieniłby się bez ostrzeżenia. Kolor neutralny, nie
+              ostrzegawczy: nic tu nie jest błędem, a nic w tym ekranie nie koduje typu (D1/D2). */}
+          {!!preview?.returnedDays && (
+            <div style={{ background: 'var(--surface-3)', border: '1px solid var(--border-2)', borderRadius: 'var(--radius-lg)', padding: 16, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <RotateCcw size={18} color="var(--ink-2)" style={{ flex: 'none', marginTop: 1 }} aria-hidden="true" />
+              <div>
+                <div style={{ fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 13, color: 'var(--ink)', marginBottom: 3 }}>Dni wrócą do puli</div>
+                <div style={{ fontFamily: 'var(--font-sans)', fontSize: 12.5, lineHeight: 1.5, color: 'var(--ink-2)' }}>
+                  {/* `nf` zamiast `count`, bo pół dnia ma się wyświetlić jako „0,5", nie „0.5". */}
+                  Ten wpis ma pierwszeństwo przed zaplanowaną wcześniej nieobecnością. {nf(preview.returnedDays)} {plural(preview.returnedDays, ['dzień', 'dni', 'dni'])} z tamtego terminu {plural(preview.returnedDays, ['wróci', 'wrócą', 'wróci'])} do puli, a pokrywający się fragment zostanie z niego wycięty.
+                </div>
               </div>
             </div>
           )}

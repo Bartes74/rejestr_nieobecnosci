@@ -24,8 +24,9 @@ export class AbsencesController {
     @Query('dayPart') dayPart?: DayPart,
     @Query('hourFrom') hourFrom?: string,
     @Query('hourTo') hourTo?: string,
+    @Query('typeId') typeId?: string,
   ) {
-    return this.absences.preview(employeeId, from, to, user, dayPart ?? 'FULL', hourFrom, hourTo);
+    return this.absences.preview(employeeId, from, to, user, dayPart ?? 'FULL', hourFrom, hourTo, typeId);
   }
 
   @Post()

@@ -82,7 +82,7 @@ export interface Balance {
 }
 export interface Absence { id: string; dateFrom: string; dateTo: string; dayPart: string; hourFrom?: string | null; hourTo?: string | null; type: AbsenceType; source?: string; workingDays: number }
 export interface AdminSetting { key: string; value: number; label: string; ref: string }
-export interface Preview { workingDays: number; remaining: number; remainingAfter: number; minimumToLeave?: number; collision?: boolean; collisionFrom?: string | null; collisionTo?: string | null }
+export interface Preview { workingDays: number; remaining: number; remainingAfter: number; minimumToLeave?: number; collision?: boolean; collisionFrom?: string | null; collisionTo?: string | null; returnedDays?: number }
 export interface CalEntry { employeeId: string; employee: string; dateFrom: string; dateTo: string; dayPart: string }
 /** Skład Tribe na osi czasu. Pusty wiersz to informacja („dostępna"), nie brak danych. */
 export interface TeamPerson { id: string; name: string; initials: string; squad: string | null; keyRole: boolean }
@@ -166,10 +166,12 @@ export const api = {
   types: () => req<AbsenceType[]>('/absence-types'),
   balance: (id: string) => req<Balance>(`/employees/${id}/balance`),
   absences: (employeeId: string) => req<Absence[]>(`/absences?employeeId=${employeeId}`),
-  preview: (employeeId: string, from: string, to: string, dayPart = 'FULL', hourFrom?: string, hourTo?: string) => {
+  preview: (employeeId: string, from: string, to: string, dayPart = 'FULL', hourFrom?: string, hourTo?: string, typeId?: string) => {
     const q = new URLSearchParams({ employeeId, from, to, dayPart });
     if (hourFrom) q.set('hourFrom', hourFrom);
     if (hourTo) q.set('hourTo', hourTo);
+    // Bez typu serwer nie odróżni L4 od urlopu, więc pokazałby kolizję tam, gdzie zapis przejdzie.
+    if (typeId) q.set('typeId', typeId);
     return req<Preview>(`/absences/preview?${q.toString()}`);
   },
   createAbsence: (body: { employeeId: string; typeId: string; dateFrom: string; dateTo: string; dayPart?: string; hourFrom?: string; hourTo?: string }) =>

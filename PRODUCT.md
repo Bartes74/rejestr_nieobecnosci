@@ -60,7 +60,7 @@ Do tego: wdrożenie **on-premise**, bez zależności od zewnętrznych usług —
 **Reguły biznesowe, które muszą zostać zachowane:**
 
 - Urlop **nigdy nie przepada** — niewykorzystane dni przechodzą na kolejny okres jako zaległy, bez terminu wygaśnięcia. Rozstrzygnięcie zapadłe w trakcie prac; przypomnienia mają charakter wyłącznie informacyjny.
-- L4 dla UoP obniża capacity zespołu, ale **nie** obniża puli urlopu (FR-B5).
+- L4 dla UoP obniża capacity zespołu, ale **nie** obniża puli urlopu (FR-B5); jeśli pokryje zaplanowany urlop, ma przed nim pierwszeństwo — dni wspólne wracają do puli. **Poza UoP jest odwrotnie:** L4 obciąża pulę jak każda inna nieobecność, więc nie wypiera urlopu (nakładanie to zwykła kolizja) i nie zwraca dni żadną ścieżką, także konwersją (FR-B10).
 - Pulę definiuje administrator globalnie, z korektą indywidualną — brak integracji z TETA (D4).
 - Backend jest źródłem prawdy dla uprawnień: guard plus serializacja zależna od roli. UI odzwierciedla zakres, ale go nie egzekwuje.
 - Weekendy i dni z tabeli świąt nie są naliczane; liczbę dni roboczych wylicza serwer kalendarzem właściwym dla danej osoby.
