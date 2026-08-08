@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { plural } from '@nieobecnosci/core/plural';
 import { dateRange, fullDate } from '../format';
-import { api, type AbsenceType, type Adoption, type Calendar, type Employee, type OrgUnit, type ProcessingActivity, type Sprint, type AdminSetting } from '../api';
+import { api, type AbsenceType, type Adoption, type Calendar, type Employee, type EmploymentType, type OrgUnit, type ProcessingActivity, type Sprint, type AdminSetting } from '../api';
 import { useAuth } from '../current-employee';
 import { Button } from '../design-system/components/core/Button';
 import { AdminOnly, Section, Notice, ColumnMap, ConfirmDialog, Field, field, useNotice } from '../admin/ui';
@@ -90,23 +90,47 @@ function Typy() {
   );
 }
 
+// Formy zatrudnienia w kolejności, w jakiej administrator o nich myśli; UoP jest przypadkiem
+// domyślnym, B2B i OUT rozliczają się w roku budżetowym i miewają inną pulę.
+const FORMY: { key: EmploymentType; label: string }[] = [
+  { key: 'UOP', label: 'UoP' }, { key: 'B2B', label: 'B2B' }, { key: 'OUT', label: 'OUT' },
+];
+
 function Pula() {
   const [val, setVal] = useState('');
+  const [byType, setByType] = useState<Record<EmploymentType, string>>({ UOP: '', B2B: '', OUT: '' });
   const [emps, setEmps] = useState<Employee[]>([]);
   const [a, setA] = useState({ employeeId: '', periodYear: '2026', baseDays: '26', overrideDays: '', carriedOver: '0' });
   const { notice, ok, fail, clear } = useNotice();
   const [busy, setBusy] = useState(false);
-  useEffect(() => { api.poolDefault().then((d) => setVal(String(d.value ?? ''))); api.employees().then(setEmps); }, []);
+  useEffect(() => {
+    api.poolDefault().then((d) => {
+      setVal(String(d.value ?? ''));
+      setByType({ UOP: String(d.byType.UOP ?? ''), B2B: String(d.byType.B2B ?? ''), OUT: String(d.byType.OUT ?? '') });
+    });
+    api.employees().then(setEmps);
+  }, []);
   const guard = async (fn: () => Promise<string>) => {
     if (busy) return;
     setBusy(true); clear();
     try { ok(await fn()); } catch (e) { fail(e); } finally { setBusy(false); }
   };
+  const days = (raw: string, what: string) => {
+    const n = Number(raw);
+    if (!Number.isFinite(n) || n < 0) throw new Error(`${what} musi być liczbą nieujemną (np. 26).`);
+    return n;
+  };
   const saveDefault = () => guard(async () => {
-    const n = Number(val);
-    if (!Number.isFinite(n) || n < 0) throw new Error('Pula domyślna musi być liczbą nieujemną (np. 26).');
+    // Zapisujemy wspólną pulę i te formy, którym administrator wpisał własną wartość.
+    // ponytail: wyczyszczenie pola nie kasuje ustawienia formy — żeby ją zrównać ze wspólną,
+    // wpisz tę samą liczbę. Kasowanie dorobić, jeśli okaże się potrzebne.
+    const n = days(val, 'Pula wspólna');
     await api.setDefaultPool(n);
-    return `Pula domyślna zapisana: ${n} dni.`;
+    const own = FORMY.filter((f) => byType[f.key] !== '');
+    for (const f of own) await api.setDefaultPool(days(byType[f.key], `Pula dla ${f.label}`), f.key);
+    return own.length === 0
+      ? `Pula wspólna zapisana: ${n} dni.`
+      : `Zapisano: wspólna ${n} dni, własna dla ${own.map((f) => `${f.label} — ${byType[f.key]}`).join(', ')}.`;
   });
   const saveAllow = () => guard(async () => {
     await api.setAllowance({ employeeId: a.employeeId, periodYear: Number(a.periodYear), baseDays: Number(a.baseDays), overrideDays: a.overrideDays ? Number(a.overrideDays) : undefined, carriedOver: Number(a.carriedOver) });
@@ -114,11 +138,17 @@ function Pula() {
   });
   const num = (k: 'periodYear' | 'baseDays' | 'overrideDays' | 'carriedOver') => (e: { target: { value: string } }) => setA((s) => ({ ...s, [k]: e.target.value }));
   return (
-    <Section title="Pula urlopu">
+    <Section title="Pula nieobecności">
       <div style={{ ...row, alignItems: 'flex-end' }}>
-        <Field label="Pula domyślna — dni dla wszystkich" width={230}>
+        <Field label="Pula wspólna — dni" hint="Obowiązuje formę zatrudnienia, dla której nie ustawiono własnej puli." width={230}>
           <input style={field} type="number" min={0} inputMode="numeric" value={val} onChange={(e) => setVal(e.target.value)} />
         </Field>
+        {FORMY.map((f) => (
+          <Field key={f.key} label={`Pula dla ${f.label}`} width={110}>
+            <input style={field} type="number" min={0} inputMode="numeric" placeholder={val || '—'}
+              value={byType[f.key]} onChange={(e) => setByType((s) => ({ ...s, [f.key]: e.target.value }))} />
+          </Field>
+        ))}
         <Button onClick={saveDefault} disabled={busy}>{busy ? 'Zapisywanie…' : 'Zapisz'}</Button>
       </div>
       <div style={{ ...row, marginTop: 18, alignItems: 'flex-end' }}>
@@ -210,6 +240,7 @@ function Swieta() {
   const [hols, setHols] = useState<{ id: string; date: string; name: string }[]>([]);
   const [newCal, setNewCal] = useState('');
   const [h, setH] = useState({ date: '', name: '' });
+  const [year, setYear] = useState(String(new Date().getFullYear()));
   const { notice, ok, fail, clear } = useNotice();
   const [busy, setBusy] = useState(false);
   const loadCals = () => api.calendars().then((c) => { setCals(c); setCalId((p) => p || c[0]?.id || ''); });
@@ -234,6 +265,13 @@ function Swieta() {
     setHols(await api.holidays(calId));
     return `Dodano dzień wolny: ${date} — ${name}.`;
   });
+  const importPl = () => guard(async () => {
+    const r = await api.importPolishHolidays(calId, Number(year));
+    setHols(await api.holidays(calId));
+    return r.added === 0
+      ? `Święta ${r.year} są już w tym kalendarzu — nic nie dodano.`
+      : `Dodano ${r.added} ${plural(r.added, ['dzień wolny', 'dni wolne', 'dni wolnych'])} na rok ${r.year}.`;
+  });
   return (
     <Section title="Święta i dni wolne">
       <div style={{ ...row, alignItems: 'flex-end' }}>
@@ -255,6 +293,14 @@ function Swieta() {
         <Field label="Data" width={170}><input style={field} type="date" value={h.date} onChange={(e) => setH((s) => ({ ...s, date: e.target.value }))} /></Field>
         <Field label="Nazwa dnia wolnego"><input style={field} value={h.name} onChange={(e) => setH((s) => ({ ...s, name: e.target.value }))} /></Field>
         <Button onClick={addHol} disabled={!h.date || !h.name.trim() || !calId || busy}>Dodaj dzień wolny</Button>
+      </div>
+      <div style={{ ...row, marginTop: 12, alignItems: 'flex-end' }}>
+        <Field label="Rok" width={100} hint="Święta ustawowe wylicza aplikacja — bez połączenia z internetem. Powtórny import nie duplikuje dni.">
+          <input style={field} type="number" inputMode="numeric" value={year} onChange={(e) => setYear(e.target.value)} />
+        </Field>
+        <Button variant="secondary" onClick={importPl} disabled={!calId || !year || busy}>
+          {busy ? 'Import w toku…' : 'Wczytaj święta w Polsce'}
+        </Button>
       </div>
       <Notice {...notice} />
     </Section>

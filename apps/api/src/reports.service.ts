@@ -42,11 +42,11 @@ export class ReportsService {
   // Liczone wsadowo (kilka zapytań na cały zbiór), nie po jednym na osobę.
   async usage(unitId: string): Promise<{ unitId: string; rows: UsageRow[]; totals: { pool: number; used: number; remaining: number } }> {
     const memberIds = await this.org.employeeIdsInUnit(unitId);
-    const [employees, allowances, absences, defaultPool] = await Promise.all([
+    const [employees, allowances, absences, defaultPools] = await Promise.all([
       this.prisma.employee.findMany({ where: { id: { in: memberIds } }, include: { holidayCalendar: { include: { holidays: true } } } }),
       this.prisma.leaveAllowance.findMany({ where: { employeeId: { in: memberIds } } }),
       this.prisma.absence.findMany({ where: { employeeId: { in: memberIds } }, include: { type: true } }),
-      this.balance.defaultPool(),
+      this.balance.defaultPools(),
     ]);
 
     const allowByKey = new Map(allowances.map((a) => [`${a.employeeId}:${a.periodYear}`, a]));
@@ -60,7 +60,7 @@ export class ReportsService {
       const carriedOver = allow?.carriedOver ?? 0;
       const pool = allow?.overrideDays != null
         ? allow.overrideDays
-        : proratePool(allow?.baseDays ?? defaultPool, { from: period.from, to: period.to }, e.startDate, e.endDate); // FR-B9
+        : proratePool(allow?.baseDays ?? defaultPools[e.employmentType], { from: period.from, to: period.to }, e.startDate, e.endDate); // FR-B9
       const holidays = new Set((e.holidayCalendar?.holidays ?? []).map((h) => isoDate(h.date)));
       const used = usedLeaveDays(
         (absByEmp.get(e.id) ?? []).map((a) => ({

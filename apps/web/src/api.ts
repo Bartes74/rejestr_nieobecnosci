@@ -109,6 +109,9 @@ export interface UsageReport { unitId: string; rows: UsageRow[]; totals: { pool:
 export interface ReportTreeNode { id: string; name: string; type: string; headcount: number; used: number; children: ReportTreeNode[] }
 export interface AuditEntry { id: string; entity: string; action: string; userId: string | null; description: string | null; timestamp: string }
 export interface Calendar { id: string; name: string; isDefault: boolean; _count?: { holidays: number } }
+export type EmploymentType = 'UOP' | 'B2B' | 'OUT';
+/** `value` = pula wspólna, `byType` = pula ustawiona wprost dla formy (null = dziedziczy wspólną). */
+export interface PoolDefaults { value: number | null; byType: Record<EmploymentType, number | null> }
 export interface ProcessingActivity { id: string; name: string; purpose: string; legalBasis: string; dataCategories: string; recipients: string; retention: string; specialCategory: boolean }
 export interface Adoption { totalEmployees: number; activeUsers: number; adoptionRate: number; kpiTarget: number; absencesCreated: number; logins: number; securityEvents: number }
 
@@ -233,13 +236,16 @@ export const api = {
   createType: (b: Record<string, unknown>) => req<AbsenceType>('/absence-types', { method: 'POST', body: JSON.stringify(b) }),
   // Cała kolejność w jednym żądaniu — serwer zapisuje ją w transakcji albo odrzuca w całości.
   reorderTypes: (ids: string[]) => req<AbsenceType[]>('/absence-types/order/all', { method: 'PATCH', body: JSON.stringify({ ids }) }),
-  poolDefault: () => req<{ value: number | null }>('/pools/default'),
-  setDefaultPool: (value: number) => req('/pools/default', { method: 'PUT', body: JSON.stringify({ value }) }),
+  poolDefault: () => req<PoolDefaults>('/pools/default'),
+  setDefaultPool: (value: number, employmentType?: EmploymentType) =>
+    req('/pools/default', { method: 'PUT', body: JSON.stringify({ value, employmentType }) }),
   setAllowance: (b: Record<string, unknown>) => req('/pools/allowance', { method: 'PUT', body: JSON.stringify(b) }),
   calendars: () => req<Calendar[]>('/holiday-calendars'),
   createCalendar: (b: Record<string, unknown>) => req<Calendar>('/holiday-calendars', { method: 'POST', body: JSON.stringify(b) }),
   holidays: (calendarId: string) => req<{ id: string; date: string; name: string }[]>(`/holidays?calendarId=${calendarId}`),
   createHoliday: (b: Record<string, unknown>) => req('/holidays', { method: 'POST', body: JSON.stringify(b) }),
+  importPolishHolidays: (calendarId: string, year: number) =>
+    req<{ year: number; added: number }>(`/holiday-calendars/${calendarId}/import-pl?year=${year}`, { method: 'POST' }),
   orgTree: () => req<(OrgUnit & { children: OrgUnit[] })[]>('/org/tree'),
   createUnit: (b: Record<string, unknown>) => req<OrgUnit>('/org/units', { method: 'POST', body: JSON.stringify(b) }),
   addMembership: (b: Record<string, unknown>) => req('/org/memberships', { method: 'POST', body: JSON.stringify(b) }),
