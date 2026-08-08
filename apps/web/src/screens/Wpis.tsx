@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CalendarDays, TriangleAlert } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight, TriangleAlert } from 'lucide-react';
 import { count, plural } from '@nieobecnosci/core/plural';
 import { dateRange, todayIso } from '../format';
-import { api, type AbsenceType, type Preview } from '../api';
+import { api, type Absence, type AbsenceType, type Preview } from '../api';
 import { useAuth } from '../current-employee';
 import { Notice, useNotice } from '../admin/ui';
 import { card } from '../design-system/surfaces';
@@ -14,6 +14,10 @@ const labelStyle = { display: 'block', fontFamily: 'var(--font-sans)', fontSize:
 const inputBox = { display: 'flex', alignItems: 'center', gap: 10, border: '1px solid var(--border-2)', background: 'var(--surface)', borderRadius: 'var(--radius-md)', padding: '11px 14px' } as const;
 // `outline: none` zostaje: pierścień fokusu rysuje ramka `.ds-field`, nie kontrolka w jej środku.
 const inputEl = { flex: 1, border: 'none', outline: 'none', background: 'transparent', color: 'var(--ink)', fontFamily: 'var(--font-sans)', fontSize: 14, minWidth: 0 } as const;
+
+// Ten sam kształt co przyciski zakresu w kalendarzu zespołu — jedna nawigacja miesiącami
+// w całej aplikacji. 32 px mieści się w minimum celu wskaźnika (24 px) z audytu dostępności.
+const navBtn = { width: 32, height: 32, flex: 'none', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-2)', background: 'var(--surface)', color: 'var(--ink-2)', display: 'grid', placeItems: 'center', cursor: 'pointer' } as const;
 
 const PARTS: [string, string][] = [['FULL', 'Cały dzień'], ['AM', 'Przed poł. (AM)'], ['PM', 'Po poł. (PM)'], ['HOURS', 'Godziny']];
 const WD = ['P', 'W', 'Ś', 'C', 'P', 'S', 'N'];
@@ -41,18 +45,62 @@ function DateField({ label, value, min, disabled, invalid, onChange }: {
 }
 
 // mini-kalendarz miesiąca daty „od" z zaznaczonym zakresem (Pon-first)
-function MiniCal({ from, to }: { from: string; to: string }) {
+//
+// `existing` to nieobecności użytkownika, które JUŻ są zapisane. Bez nich kalendarz pokazywał
+// wyłącznie zaznaczenie, więc kolizja („masz już nieobecność w tym terminie") była twierdzeniem
+// bez pokrycia w tym, co widać: użytkownik nie miał jak sprawdzić, czy wpis faktycznie istnieje,
+// czy to usterka. Zapisane dni noszą obwódkę (`inset`, nie `border` — border zmieniłby wysokość
+// komórki i siatka skakałaby przy każdej zmianie dat), zaznaczenie zostaje wypełnieniem.
+// Dzień, który jest jednocześnie zapisany i zaznaczony, ma obwódkę NA wypełnieniu — czyli sama
+// kolizja jest widoczna, a nie tylko opisana zdaniem obok.
+function MiniCal({ from, to, existing }: { from: string; to: string; existing: { dateFrom: string; dateTo: string }[] }) {
+  // Siatka otwiera się na miesiącu daty „od", ale daje się przewinąć: urlop bywa planowany
+  // na przełomie, a wpis z sąsiedniego miesiąca był poza zasięgiem wzroku. Przesunięcie wraca
+  // do zera przy każdej zmianie daty „od" — inaczej po wybraniu nowego terminu siatka zostałaby
+  // na miesiącu, który z tym terminem nie ma już nic wspólnego.
+  const [shift, setShift] = useState(0);
+  useEffect(() => setShift(0), [from]);
+
   const base = new Date(from + 'T00:00:00Z');
-  const y = base.getUTCFullYear(), m = base.getUTCMonth();
-  const first = new Date(Date.UTC(y, m, 1));
+  // Normalizacja przez `Date.UTC`: przesunięcie o −1 z stycznia daje grudzień roku poprzedniego,
+  // więc rok i miesiąc czytamy z gotowej daty, a nie z arytmetyki na `m`.
+  const first = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth() + shift, 1));
+  const y = first.getUTCFullYear(), m = first.getUTCMonth();
   const offset = (first.getUTCDay() + 6) % 7; // Pon = 0
   const cells: (Date | null)[] = [];
   for (let i = 0; i < offset; i++) cells.push(null);
   for (let dnum = 1; new Date(Date.UTC(y, m, dnum)).getUTCMonth() === m; dnum++) cells.push(new Date(Date.UTC(y, m, dnum)));
   const iso = (d: Date) => d.toISOString().slice(0, 10);
+
+  // `GET /absences` oddaje pełne znaczniki czasu („2026-08-10T00:00:00.000Z"), a nie samą datę
+  // jak `/calendar` — stąd `slice`. Bez niego doklejenie „T00:00:00Z" dawało `NaN` i pętla dni
+  // nie wykonywała się ani razu, a filtr miesiąca wychodził dobrze wyłącznie przypadkiem,
+  // na leksykalnym porównaniu napisów.
+  const ranges = existing.map((a) => ({ from: a.dateFrom.slice(0, 10), to: a.dateTo.slice(0, 10) }));
+  const monthFrom = iso(first), monthTo = iso(new Date(Date.UTC(y, m + 1, 0)));
+  // Sortowanie po dacie startu: `GET /absences` oddaje wpisy w kolejności utworzenia, więc zdanie
+  // pod siatką czytało się „24.08…, 10.08…" — wstecz względem tego, co widać w kalendarzu.
+  const wThisMonth = ranges.filter((a) => a.from <= monthTo && a.to >= monthFrom).sort((a, b) => a.from.localeCompare(b.from));
+  const taken = new Set<string>();
+  for (const a of wThisMonth) {
+    for (let t = Date.parse(a.from + 'T00:00:00Z'); t <= Date.parse(a.to + 'T00:00:00Z'); t += 86_400_000) {
+      taken.add(new Date(t).toISOString().slice(0, 10));
+    }
+  }
+
   return (
     <div style={{ ...card, padding: 16, borderRadius: 'var(--radius-lg)' }}>
-      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, fontWeight: 700, color: 'var(--muted)', letterSpacing: '.04em', textTransform: 'uppercase', marginBottom: 11 }}>{MONTHS[m]} {y}</div>
+      {/* Nazwa miesiąca w regionie live: przy sterowaniu klawiaturą strzałki zmieniają siatkę,
+          a bez tego zmiana byłaby wyłącznie wizualna i czytnik ekranu nic by nie ogłosił. */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 11 }}>
+        <button type="button" className="ds-quiet" aria-label="Poprzedni miesiąc" onClick={() => setShift((s) => s - 1)} style={navBtn}>
+          <ChevronLeft size={15} aria-hidden="true" />
+        </button>
+        <div aria-live="polite" style={{ flex: 1, textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: 10.5, fontWeight: 700, color: 'var(--muted)', letterSpacing: '.04em', textTransform: 'uppercase' }}>{MONTHS[m]} {y}</div>
+        <button type="button" className="ds-quiet" aria-label="Następny miesiąc" onClick={() => setShift((s) => s + 1)} style={navBtn}>
+          <ChevronRight size={15} aria-hidden="true" />
+        </button>
+      </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 4, fontFamily: 'var(--font-sans)', fontSize: 11.5 }}>
         {WD.map((w, i) => <div key={i} style={{ textAlign: 'center', color: 'var(--muted)', paddingBottom: 3 }}>{w}</div>)}
         {cells.map((d, i) => {
@@ -60,6 +108,7 @@ function MiniCal({ from, to }: { from: string; to: string }) {
           const s = iso(d); const inRange = s >= from && s <= to;
           const isStart = s === from, isEnd = s === to;
           const weekend = d.getUTCDay() === 0 || d.getUTCDay() === 6;
+          const booked = taken.has(s);
           let bg = 'transparent', col = weekend ? 'var(--muted)' : 'var(--ink)', radius = '0', weight = 400;
           if (inRange) {
             // Zakres to planowana nieobecność — nosi tokeny nieobecności, nie tinty marki.
@@ -69,8 +118,28 @@ function MiniCal({ from, to }: { from: string; to: string }) {
             if (isStart || isEnd) col = 'var(--on-brand)';
             radius = isStart && isEnd ? '7px' : isStart ? '7px 0 0 7px' : isEnd ? '0 7px 7px 0' : '0';
           } else if (weekend) { bg = 'var(--surface-3)'; radius = '7px'; }
-          return <div key={i} style={{ textAlign: 'center', padding: '6px 0', background: bg, color: col, borderRadius: radius, fontWeight: weight, fontVariantNumeric: 'tabular-nums' }}>{d.getUTCDate()}</div>;
+          if (booked) { if (!inRange) { col = 'var(--absence-ink)'; weight = 600; } radius = radius === '0' ? '7px' : radius; }
+          return <div key={i} style={{
+            textAlign: 'center', padding: '6px 0', background: bg, color: col, borderRadius: radius, fontWeight: weight, fontVariantNumeric: 'tabular-nums',
+            boxShadow: booked ? 'inset 0 0 0 1.5px var(--absence-border)' : undefined,
+          }}>{d.getUTCDate()}</div>;
         })}
+      </div>
+
+      {/* Znaczenie obwódki musi stać słowem, nie tylko kolorem (WCAG 1.4.1). Zdanie niesie też
+          konkretne daty, więc czytnik ekranu dostaje tę samą informację co siatka. */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', marginTop: 12, fontFamily: 'var(--font-sans)', fontSize: 11, color: 'var(--muted)' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span aria-hidden="true" style={{ width: 14, height: 14, borderRadius: 5, background: 'var(--absence)' }} />Zaznaczony zakres
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span aria-hidden="true" style={{ width: 14, height: 14, borderRadius: 5, boxShadow: 'inset 0 0 0 1.5px var(--absence-border)' }} />Już zapisane
+        </span>
+      </div>
+      <div style={{ marginTop: 8, fontFamily: 'var(--font-sans)', fontSize: 11.5, lineHeight: 1.5, color: 'var(--ink-2)' }}>
+        {wThisMonth.length === 0
+          ? `Nie masz zapisanych nieobecności w tym miesiącu (${MONTHS[m]} ${y}).`
+          : `Masz już zapisane: ${wThisMonth.map((a) => dateRange(a.from, a.to, { long: true })).join(', ')}.`}
       </div>
     </div>
   );
@@ -87,6 +156,7 @@ export function Wpis() {
   const [hourFrom, setHourFrom] = useState('09:00');
   const [hourTo, setHourTo] = useState('13:00');
   const [preview, setPreview] = useState<Preview | null>(null);
+  const [mine, setMine] = useState<Absence[]>([]);
   const { notice, ok, fail, clear } = useNotice();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(0);
@@ -111,6 +181,12 @@ export function Wpis() {
   useEffect(() => {
     if (current && from && effTo) api.preview(current.id, from, effTo, dayPart, hf, ht).then(setPreview).catch(() => setPreview(null));
   }, [current?.id, from, effTo, dayPart, hf, ht, saved]);
+  // Własne wpisy do mini-kalendarza. Istniejący `GET /absences?employeeId=` wystarcza — to lista
+  // jednej osoby, więc filtrowanie do widocznego miesiąca robi się po stronie ekranu.
+  // `saved` w zależnościach z tego samego powodu co wyżej: świeżo zapisany wpis ma się pokazać.
+  useEffect(() => {
+    if (current) api.absences(current.id).then(setMine).catch(() => setMine([]));
+  }, [current?.id, saved]);
 
   const skipped = useMemo(() => {
     if (!preview || partial) return 0;
@@ -142,6 +218,11 @@ export function Wpis() {
       const days = preview ? ` — ${nf(preview.workingDays)} ${plural(preview.workingDays, ['dzień roboczy', 'dni robocze', 'dni roboczych'])}` : '';
       ok(`Zapisano nieobecność${days}. Wpis obowiązuje od razu i jest już widoczny w kalendarzu zespołu.`);
       setSaved((n) => n + 1);
+      // Daty wracają na dziś, bo po zapisie formularz opisywał termin, który sam przed chwilą
+      // zajął: obok „Zapisano nieobecność" stawało „Zapis zablokowany: masz już nieobecność
+      // w tym terminie". Ekran przeczył sam sobie i nie dało się z niego odczytać, czy wpis
+      // powstał. Zakres zostaje widoczny w mini-kalendarzu jako zapisany — informacja nie ginie.
+      setFrom(todayIso()); setTo(todayIso()); setDayPart('FULL');
     } catch (e) { fail(e); } finally { setSaving(false); }
   };
 
@@ -239,7 +320,7 @@ export function Wpis() {
             </div>
           )}
 
-          <MiniCal from={from} to={effTo} />
+          <MiniCal from={from} to={effTo} existing={mine} />
         </div>
       </div>
     </div>
