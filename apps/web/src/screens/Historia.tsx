@@ -7,7 +7,6 @@ import { ConfirmDialog, Notice, field, useNotice } from '../admin/ui';
 import { cardClipped } from '../design-system/surfaces';
 import { SegmentedControl } from '../design-system/components/forms/SegmentedControl';
 
-const d = (iso: string) => iso.slice(0, 10);
 
 const COLS = '1.6fr .6fr 1.6fr 1.1fr 1fr .9fr';
 
@@ -48,7 +47,7 @@ export function Historia() {
     if (!undo || !current) return;
     const a = undo;
     void guard(async () => {
-      await api.createAbsence({ employeeId: current.id, typeId: a.type.id, dateFrom: d(a.dateFrom), dateTo: d(a.dateTo), dayPart: a.dayPart, hourFrom: a.hourFrom ?? undefined, hourTo: a.hourTo ?? undefined });
+      await api.createAbsence({ employeeId: current.id, typeId: a.type.id, dateFrom: a.dateFrom, dateTo: a.dateTo, dayPart: a.dayPart, hourFrom: a.hourFrom ?? undefined, hourTo: a.hourTo ?? undefined });
       setUndo(null); load();
     });
   };
@@ -63,8 +62,8 @@ export function Historia() {
   const filtered = useMemo(() => {
     const t = todayIso();
     const sorted = [...rows].sort((a, b) => b.dateFrom.localeCompare(a.dateFrom));
-    if (filter === 'upcoming') return sorted.filter((a) => d(a.dateTo) >= t);
-    if (filter === 'done') return sorted.filter((a) => d(a.dateTo) < t);
+    if (filter === 'upcoming') return sorted.filter((a) => a.dateTo >= t);
+    if (filter === 'done') return sorted.filter((a) => a.dateTo < t);
     return sorted;
   }, [rows, filter]);
 
@@ -104,7 +103,7 @@ export function Historia() {
           </div></div>
         )}
         {filtered.map((a, i) => {
-          const isUpcoming = d(a.dateTo) >= todayIso();
+          const isUpcoming = a.dateTo >= todayIso();
           const part = a.dayPart === 'AM' ? ' · AM' : a.dayPart === 'PM' ? ' · PM' : a.dayPart === 'HOURS' ? ' · godz.' : '';
           if (edit && edit.id === a.id) {
             return (
@@ -131,7 +130,7 @@ export function Historia() {
               </div>
               <div role="cell" style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
                 {isUpcoming && <>
-                  <button type="button" className="ds-quiet" disabled={busy} aria-label={`Edytuj nieobecność ${rangeLabel(a)}`} onClick={() => setEdit({ id: a.id, typeId: a.type.id, dateFrom: d(a.dateFrom), dateTo: d(a.dateTo) })} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)', fontSize: 12.5, fontWeight: 600, color: 'var(--ink-2)', padding: '5px 7px', minHeight: 24, boxSizing: 'border-box', margin: '-5px -3px', borderRadius: 'var(--radius-sm)' }}>Edytuj</button>
+                  <button type="button" className="ds-quiet" disabled={busy} aria-label={`Edytuj nieobecność ${rangeLabel(a)}`} onClick={() => setEdit({ id: a.id, typeId: a.type.id, dateFrom: a.dateFrom, dateTo: a.dateTo })} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)', fontSize: 12.5, fontWeight: 600, color: 'var(--ink-2)', padding: '5px 7px', minHeight: 24, boxSizing: 'border-box', margin: '-5px -3px', borderRadius: 'var(--radius-sm)' }}>Edytuj</button>
                   <button type="button" className="ds-danger" disabled={busy} aria-label={`Wycofaj nieobecność ${rangeLabel(a)}`} onClick={() => setConfirmDel(a)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)', fontSize: 12.5, fontWeight: 600, color: 'var(--danger)', padding: '5px 7px', minHeight: 24, boxSizing: 'border-box', margin: '-5px -7px', borderRadius: 'var(--radius-sm)' }}>Wycofaj</button>
                 </>}
               </div>

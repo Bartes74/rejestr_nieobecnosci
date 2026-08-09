@@ -3,6 +3,7 @@ import { polishHolidays, todayUtc } from '@nieobecnosci/core';
 import { PrismaService } from './prisma.service';
 import { CreateCalendarDto, CreateHolidayDto } from './dto';
 import { Roles } from './auth/decorators';
+import { isoDay } from './serialize';
 
 // FR-G3/G7 — kalendarze świąt i dni wolne (pomijane przy liczeniu).
 @Controller()
@@ -24,11 +25,12 @@ export class HolidaysController {
   }
 
   @Get('holidays')
-  holidays(@Query('calendarId') calendarId?: string) {
-    return this.prisma.holiday.findMany({
+  async holidays(@Query('calendarId') calendarId?: string) {
+    const rows = await this.prisma.holiday.findMany({
       where: calendarId ? { calendarId } : undefined,
       orderBy: { date: 'asc' },
     });
+    return rows.map(isoDay);
   }
 
   // Święta ustawowe są wyliczane (packages/core), nie pobierane z zewnątrz — wdrożenie jest
@@ -49,9 +51,10 @@ export class HolidaysController {
 
   @Roles('ADMIN')
   @Post('holidays')
-  createHoliday(@Body() dto: CreateHolidayDto) {
-    return this.prisma.holiday.create({
+  async createHoliday(@Body() dto: CreateHolidayDto) {
+    const created = await this.prisma.holiday.create({
       data: { name: dto.name, date: new Date(dto.date), calendarId: dto.calendarId },
     });
+    return isoDay(created);
   }
 }

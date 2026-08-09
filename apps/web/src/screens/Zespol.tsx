@@ -155,7 +155,7 @@ export function Zespol() {
                         </>
                       ) : (
                         <>
-                          <button type="button" disabled={busy} aria-label={`Edytuj termin ${range(a)}`} onClick={() => setEdit({ id: a.id, from: a.dateFrom.slice(0, 10), to: a.dateTo.slice(0, 10) })} style={{ ...btn, marginRight: 6 }}>Edytuj termin</button>
+                          <button type="button" disabled={busy} aria-label={`Edytuj termin ${range(a)}`} onClick={() => setEdit({ id: a.id, from: a.dateFrom, to: a.dateTo })} style={{ ...btn, marginRight: 6 }}>Edytuj termin</button>
                           <button type="button" disabled={busy} aria-label={`Usuń nieobecność ${range(a)}`} onClick={() => setConfirmDel(a)} style={{ ...btn, color: 'var(--danger)' }}>Usuń</button>
                         </>
                       )}

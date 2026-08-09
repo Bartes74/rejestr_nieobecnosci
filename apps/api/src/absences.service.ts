@@ -2,6 +2,7 @@ import {
   BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException,
 } from '@nestjs/common';
 import { consumesPool, countOverlaidDays, countWorkingDays, dayFraction, isoDate, resolveBillingPeriod, subtractRanges } from '@nieobecnosci/core';
+import { isoRange } from './serialize';
 import type { DaySpan, EmploymentType } from '@nieobecnosci/core';
 import type { DayPart, Prisma } from '@prisma/client';
 import { PrismaService } from './prisma.service';
@@ -61,13 +62,13 @@ export class AbsencesService {
   private async withWorkingDays<T extends { dateFrom: Date; dateTo: Date; dayPart: DayPart; hourFrom: string | null; hourTo: string | null; type: { affectsPool: boolean } }>(
     employeeId: string,
     rows: T[],
-  ): Promise<(T & { workingDays: number })[]> {
+  ): Promise<(Omit<T, 'dateFrom' | 'dateTo'> & { dateFrom: string; dateTo: string; workingDays: number })[]> {
     const holidays = await this.balance.holidaysFor(employeeId);
     const sick = rows.filter(overrides).map((a) => ({ dateFrom: a.dateFrom, dateTo: a.dateTo }));
     return rows.map((a) => {
       const visible = overrides(a) ? [{ dateFrom: a.dateFrom, dateTo: a.dateTo }] : subtractRanges(a, sick);
       const workingDays = visible.reduce((sum, r) => sum + countWorkingDays(r.dateFrom, r.dateTo, holidays), 0) * fractionOf(a);
-      return { ...a, workingDays };
+      return { ...isoRange(a), workingDays };
     });
   }
 
@@ -123,7 +124,7 @@ export class AbsencesService {
     await this.audit('ABSENCE_CREATE', created.id, created.employeeId, user, `Dodano ${isoDate(created.dateFrom)}–${isoDate(created.dateTo)}.`);
     // FR-E1 — informacja do lidera o nieobecności B2B/OUT (best-effort).
     await this.notifications.notifyLeadersOfAbsence(created.employeeId, created.dateFrom, created.dateTo).catch(() => {});
-    return created;
+    return isoRange(created);
   }
 
   // FR-A10 — operacje masowe: jedna nieobecność dla wielu pracowników. Reużywa `create` per osoba
@@ -153,7 +154,7 @@ export class AbsencesService {
     await this.validate(existing.employeeId, typeId, from, to, dayPart, existing.hourFrom, existing.hourTo, id);
     const updated = await this.prisma.absence.update({ where: { id }, data: { typeId, dateFrom: from, dateTo: to, dayPart } });
     await this.audit('ABSENCE_UPDATE', updated.id, existing.employeeId, user, `Zmieniono na ${isoDate(updated.dateFrom)}–${isoDate(updated.dateTo)}.`);
-    return updated;
+    return isoRange(updated);
   }
 
   async remove(id: string, user: AuthUser) {
@@ -232,7 +233,7 @@ export class AbsencesService {
       data: { entity: 'Absence', entityId: existing.employeeId, action: 'ABSENCE_TO_L4', userId: user.sub,
         description: `Konwersja nieobecności na L4 (zmiana rodzaju; na UoP dzień wraca do puli).` },
     });
-    return updated;
+    return isoRange(updated);
   }
 
   /**

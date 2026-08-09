@@ -3,7 +3,8 @@
  * w trzy różne formaty w jednym produkcie: „3.08", „03.08.2026" i surowe ISO „2026-08-03"
  * w Zespole i Konfiguracji. PRODUCT.md wymaga zapisu polskiego, a nie każdego z osobna.
  *
- * Wejściem jest zawsze ciąg z serwera — ISO `YYYY-MM-DD` albo pełny znacznik czasu.
+ * Wejściem jest ciąg z serwera, zawsze w zapisie `YYYY-MM-DD` — daty kalendarzowe zamienia
+ * na tekst granica API (`apps/api/src/serialize.ts`), więc front nie ma już czego obcinać.
  * Kroimy tekst zamiast budować `Date`, bo `new Date('2026-08-03')` czyta się jako UTC
  * i w strefie ujemnej cofa dzień — data nieobecności to etykieta kalendarzowa, nie moment.
  */
@@ -13,8 +14,6 @@
 import { todayIso } from '@nieobecnosci/core/today';
 import { mergeRanges } from '@nieobecnosci/core/overlay';
 export { todayIso, ORG_TIMEZONE } from '@nieobecnosci/core/today';
-
-const ymd = (iso: string) => iso.slice(0, 10);
 
 /** `3.08` — dzień i miesiąc. Dla zakresów w obrębie znanego roku (kalendarz, pigułki). */
 export const dayMonth = (iso: string) => `${Number(iso.slice(8, 10))}.${iso.slice(5, 7)}`;
@@ -28,8 +27,7 @@ export const fullDate = (iso: string) => `${Number(iso.slice(8, 10))}.${iso.slic
  */
 export function dateRange(from: string, to: string, opts?: { long?: boolean }): string {
   const fmt = opts?.long ? fullDate : dayMonth;
-  const [f, t] = [ymd(from), ymd(to)];
-  return f === t ? fmt(f) : `${fmt(f)}–${fmt(t)}`;
+  return from === to ? fmt(from) : `${fmt(from)}–${fmt(to)}`;
 }
 
 /** Dzień miesiąca bez wiodącego zera, do kafli z datą. */
@@ -41,7 +39,7 @@ export const dayOfMonth = (iso: string) => iso.slice(8, 10);
  * zmiany czasu, kiedy doba ma 23 albo 25 godzin.
  */
 export function addDays(iso: string, days: number): string {
-  const d = new Date(`${ymd(iso)}T00:00:00.000Z`);
+  const d = new Date(`${iso}T00:00:00.000Z`);
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);
 }
@@ -73,7 +71,7 @@ export function currentYearMonth(): { y: number; m: number } {
  * jawnie w UTC, zgodnie z regułą tego modułu: data nieobecności to etykieta, nie moment.
  */
 export function mergeIsoRanges(ranges: readonly { from: string; to: string }[]): { from: string; to: string }[] {
-  const utc = (iso: string) => new Date(`${iso.slice(0, 10)}T00:00:00.000Z`);
+  const utc = (iso: string) => new Date(`${iso}T00:00:00.000Z`);
   return mergeRanges(ranges.map((r) => ({ dateFrom: utc(r.from), dateTo: utc(r.to) })))
     .map((r) => ({ from: r.dateFrom.toISOString().slice(0, 10), to: r.dateTo.toISOString().slice(0, 10) }));
 }
