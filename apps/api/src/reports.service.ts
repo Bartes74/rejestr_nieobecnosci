@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { balance, consumesPool, countOverlaidDays, dayFraction, isoDate, proratePool, resolveBillingPeriod, todayUtc, usedLeaveDays } from '@nieobecnosci/core';
+import { balance, consumesPool, countOverlaidDays, dayFraction, isoDate, resolveBillingPeriod, todayUtc, usedLeaveDays } from '@nieobecnosci/core';
 import ExcelJS from 'exceljs';
 import { PrismaService } from './prisma.service';
 import { OrgService } from './org.service';
-import { BalanceService } from './balance.service';
+import { BalanceService, poolAndCarry } from './balance.service';
 import { SettingsService } from './settings.service';
 import type { AuthUser } from './auth/current-user.decorator';
 import { canViewL4 } from './auth/rbac';
@@ -49,19 +49,21 @@ export class ReportsService {
       this.balance.defaultPools(),
     ]);
 
-    const allowByKey = new Map(allowances.map((a) => [`${a.employeeId}:${a.periodYear}`, a]));
+    // Wszystkie okresy osoby, nie tylko bieżący: urlop zaległy wynika z okresów wcześniejszych.
+    const allowByEmp = new Map<string, typeof allowances>();
+    for (const a of allowances) (allowByEmp.get(a.employeeId) ?? allowByEmp.set(a.employeeId, []).get(a.employeeId)!).push(a);
     const absByEmp = new Map<string, typeof absences>();
     for (const a of absences) (absByEmp.get(a.employeeId) ?? absByEmp.set(a.employeeId, []).get(a.employeeId)!).push(a);
 
     const now = todayUtc(); // dzień w strefie organizacji — patrz komentarz w balance.service
     const rows: UsageRow[] = employees.map((e) => {
       const period = resolveBillingPeriod(e.employmentType, now);
-      const allow = allowByKey.get(`${e.id}:${period.year}`);
-      const carriedOver = allow?.carriedOver ?? 0;
-      const pool = allow?.overrideDays != null
-        ? allow.overrideDays
-        : proratePool(allow?.baseDays ?? defaultPools[e.employmentType], { from: period.from, to: period.to }, e.startDate, e.endDate); // FR-B9
       const holidays = new Set((e.holidayCalendar?.holidays ?? []).map((h) => isoDate(h.date)));
+      // Pula i zaległe (FR-B3/B7/B9) tą samą funkcją co licznik na pulpicie — raport pokazujący
+      // inną liczbę zaległych dni niż pulpit byłby gorszy niż brak raportu.
+      const { pool, carriedOver } = poolAndCarry(
+        e, period, allowByEmp.get(e.id) ?? [], absByEmp.get(e.id) ?? [], holidays, defaultPools[e.employmentType],
+      );
       const used = usedLeaveDays(
         (absByEmp.get(e.id) ?? []).map((a) => ({
           dateFrom: a.dateFrom, dateTo: a.dateTo,

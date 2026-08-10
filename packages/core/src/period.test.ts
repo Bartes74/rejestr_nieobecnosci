@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { resolveBillingPeriod } from './period.js';
+import { billingPeriodsBefore, resolveBillingPeriod } from './period.js';
 import { isoDate } from './workdays.js';
 
 describe('resolveBillingPeriod — FR-B1 (warunek akceptacji)', () => {
@@ -37,5 +37,30 @@ describe('resolveBillingPeriod — FR-B1 (warunek akceptacji)', () => {
     expect(resolveBillingPeriod('UOP', d).year).toBe(2026);
     expect(isoDate(resolveBillingPeriod('UOP', d).from)).toBe('2026-01-01');
     expect(isoDate(resolveBillingPeriod('B2B', d).from)).toBe('2025-12-01');
+  });
+});
+
+describe('billingPeriodsBefore — FR-B7 (łańcuch okresów do rolowania)', () => {
+  it('UoP — kolejne lata kalendarzowe, bez okresu docelowego', () => {
+    const ps = billingPeriodsBefore('UOP', new Date(Date.UTC(2024, 2, 10)), 2027);
+    expect(ps.map((p) => [isoDate(p.from), isoDate(p.to)])).toEqual([
+      ['2024-01-01', '2024-12-31'], ['2025-01-01', '2025-12-31'], ['2026-01-01', '2026-12-31'],
+    ]);
+  });
+
+  it('B2B — kolejne lata budżetowe (gru–lis), bez luk i bez zakładek', () => {
+    const ps = billingPeriodsBefore('B2B', new Date(Date.UTC(2025, 5, 1)), 2027);
+    expect(ps.map((p) => [isoDate(p.from), isoDate(p.to)])).toEqual([
+      ['2024-12-01', '2025-11-30'], ['2025-12-01', '2026-11-30'], // drugi startuje dzień po pierwszym
+    ]);
+    expect(ps.map((p) => p.year)).toEqual([2025, 2026]);
+  });
+
+  it('zatrudnienie w okresie docelowym → nie ma z czego rolować', () => {
+    expect(billingPeriodsBefore('UOP', new Date(Date.UTC(2026, 6, 1)), 2026)).toEqual([]);
+  });
+
+  it('zatrudnienie po okresie docelowym → pusta lista, nie pętla', () => {
+    expect(billingPeriodsBefore('UOP', new Date(Date.UTC(2030, 0, 1)), 2026)).toEqual([]);
   });
 });

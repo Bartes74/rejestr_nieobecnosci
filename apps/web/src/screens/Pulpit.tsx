@@ -5,6 +5,7 @@ import { count } from '@nieobecnosci/core/plural';
 import { dateRange, dayMonth, dayOfMonth, todayIso, weekBounds } from '../format';
 import { api, type Absence, type Balance, type CalEntry, type Sprint } from '../api';
 import { useAuth } from '../current-employee';
+import { useIsNarrow } from '../viewport';
 import { card, panel } from '../design-system/surfaces';
 import { AbsencePill } from '../design-system/components/data/AbsencePill';
 import { Avatar } from '../design-system/components/core/Avatar';
@@ -24,6 +25,7 @@ const Skeleton = ({ w, h = 13, mt = 0 }: { w: number | string; h?: number; mt?: 
 export function Pulpit() {
   const { current } = useAuth();
   const navigate = useNavigate();
+  const narrow = useIsNarrow(); // NFR-6, wariant pośredni: pulpit i wpis działają na telefonie
   const [bal, setBal] = useState<Balance | null>(null);
   const [week, setWeek] = useState<CalEntry[]>([]);
   const [mine, setMine] = useState<Absence[]>([]);
@@ -160,8 +162,10 @@ export function Pulpit() {
       </div>
 
       {/* `start` zamiast domyślnego rozciągania: karta z jednym zdaniem nie ma udawać wysokości
-          sąsiadki i zostawiać pod treścią stu pikseli pustki. */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.35fr 1fr', gap: 18, alignItems: 'start' }}>
+          sąsiadki i zostawiać pod treścią stu pikseli pustki.
+          Na telefonie karty idą jedna pod drugą — balans zostaje pierwszy, bo to on jest tu
+          głównym produktem dla pracownika. */}
+      <div style={{ display: 'grid', gridTemplateColumns: narrow ? '1fr' : '1.35fr 1fr', gap: 18, alignItems: 'start' }}>
         {/* BALANS */}
         <div style={{ ...card, padding: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18 }}>

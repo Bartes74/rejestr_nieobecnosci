@@ -155,7 +155,11 @@ model LeaveAllowance {
   periodYear   Int      // rok kalendarzowy (UoP) lub budżetowy (B2B/OUT)
   baseDays     Float    // wartość globalna zaaplikowana w momencie ustawienia
   overrideDays Float?   // korekta indywidualna — nadpisuje baseDays
-  carriedOver  Float    @default(0) // FR-B7 — urlop zaległy przeniesiony z poprzedniego okresu (nigdy nie przepada)
+  // FR-B7 — urlop zaległy z poprzedniego okresu (nigdy nie przepada).
+  // `null` = wyliczany automatycznie z łańcucha poprzednich okresów (przypadek domyślny);
+  // liczba = ręczna korekta administratora, która wygrywa i staje się nową podstawą łańcucha.
+  // Bez rozróżnienia null/0 nie dałoby się odróżnić „nie ustawiono" od „ustawiono zero”.
+  carriedOver  Float?
 
   @@unique([employeeId, periodYear])
 }

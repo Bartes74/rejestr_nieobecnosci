@@ -67,6 +67,37 @@ export function balance(poolDays: number, carriedOver: number, usedDays: number)
   return { pool: poolDays, carriedOver, used: usedDays, remaining: poolDays + carriedOver - usedDays };
 }
 
+export interface PeriodOutcome {
+  pool: number;
+  used: number;
+  /** Ręczna korekta administratora dla tego okresu — `null`/brak = wyliczane automatycznie. */
+  explicit?: number | null;
+}
+
+/**
+ * FR-B7 — ile dni zaległych wchodzi do okresu docelowego.
+ *
+ * Urlop nie przepada, więc niewykorzystana część puli przechodzi do następnego okresu, i tak dalej
+ * przez cały łańcuch od zatrudnienia. Bez tego 1 stycznia (UoP) i 1 grudnia (B2B/OUT) saldo zaległych
+ * spadałoby do zera, bo dla nowego okresu nie ma jeszcze żadnego wiersza w bazie.
+ *
+ * Wartość ustawiona ręcznie przez administratora wygrywa nad wyliczoną i staje się nową podstawą
+ * łańcucha — inaczej korekta znikałaby przy najbliższym przełomie okresu.
+ *
+ * Ujemne saldo nie przechodzi dalej: przekroczenie puli jest blokowane przy zapisie, a gdyby powstało
+ * korektą puli w dół, dług nie ma się rolować na kolejny rok jako ukryta kara.
+ *
+ * `previous` to okresy od zatrudnienia do poprzedzającego docelowy, rosnąco (patrz `billingPeriodsBefore`).
+ */
+export function carriedOverInto(previous: readonly PeriodOutcome[]): number {
+  let carried = 0;
+  for (const p of previous) {
+    const into = p.explicit ?? carried;
+    carried = Math.max(0, p.pool + into - p.used);
+  }
+  return carried;
+}
+
 // FR-B9 — pula proporcjonalna do części okresu, w której osoba jest zatrudniona/współpracuje.
 // Zaokrąglenie do 0,5 dnia. Zwraca 0, jeśli zatrudnienie nie pokrywa się z okresem.
 export function proratePool(pool: number, period: PeriodRange, startDate: Date, endDate?: Date | null): number {

@@ -13,6 +13,7 @@ const SUITES = [
   'verify-faza2-g7.mjs', 'verify-faza2-j3.mjs', 'verify-faza2-nfr.mjs', 'verify-faza3-zespol-import.mjs',
   'verify-faza3-scheduler.mjs', 'verify-faza3-bulk.mjs', 'verify-faza3-ical.mjs', 'verify-faza3-feed.mjs', 'verify-dlug-konfiguracja.mjs', 'verify-zakres-jednostek.mjs',
   'verify-l4-nakladka.mjs', 'verify-l4-forma-zatrudnienia.mjs', 'verify-pula-formy-swieta.mjs', 'verify-format-dat.mjs',
+  'verify-b7-rolowanie.mjs',
 ];
 
 if (run('db-wipe.mjs') !== 0) { console.error('Czyszczenie bazy nie powiodło się.'); process.exit(1); }

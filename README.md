@@ -21,7 +21,10 @@ docker-compose.prod.yml  wdrożenie on-prem: api + web (Caddy/TLS) + postgres
 
 Rdzeń wyliczeń jest celowo oddzielony od frameworka: **UoP** rozliczany w roku kalendarzowym,
 **B2B/OUT** w roku budżetowym (−1 miesiąc). Niewykorzystane dni przechodzą na kolejny okres jako
-urlop zaległy (nie przepadają). L4 nie obniża puli urlopu, ale zmniejsza capacity.
+urlop zaległy (nie przepadają) — **automatycznie**, bez działania administratora: brak wiersza puli
+w nowym okresie oznacza „policz z poprzednich", nie „zero" (FR-B7). Ręczna korekta administratora
+nadpisuje wyliczenie i staje się podstawą kolejnych okresów.
+L4 nie obniża puli urlopu, ale zmniejsza capacity.
 
 ## Uruchomienie (dev)
 
@@ -83,8 +86,8 @@ w kanale iCal zespołu, w powiadomieniach i w eksportach.
 ## Testy i weryfikacja
 
 ```bash
-pnpm run verify:offline    # build + typecheck (3 pakiety) + 27 testów silnika — bez bazy i API
-pnpm run verify:suites     # 27 suit integracyjnych (218 asercji) przeciw działającemu API
+pnpm run verify:offline    # build + typecheck (3 pakiety) + 83 testy silnika — bez bazy i API
+pnpm run verify:suites     # 30 suit integracyjnych (255 asercji) przeciw działającemu API
 ```
 
 `verify:suites` wymaga **uruchomionego API** i zmiennej `API` (domyślnie `http://localhost:3100/api`).
@@ -96,6 +99,24 @@ API=http://localhost:3100/api node apps/api/verify-faza3-ical.mjs
 ```
 
 CI (`.github/workflows/ci.yml`) uruchamia dokładnie te same kroki na PostgreSQL w usłudze.
+
+### Test obciążeniowy (NFR-1)
+
+```bash
+API=http://localhost:3100/api node apps/api/loadtest.mjs   # doseedowuje bazę do 300 osób
+```
+
+Ostatni przebieg (10.08.2026, PostgreSQL w dockerze na jednej maszynie deweloperskiej,
+300 pracowników, 300 żądań na endpoint, współbieżność 50):
+
+| Endpoint | p50 | p95 | budżet |
+| --- | --- | --- | --- |
+| pulpit (`/analytics/adoption`) | 16 ms | **43 ms** | < 2000 ms |
+| kalendarz (`/calendar`) | 34 ms | **50 ms** | < 2000 ms |
+| balans (`/employees/:id/balance`) | 20 ms | **30 ms** | < 1000 ms |
+
+Zapas jest dwa rzędy wielkości, ale to pomiar na maszynie deweloperskiej — przed produkcją
+powtórz go na docelowym sprzęcie i przez sieć organizacji.
 
 ## Wdrożenie produkcyjne (on-prem)
 
@@ -141,17 +162,41 @@ opierają się na natywnych elementach (`<button>`, `<a>`, `<input type="date/ti
 z klawiatury i czytnikiem ekranu. Kontrolki bez widocznej etykiety mają `aria-label`, aktywne pozycje
 nawigacji `aria-current`, przełączniki uprawnień `aria-pressed`. `<html lang="pl">`.
 
+**Audyt axe-core 4.13 (10.08.2026):** 12 ekranów (logowanie + 11 tras jako administrator), reguły
+`wcag2a, wcag2aa, wcag21a, wcag21aa` — **0 naruszeń**. Wykryte i naprawione w tym przebiegu:
+przewijane siatki kalendarza i heatmapy nie przyjmowały fokusu (`scrollable-region-focusable`,
+WCAG 2.1.1) — obie mają teraz `role="region"`, nazwę i `tabIndex={0}`.
+
+**1.4.4 Resize Text:** przy powiększeniu 200% treść zawija się w kartach, żaden kontener nie przycina
+tekstu i żadna kontrolka nie znika. Poziome przewijanie przy 200% jest dopuszczone przez 1.4.4
+(zakazuje go dopiero 1.4.10 Reflow, wyłączone decyzją desktop-only — patrz `PRODUCT.md`).
+
+Audyt powtórzysz bez dodatkowych narzędzi: `axe-core` jest devDependency `apps/web`, a serwer dev
+podaje go pod `/node_modules/axe-core/axe.min.js`. W konsoli przeglądarki:
+
+```js
+axe.run(document, { preload: false, runOnly: { type: 'tag', values: ['wcag2a','wcag2aa','wcag21a','wcag21aa'] } }).then(r => console.table(r.violations))
+```
+
 ## Stan i co dalej
 
 **Zrobione:** całe MVP, Faza 2 (16 pozycji), część Fazy 3 — heatmapa pokrycia (C4), operacje masowe
 (A10), kanały iCal (F4), powiadomienia in-app, scheduler, ekran „Zespół" (korekta wpisów przez lidera,
-FR-A5), import .xlsx z konfigurowalnym mapowaniem kolumn (FR-G5/D4).
+FR-A5), import .xlsx z konfigurowalnym mapowaniem kolumn (FR-G5/D4), automatyczne rolowanie urlopu
+zaległego na przełomie okresu (FR-B7), zweryfikowana wydajność przy 300 użytkownikach (NFR-1)
+i audyt dostępności axe bez naruszeń (NFR-7).
+
+Stan każdej historyjki z backlogu odnotowuje kolumna **„Stan wdrożenia"** w
+`Backlog - aplikacja nieobecnosci.xlsx` (przegląd z 10.08.2026).
 
 **Świadomie niezrobione** — do decyzji przed produkcją:
 
 - Integracje: **AD/SSO** (jest przygotowany szew `AuthProvider`, brak implementacji OIDC), TETA, JIRA.
-- **NFR-9** — interfejs EN dla współpracowników OUT (priorytet „Could").
-- Pełny **audyt WCAG** (axe) i **test obciążeniowy** ~300 użytkowników (NFR-1).
+- **NFR-9** — interfejs EN dla współpracowników OUT (priorytet „Could", potrzeba nierozstrzygnięta).
+- **NFR-2** — progi i alerty monitoringu: aplikacja daje sondę `/api/health`, resztę konfiguruje się
+  w monitoringu organizacji.
+- **NFR-6** (mobile) i **NFR-7** (1.4.10 Reflow) — zawężenia wymagające potwierdzenia zamawiającego;
+  wniosek gotowy w `WNIOSEK-ZAWEZENIE-NFR.md`.
 - Układ kolumn plików importu do ustalenia z zamawiającym (na razie mapowanie konfigurowalne).
 - Heatmapa pobiera capacity per squad×sprint (N×M zapytań) — przy większej skali dołożyć zbiorczy
   endpoint `/capacity/matrix`.

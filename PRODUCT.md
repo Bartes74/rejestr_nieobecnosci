@@ -55,11 +55,11 @@ Do tego: wdrożenie **on-premise**, bez zależności od zewnętrznych usług —
 
 ## Capabilities and Constraints
 
-**Zbudowane i zweryfikowane:** całe MVP (wszystkie „Must"), Faza 2 w 16 pozycjach, część Fazy 3 — heatmapa pokrycia (C4), operacje masowe (A10), kanały iCal (F4), powiadomienia in-app, scheduler przypomnień i retencji, ekran korekty wpisów przez lidera (A5), import .xlsx z konfigurowalnym mapowaniem kolumn (G5/D4), rejestr czynności przetwarzania, analityka adopcji, health/monitoring, backup, CI.
+**Zbudowane i zweryfikowane:** całe MVP (wszystkie „Must"), Faza 2 w 16 pozycjach, część Fazy 3 — heatmapa pokrycia (C4), operacje masowe (A10), kanały iCal (F4), powiadomienia in-app, scheduler przypomnień i retencji, ekran korekty wpisów przez lidera (A5), import .xlsx z konfigurowalnym mapowaniem kolumn (G5/D4), automatyczne rolowanie urlopu zaległego (B7), rejestr czynności przetwarzania, analityka adopcji, health/monitoring, backup, CI. Stan każdej historyjki odnotowuje kolumna „Stan wdrożenia" w pliku backlogu.
 
 **Reguły biznesowe, które muszą zostać zachowane:**
 
-- Urlop **nigdy nie przepada** — niewykorzystane dni przechodzą na kolejny okres jako zaległy, bez terminu wygaśnięcia. Rozstrzygnięcie zapadłe w trakcie prac; przypomnienia mają charakter wyłącznie informacyjny.
+- Urlop **nigdy nie przepada** — niewykorzystane dni przechodzą na kolejny okres jako zaległy, bez terminu wygaśnięcia. Rozstrzygnięcie zapadłe w trakcie prac; przypomnienia mają charakter wyłącznie informacyjny. Przeniesienie jest **automatyczne i bezobsługowe**: brak wiersza puli w nowym okresie znaczy „policz z okresów wcześniejszych", nigdy „zero" — inaczej 1 stycznia (UoP) i 1 grudnia (B2B/OUT) saldo zaległych całego departamentu spadałoby do zera. Ręczna korekta administratora wygrywa nad wyliczeniem i staje się podstawą kolejnych okresów. Reguła nie jest konfigurowalna i nie ma być: przełącznik „urlop przepada po X" to jedno kliknięcie od skasowania ludziom uprawnienia.
 - **L4 przykrywa zaplanowaną nieobecność, ale jej nie kasuje** (FR-B5/FR-B10). Zapisać je można zawsze — choroby nie da się przełożyć — a oba wpisy zostają w bazie, więc skasowanie błędnie wpisanego L4 samo przywraca pierwotny plan. Kolizją zostaje wyłącznie nieobecność na nieobecności — zapis chorobowy nie blokuje się nigdy, także na innym zwolnieniu (dzień i tak liczy się raz). Dzień kalendarzowy liczy się najwyżej raz i należy do L4; capacity obniża każdy z nich. Rachunek dla 5 dni nieobecności i 8 dni L4 z 3 wspólnymi (suma 10 dni kalendarzowych):
 
   | | Widzi / liczy |
@@ -76,7 +76,7 @@ Do tego: wdrożenie **on-premise**, bez zależności od zewnętrznych usług —
 
 **Decyzja o zasięgu urządzeń:** aplikacja jest **desktop-only**. NFR-6 w wersji 2.0 dokumentu wymaga interfejsu responsywnego dla desktopu i urządzeń mobilnych — ten punkt został zdescope'owany decyzją prowadzącego projekt (2026-08-07). Wymaganie „maks. 3 kliknięcia", pochodzące z tego samego NFR-6, **pozostaje wiążące**. Przyszłe prace projektowe mogą zakładać stację roboczą; nie zwalnia to z obsługi klawiatury i czytnika ekranu (NFR-7).
 
-**Konsekwencja tej decyzji dla NFR-7 (rozstrzygnięte 2026-08-07):** desktop-only i pełne WCAG 2.1 AA wykluczają się w dwóch punktach, więc deklaracja została zawężona — patrz sekcja o zgodności niżej. Powłoka ma stały sidebar 250 px, a siatki tabel i układy dwukolumnowe nie przelewają się; poniżej ~1000 px treść przewija się poziomo wewnątrz obszaru głównego, a przy 400 px aplikacja przestaje być użyteczna. Domknięcie tych kryteriów wymagałoby przelewania treści na wszystkich jedenastu ekranach, czyli cofnięcia decyzji desktop-only. Wybrano zawężenie deklaracji, nie ciche pozostawienie sprzeczności.
+**Konsekwencja tej decyzji dla NFR-7 (rozstrzygnięte 2026-08-07, skorygowane 2026-08-10):** desktop-only i pełne WCAG 2.1 AA wykluczają się w **jednym** punkcie — 1.4.10 Reflow. Pierwotnie wyłączono także 1.4.4 Resize Text; sprawdzenie przy powiększeniu 200% pokazało, że kryterium jest spełnione, więc wróciło do zakresu. Zawężenie obejmuje wyłącznie 1.4.10 — patrz sekcja o zgodności niżej. Powłoka ma stały sidebar 250 px, a siatki tabel i układy dwukolumnowe nie przelewają się; poniżej ~1000 px treść przewija się poziomo wewnątrz obszaru głównego, a przy 400 px aplikacja przestaje być użyteczna. Domknięcie tych kryteriów wymagałoby przelewania treści na wszystkich jedenastu ekranach, czyli cofnięcia decyzji desktop-only. Wybrano zawężenie deklaracji, nie ciche pozostawienie sprzeczności.
 
 **Otwarte, nierozstrzygnięte u zamawiającego** — przyszłe prace mają je traktować jako niewiadome, nie zgadywać:
 
@@ -85,7 +85,9 @@ Do tego: wdrożenie **on-premise**, bez zależności od zewnętrznych usług —
 - okres retencji danych nieobecności (FR-J2; implementacja przyjmuje domyślnie 24 miesiące),
 - ostateczny układ kolumn plików importu pracowników i sprintów (FR-G5, D4),
 - czy potrzebny jest interfejs angielski dla współpracowników OUT (NFR-9, priorytet „Could"),
-- dokładna reguła przełomu okresu rozliczeniowego (FR-B7).
+- zgoda na zawężenie NFR-6 (desktop-only) i NFR-7 (bez 1.4.10 Reflow) — wniosek gotowy w `WNIOSEK-ZAWEZENIE-NFR.md`, do wysłania przez prowadzącego projekt.
+
+**Rozstrzygnięte 10.08.2026:** reguła przełomu okresu rozliczeniowego (FR-B7) — urlop przechodzi w całości, automatycznie, bez terminu wygaśnięcia; reguła nie jest konfigurowalna.
 
 **Słownik:** UoP, B2B, OUT, rok kalendarzowy, rok budżetowy, capacity, Tribe/Squad/Chapter, L4, sprint. Definicje w dokumencie wymagań, sekcja 2 — terminologia w UI ma się z nimi zgadzać.
 
@@ -108,15 +110,17 @@ Materiały realne, do wykorzystania bez wymyślania:
 - `Makiety - aplikacja nieobecnosci (Credit Agricole).html`, `Aplikacja Nieobecnosci (offline).html` — prototypy referencyjne.
 - `README.md`, `HANDOFF.md` — stan wdrożenia, RBAC, uruchomienie, decyzje.
 - `apps/api/demo-seed.mjs` — realistyczny scenariusz demonstracyjny: Pion Operacji › Departament IT › Tribe Alfa › 5 squadów, 21 osób, 7 sprintów, nieobecności generowane względem dnia uruchomienia.
-- Dowód poprawności: 27 testów silnika wyliczeń, 23 suity integracyjne (147 asercji), CI na PostgreSQL.
+- Dowód poprawności: 83 testy silnika wyliczeń, 30 suit integracyjnych (255 asercji), CI na PostgreSQL.
+- Pomiar wydajności (10.08.2026, maszyna deweloperska, 300 pracowników, współbieżność 50): p95 pulpitu 43 ms, kalendarza 50 ms, balansu 30 ms — przy budżetach NFR-1 2000/2000 ms i FR-B2 1000 ms. Szczegóły w `README.md`.
+- Audyt dostępności axe-core 4.13 (10.08.2026): 12 ekranów, reguły WCAG 2.0/2.1 A i AA — 0 naruszeń.
 
 Czego **nie ma** i czego nie wolno wymyślać:
 
 - **Brak danych z produkcji** — aplikacja nie była jeszcze wdrożona u użytkowników. Wszelkie liczby użycia, adopcji czy satysfakcji byłyby zmyślone.
 - **Brak opinii i cytatów użytkowników.**
 - Oceny priorytetów w sekcji 8 dokumentu pochodzą z **jednej odpowiedzi ankietowej z 09.06.2026** — to sygnał, nie badanie. Nie prezentować ich jako wyniku badań ilościowych.
-- **Brak testu obciążeniowego** dla 300 jednoczesnych użytkowników (NFR-1 niezweryfikowany).
-- **Brak pełnego audytu WCAG** narzędziem automatycznym (axe).
+- Test obciążeniowy NFR-1 wykonany, ale **na maszynie deweloperskiej**, nie na docelowym sprzęcie i nie przez sieć organizacji. Wynik pokazuje zapas, nie zastępuje pomiaru przedprodukcyjnego.
+- Audyt WCAG jest **automatyczny (axe)**. Automat pokrywa część kryteriów — nie zastępuje testu z czytnikiem ekranu ani oceny eksperckiej.
 - Liczby „~300 użytkowników / 6 zespołów" pochodzą z D6 dokumentu wymagań i są jedynymi zweryfikowanymi liczbami o skali.
 
 ## Product Principles
@@ -130,7 +134,7 @@ Czego **nie ma** i czego nie wolno wymyślać:
 ## Accessibility & Inclusion
 
 - **WCAG 2.1 na poziomie AA (NFR-7)** — wymaganie kontraktowe, nie aspiracja. Obejmuje kontrast, obsługę z klawiatury i czytnik ekranu.
-- **Zawężenie deklaracji (2026-08-07):** z zakresu wyłączone są dwa kryteria sukcesu — **1.4.10 Reflow** i **1.4.4 Resize Text** — jako bezpośrednia konsekwencja decyzji desktop-only. Uzasadnienie: aplikacja pracuje wyłącznie na stacjach roboczych w sieci wewnętrznej instytucji; domknięcie tych kryteriów oznaczałoby przelewanie treści na wszystkich ekranach, czyli cofnięcie zdescope'owanego NFR-6. **Wyłączenie dotyczy wyłącznie tych dwóch punktów.** Pozostałe kryteria AA — w tym 1.4.3 Contrast, 1.4.11 Non-text Contrast, 1.3.1 Info and Relationships, 2.4.7 Focus Visible, 2.4.1 Bypass Blocks i 4.1.3 Status Messages — obowiązują bez zmian i nie podlegają negocjacji przy kolejnych pracach.
+- **Zawężenie deklaracji (2026-08-07, skorygowane 2026-08-10):** z zakresu wyłączone jest **wyłącznie 1.4.10 Reflow**. **1.4.4 Resize Text wraca do zakresu i jest spełnione** — sprawdzone 10.08.2026 przy powiększeniu 200%: treść zawija się w kartach, żaden kontener nie przycina tekstu, żadna kontrolka nie znika. Poziome przewijanie, którego 1.4.4 nie zakazuje, pozostaje. Wyłączenie 1.4.10 jest konsekwencją decyzji desktop-only. Uzasadnienie: aplikacja pracuje wyłącznie na stacjach roboczych w sieci wewnętrznej instytucji; domknięcie tych kryteriów oznaczałoby przelewanie treści na wszystkich ekranach, czyli cofnięcie zdescope'owanego NFR-6. **Wyłączenie dotyczy wyłącznie tych dwóch punktów.** Pozostałe kryteria AA — w tym 1.4.3 Contrast, 1.4.11 Non-text Contrast, 1.3.1 Info and Relationships, 2.4.7 Focus Visible, 2.4.1 Bypass Blocks i 4.1.3 Status Messages — obowiązują bez zmian i nie podlegają negocjacji przy kolejnych pracach.
 - Zawężenie jest **do zgłoszenia zamawiającemu**, nie do cichego przyjęcia: NFR-7 jest wymaganiem kontraktowym, więc zmiana jego zakresu wymaga potwierdzenia po stronie Credit Agricole. Do czasu potwierdzenia traktować jako propozycję zespołu, nie jako stan uzgodniony.
 - Interakcje mają się opierać na natywnych elementach (`<button>`, `<a>`, `<input type="date/time">`, `<select>`), bo to najtańsza droga do zgodności z klawiaturą i AT.
 - `<html lang="pl">`; kontrolki bez widocznej etykiety mają dostępną nazwę.

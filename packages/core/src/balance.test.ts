@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { consumesPool, usedLeaveDays, balance, proratePool } from './balance.js';
+import { carriedOverInto, consumesPool, usedLeaveDays, balance, proratePool } from './balance.js';
 
 const d = (y: number, m: number, day: number) => new Date(Date.UTC(y, m, day));
 const period = { from: d(2026, 0, 1), to: d(2026, 11, 31) };
@@ -61,6 +61,46 @@ describe('balance — FR-B2/B7', () => {
 
   it('urlop zaległy zawsze powiększa pulę (nigdy nie przepada)', () => {
     expect(balance(26, 10, 0).remaining).toBe(36);
+  });
+});
+
+describe('carriedOverInto — FR-B7 (urlop nie przepada na przełomie okresu)', () => {
+  it('brak wcześniejszych okresów → zero, nie „coś z niczego"', () => {
+    expect(carriedOverInto([])).toBe(0);
+  });
+
+  it('niewykorzystana część puli przechodzi do następnego okresu', () => {
+    expect(carriedOverInto([{ pool: 26, used: 20 }])).toBe(6);
+  });
+
+  it('kumuluje przez kilka okresów — zaległe wchodzą do puli następnego', () => {
+    // 2026: 26 − 20 = 6 zaległych → 2027: 26 + 6 − 24 = 8
+    expect(carriedOverInto([{ pool: 26, used: 20 }, { pool: 26, used: 24 }])).toBe(8);
+  });
+
+  it('pula wybrana co do dnia → zero, bez śladowych ułamków', () => {
+    expect(carriedOverInto([{ pool: 26, used: 26 }])).toBe(0);
+  });
+
+  it('korekta administratora wygrywa i staje się podstawą łańcucha', () => {
+    // Administrator ustawił 2 dni zaległe na 2026 mimo wyliczonych 6; 2027 liczy się od tej wartości.
+    expect(carriedOverInto([{ pool: 26, used: 20, explicit: 2 }])).toBe(8); // 26 + 2 − 20
+    expect(carriedOverInto([{ pool: 26, used: 20 }, { pool: 26, used: 24, explicit: 0 }])).toBe(2); // 26 + 0 − 24
+  });
+
+  it('korekta 0 to nie to samo co brak korekty', () => {
+    expect(carriedOverInto([{ pool: 10, used: 0, explicit: 0 }, { pool: 10, used: 0 }])).toBe(20);
+    expect(carriedOverInto([{ pool: 10, used: 0 }, { pool: 10, used: 0 }])).toBe(20);
+    expect(carriedOverInto([{ pool: 10, used: 0 }, { pool: 10, used: 0, explicit: 0 }])).toBe(10);
+  });
+
+  it('dług nie roluje się na kolejny okres', () => {
+    expect(carriedOverInto([{ pool: 10, used: 15 }])).toBe(0);
+    expect(carriedOverInto([{ pool: 10, used: 15 }, { pool: 10, used: 0 }])).toBe(10);
+  });
+
+  it('niepełne dni nie gubią połówek', () => {
+    expect(carriedOverInto([{ pool: 26, used: 20.5 }])).toBe(5.5);
   });
 });
 

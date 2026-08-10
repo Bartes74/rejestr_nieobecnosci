@@ -17,7 +17,8 @@ STACK (TypeScript end-to-end, on-premise, UI po polsku):
 - apps/web — React + Vite + design system przeniesiony z prototypu („Analiza dokumentów i ekranów/").
 
 STAN: MVP + Faza 2 (16 pozycji) + część Fazy 3 — zbudowane i zweryfikowane.
-Ostatni pełny przebieg: silnik 66/66 testów, 27 suit integracyjnych (218 asercji), build+typecheck czysto.
+Ostatni pełny przebieg (10.08.2026): silnik 83/83 testy, 30 suit integracyjnych (255 asercji),
+build+typecheck czysto, test obciążeniowy 300 użytkowników w budżecie NFR-1, audyt axe bez naruszeń.
 Działa m.in.: wpis/edycja/undo (≤3 kliknięcia), kalendarz Tribe (jednolity, bez typów), RBAC 6 ról,
 ochrona L4 (art. 9 RODO — znacznik tylko dla VIEW_L4/admin, każdy odczyt audytowany), capacity per sprint
 + alert kolizji kluczowych ról, heatmapa pokrycia, operacje masowe, raporty z drążeniem hierarchii,
@@ -47,13 +48,16 @@ KONWENCJE:
 - UI po polsku, zgodnie z design systemem (Archivo + IBM Plex Mono, zielony brand, ikony Lucide).
 
 DO ZROBIENIA (priorytety do ustalenia z użytkownikiem):
-1. Integracja AD/SSO — w apps/api/src/auth/auth-provider.ts jest przygotowany szew (AuthProvider);
+1. Odpowiedź zamawiającego na WNIOSEK-ZAWEZENIE-NFR.md (NFR-6 mobile, NFR-7 kryterium 1.4.10).
+   Wariant pośredni w rekomendacji: pulpit + wpis na telefonie, reszta desktop-only.
+2. Integracja AD/SSO — w apps/api/src/auth/auth-provider.ts jest przygotowany szew (AuthProvider);
    brakuje implementacji OIDC. Dalej: TETA, JIRA/QBR.
-2. NFR-9 — interfejs EN dla współpracowników OUT (priorytet „Could").
-3. Przedprodukcyjne: pełny audyt WCAG (axe), test obciążeniowy ~300 użytkowników (NFR-1).
-4. Układ kolumn plików importu .xlsx (FR-G5/D4) — do ustalenia z zamawiającym; obecnie mapowanie
+3. NFR-9 — interfejs EN dla współpracowników OUT (priorytet „Could", potrzeba nierozstrzygnięta).
+4. Przedprodukcyjne: powtórzyć loadtest na docelowym sprzęcie; audyt WCAG ekspercki (automat axe
+   już przeszedł bez naruszeń, ale pokrywa tylko część kryteriów).
+5. Układ kolumn plików importu .xlsx (FR-G5/D4) — do ustalenia z zamawiającym; obecnie mapowanie
    kolumn jest konfigurowalne.
-5. Wydajność heatmapy: pobiera capacity per squad×sprint (N×M zapytań) — przy większej skali
+6. Wydajność heatmapy: pobiera capacity per squad×sprint (N×M zapytań) — przy większej skali
    dołożyć zbiorczy endpoint /capacity/matrix.
 
 Kontekst źródłowy: wymagania i backlog to pliki .docx/.xlsx w katalogu głównym; decyzje projektowe
@@ -70,6 +74,9 @@ Zacznij od przeczytania README.md i packages/core, potem zaproponuj kolejność 
   projektu dodaj `git remote add origin …` i wypchnij, żeby CI (`.github/workflows/ci.yml`) zaczęło działać.
 - Suity `verify-*.mjs` czyszczą bazę. Po ich uruchomieniu odtwórz demo: `node apps/api/demo-seed.mjs`.
 - Rozstrzygnięcia biznesowe zapadłe w trakcie prac: urlop **nigdy nie przepada** (niewykorzystane dni
-  przechodzą jako zaległy, bez terminu wygaśnięcia); przypomnienia mają charakter informacyjny.
+  przechodzą jako zaległy, bez terminu wygaśnięcia, automatycznie na przełomie okresu — FR-B7);
+  przypomnienia mają charakter informacyjny. Reguła nie jest konfigurowalna i nie ma być.
+- `WNIOSEK-ZAWEZENIE-NFR.md` to **projekt pisma, nikomu nie wysłany** — wysyłka i forma należą do
+  prowadzącego projekt.
 - Kwestie nadal otwarte u zamawiającego: granice roku budżetowego B2B/OUT, docelowe SLA, okres retencji
-  danych, potrzeba interfejsu EN.
+  danych, potrzeba interfejsu EN, zgoda na zawężenie NFR-6 i NFR-7.
