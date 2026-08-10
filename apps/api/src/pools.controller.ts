@@ -40,7 +40,9 @@ export class PoolsController {
     const data = {
       baseDays: dto.baseDays,
       overrideDays: dto.overrideDays ?? null,
-      carriedOver: dto.carriedOver ?? 0,
+      // Brak wartości = `null` = wylicz zaległe z poprzednich okresów (FR-B7). Zapisanie tu zera
+      // zamrażałoby saldo na zerze i wyłączało rolowanie dla tej osoby.
+      carriedOver: dto.carriedOver ?? null,
     };
     return this.prisma.leaveAllowance.upsert({
       where: { employeeId_periodYear: { employeeId: dto.employeeId, periodYear: dto.periodYear } },

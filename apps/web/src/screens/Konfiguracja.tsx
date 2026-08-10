@@ -100,7 +100,9 @@ function Pula() {
   const [val, setVal] = useState('');
   const [byType, setByType] = useState<Record<EmploymentType, string>>({ UOP: '', B2B: '', OUT: '' });
   const [emps, setEmps] = useState<Employee[]>([]);
-  const [a, setA] = useState({ employeeId: '', periodYear: '2026', baseDays: '26', overrideDays: '', carriedOver: '0' });
+  // „Zaległe" startuje puste, nie zerem: pusta wartość znaczy „licz automatycznie z poprzednich
+  // okresów" (FR-B7), a zapisane zero zamrażałoby saldo tej osoby na zerze.
+  const [a, setA] = useState({ employeeId: '', periodYear: '2026', baseDays: '26', overrideDays: '', carriedOver: '' });
   const { notice, ok, fail, clear } = useNotice();
   const [busy, setBusy] = useState(false);
   useEffect(() => {
@@ -136,8 +138,10 @@ function Pula() {
       : `Zapisano: wspólna ${n} dni, własna dla ${own.map((f) => `${f.label} — ${f.days}`).join(', ')}.`;
   });
   const saveAllow = () => guard(async () => {
-    await api.setAllowance({ employeeId: a.employeeId, periodYear: Number(a.periodYear), baseDays: Number(a.baseDays), overrideDays: a.overrideDays ? Number(a.overrideDays) : undefined, carriedOver: Number(a.carriedOver) });
-    return 'Korekta indywidualna zapisana.';
+    await api.setAllowance({ employeeId: a.employeeId, periodYear: Number(a.periodYear), baseDays: Number(a.baseDays), overrideDays: a.overrideDays ? Number(a.overrideDays) : undefined, carriedOver: a.carriedOver === '' ? undefined : days(a.carriedOver, 'Zaległe') });
+    return a.carriedOver === ''
+      ? 'Korekta indywidualna zapisana. Zaległe liczone automatycznie z poprzednich okresów.'
+      : `Korekta indywidualna zapisana, zaległe ustawione ręcznie na ${a.carriedOver}.`;
   });
   // Komunikat opisuje wartości, które zostały zapisane. Po zmianie któregokolwiek pola dotyczy
   // już czegoś innego niż to, co widać na ekranie — jak zielone „Zapisano" przy formularzu
@@ -167,7 +171,11 @@ function Pula() {
         <Field label="Rok" width={90}><input style={field} type="number" inputMode="numeric" value={a.periodYear} onChange={num('periodYear')} /></Field>
         <Field label="Pula bazowa" width={100}><input style={field} type="number" min={0} inputMode="numeric" value={a.baseDays} onChange={num('baseDays')} /></Field>
         <Field label="Nadpisanie (opcj.)" width={120}><input style={field} type="number" min={0} inputMode="numeric" value={a.overrideDays} onChange={num('overrideDays')} /></Field>
-        <Field label="Zaległe" width={100}><input style={field} type="number" min={0} inputMode="numeric" value={a.carriedOver} onChange={num('carriedOver')} /></Field>
+        {/* Placeholder niesie całą regułę („automatycznie"), więc pole nie potrzebuje podpowiedzi
+            pod spodem — ta rozjeżdżała wyrównanie wiersza, bo sąsiednie pola równają się do dołu. */}
+        <Field label="Zaległe" width={130}>
+          <input style={field} type="number" min={0} inputMode="numeric" placeholder="automatycznie" value={a.carriedOver} onChange={num('carriedOver')} />
+        </Field>
         <Button onClick={saveAllow} disabled={!a.employeeId || busy}>{busy ? 'Zapisywanie…' : 'Zapisz'}</Button>
       </div>
       <Notice {...notice} />

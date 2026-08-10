@@ -1,11 +1,70 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import type { EmploymentType } from '@prisma/client';
-import { balance, consumesPool, dayFraction, isoDate, proratePool, resolveBillingPeriod, todayUtc, usedLeaveDays } from '@nieobecnosci/core';
+import type { DayPart, EmploymentType } from '@prisma/client';
+import type { BillingPeriod } from '@nieobecnosci/core';
+import {
+  balance, billingPeriodsBefore, carriedOverInto, consumesPool, dayFraction, isoDate,
+  proratePool, resolveBillingPeriod, todayUtc, usedLeaveDays,
+} from '@nieobecnosci/core';
 import { PrismaService } from './prisma.service';
 
 export const POOL_KEY_PREFIX = 'leavePool.';
 export const DEFAULT_POOL_KEY = `${POOL_KEY_PREFIX}default`;
 export type PoolsByType = Record<EmploymentType, number>;
+
+// Kształty wierszy potrzebne do wyliczeń — celowo minimalne, żeby ta sama funkcja obsłużyła
+// zapytanie o jedną osobę (licznik) i zapytanie wsadowe o całą jednostkę (raporty).
+export interface AllowanceRow { periodYear: number; baseDays: number; overrideDays: number | null; carriedOver: number | null }
+export interface AbsenceRow {
+  dateFrom: Date; dateTo: Date; dayPart: DayPart;
+  hourFrom: string | null; hourTo: string | null;
+  type: { affectsPool: boolean };
+}
+export interface EmployeeCalc { startDate: Date; endDate: Date | null; employmentType: EmploymentType }
+
+/**
+ * FR-B3/B7/B9 — pula i urlop zaległy dla jednego okresu rozliczeniowego.
+ *
+ * Jedna implementacja dla licznika (FR-B2), walidacji zapisu (FR-A7) i raportów (FR-F2) — trzy
+ * kopie tej arytmetyki oznaczałyby, że pulpit i raport potrafią pokazać pracownikowi dwie różne
+ * liczby zaległych dni. Funkcja jest czysta: wszystkie wiersze wchodzą argumentem.
+ *
+ * `absences` to WSZYSTKIE nieobecności osoby, nie tylko z okresu docelowego — zaległe dni wynikają
+ * z wykorzystania w okresach wcześniejszych.
+ */
+export function poolAndCarry(
+  emp: EmployeeCalc,
+  period: BillingPeriod,
+  allowances: readonly AllowanceRow[],
+  absences: readonly AbsenceRow[],
+  holidays: ReadonlySet<string>,
+  defaultPool: number,
+): { pool: number; carriedOver: number } {
+  const byYear = new Map(allowances.map((a) => [a.periodYear, a]));
+  const poolFor = (p: BillingPeriod): number => {
+    const a = byYear.get(p.year);
+    // Korekta indywidualna jest wartością docelową, więc nie podlega proracie (jak w FR-B3).
+    if (a?.overrideDays != null) return a.overrideDays;
+    return proratePool(a?.baseDays ?? defaultPool, p, emp.startDate, emp.endDate);
+  };
+  const usedIn = (p: BillingPeriod): number => usedLeaveDays(
+    absences.map((a) => ({
+      dateFrom: a.dateFrom, dateTo: a.dateTo,
+      affectsPool: consumesPool(emp.employmentType, a.type.affectsPool), // FR-B5 — L4 tylko na UoP
+      overrides: !a.type.affectsPool, // wpis chorobowy przejmuje dzień — liczy się raz, nie dwa
+      fraction: dayFraction(a.dayPart, a.hourFrom ?? undefined, a.hourTo ?? undefined),
+    })),
+    p,
+    holidays,
+  );
+
+  const explicit = byYear.get(period.year)?.carriedOver;
+  const carriedOver = explicit ?? carriedOverInto(
+    billingPeriodsBefore(emp.employmentType, emp.startDate, period.year).map((p) => ({
+      pool: poolFor(p), used: usedIn(p), explicit: byYear.get(p.year)?.carriedOver,
+    })),
+  );
+  return { pool: poolFor(period), carriedOver };
+}
 
 // Wspólna logika balansu — używana przez licznik (BalanceController) i walidację wpisów
 // (AbsencesService). Jedno miejsce prawdy zamiast duplikacji.
@@ -28,19 +87,19 @@ export class BalanceService {
     return (await this.defaultPools())[employmentType];
   }
 
-  // Pula efektywna: korekta indywidualna ma priorytet (bez proraty); baza/domyślna jest
-  // naliczana proporcjonalnie do okresu zatrudnienia (FR-B9).
+  // Pula efektywna wraz z urlopem zaległym. Zaległe wymagają historii, nie tylko bieżącego okresu,
+  // więc pobieramy komplet wpisów osoby — patrz `poolAndCarry`.
   async effectivePool(
     emp: { id: string; startDate: Date; endDate: Date | null; employmentType: EmploymentType },
-    period: { from: Date; to: Date; year: number },
+    period: BillingPeriod,
   ): Promise<{ pool: number; carriedOver: number }> {
-    const allowance = await this.prisma.leaveAllowance.findUnique({
-      where: { employeeId_periodYear: { employeeId: emp.id, periodYear: period.year } },
-    });
-    const carriedOver = allowance?.carriedOver ?? 0;
-    if (allowance?.overrideDays != null) return { pool: allowance.overrideDays, carriedOver };
-    const base = allowance?.baseDays ?? (await this.defaultPool(emp.employmentType));
-    return { pool: proratePool(base, { from: period.from, to: period.to }, emp.startDate, emp.endDate), carriedOver };
+    const [allowances, absences, holidays, defaults] = await Promise.all([
+      this.prisma.leaveAllowance.findMany({ where: { employeeId: emp.id } }),
+      this.prisma.absence.findMany({ where: { employeeId: emp.id }, include: { type: true } }),
+      this.holidaysFor(emp.id),
+      this.defaultPools(),
+    ]);
+    return poolAndCarry(emp, period, allowances, absences, holidays, defaults[emp.employmentType]);
   }
 
   async holidaysFor(employeeId: string): Promise<Set<string>> {
@@ -59,12 +118,15 @@ export class BalanceService {
     // a surowe „teraz" sięgnęłoby po pulę poprzedniego roku. Dwa okresy rozliczeniowe są
     // warunkiem akceptacji projektu (FR-B1), więc granica roku musi trafiać co do dnia.
     const period = resolveBillingPeriod(emp.employmentType, todayUtc());
-    const { pool, carriedOver } = await this.effectivePool(emp, period);
-    const holidays = await this.holidaysFor(employeeId);
-    const absences = await this.prisma.absence.findMany({
-      where: { employeeId, dateFrom: { lte: period.to }, dateTo: { gte: period.from } },
-      include: { type: true },
-    });
+    // Jedno pobranie wpisów obsługuje i wykorzystanie w bieżącym okresie, i łańcuch zaległych
+    // z okresów wcześniejszych — dlatego bez filtra dat.
+    const [allowances, absences, holidays, defaults] = await Promise.all([
+      this.prisma.leaveAllowance.findMany({ where: { employeeId } }),
+      this.prisma.absence.findMany({ where: { employeeId }, include: { type: true } }),
+      this.holidaysFor(employeeId),
+      this.defaultPools(),
+    ]);
+    const { pool, carriedOver } = poolAndCarry(emp, period, allowances, absences, holidays, defaults[emp.employmentType]);
     const used = usedLeaveDays(
       absences.map((a) => ({
         dateFrom: a.dateFrom, dateTo: a.dateTo,
