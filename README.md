@@ -61,7 +61,14 @@ i nieobecności **względem dnia uruchomienia** (bieżący tydzień, przyszły t
 | Product Owner | `po` | `demo123` |
 | Pracownik | `pracownik` | `demo123` |
 
-Dodatkowo `anna`, `bartek` (role kluczowe — generują alert kolizji), `celina` (B2B) i `ext` (OUT), hasło `demo123`.
+Dodatkowo `anna`, `bartek` (role kluczowe — generują alert kolizji), `celina` (B2B), `ext` (OUT)
+i `halina`, hasło `demo123`.
+
+`halina` to jedyna osoba w demo z historią sprzed bieżącego okresu (zatrudniona 1 stycznia roku
+poprzedniego, 18 z 26 dni wykorzystanych). Jej **8 dni zaległych wylicza aplikacja** — nie ma
+wiersza `LeaveAllowance` na bieżący okres, więc pokazuje działanie FR-B7: brak wiersza znaczy
+„policz z poprzednich okresów", nie „zero". Dla porównania `pracownik` ma 3 dni zaległe wpisane
+**ręcznie** przez administratora — korekta wygrywa nad wyliczeniem.
 
 `pracownik` (UoP) i `ext` (OUT) to para do porównania form zatrudnienia: ta sama rola i te same
 ekrany, ale inny okres rozliczeniowy (kalendarzowy vs budżetowy gru–lis) i inne traktowanie L4
