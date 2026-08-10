@@ -89,7 +89,7 @@ export class AbsencesService {
     const rows = await this.prisma.absence.findMany({ where: { employeeId }, include: { type: true }, orderBy: { dateFrom: 'desc' } });
     if (privileged) {
       await this.prisma.auditLog.create({
-        data: { entity: 'Absence', entityId: employeeId, action: 'VIEW_TYPES', userId: user.sub,
+        data: { entity: 'Absence', entityId: employeeId, subjectId: employeeId, action: 'VIEW_TYPES', userId: user.sub,
           description: 'Odczyt typów nieobecności (w tym znacznika L4) innego pracownika.' },
       });
       return this.withWorkingDays(employeeId, rows);
@@ -234,7 +234,7 @@ export class AbsencesService {
     if (!l4) throw new BadRequestException('Brak zdefiniowanego typu L4.');
     const updated = await this.prisma.absence.update({ where: { id }, data: { typeId: l4.id } });
     await this.prisma.auditLog.create({
-      data: { entity: 'Absence', entityId: existing.employeeId, action: 'ABSENCE_TO_L4', userId: user.sub,
+      data: { entity: 'Absence', entityId: existing.employeeId, subjectId: existing.employeeId, action: 'ABSENCE_TO_L4', userId: user.sub,
         description: `Konwersja nieobecności na L4 (zmiana rodzaju; na UoP dzień wraca do puli).` },
     });
     return isoRange(updated);
@@ -276,9 +276,12 @@ export class AbsencesService {
 
   // FR-I1 — każda operacja na wpisie zapisana w niezmiennym dzienniku (kto/kiedy/co), per wpis.
   private audit(action: string, absenceId: string, employeeId: string, user: AuthUser, desc: string) {
+    // Dziennik trzyma identyfikatory, nie nazwiska: nazwisko wpisane tutaj przeżyłoby anonimizację
+    // (FR-J2), a więc i żądanie usunięcia danych. Kto i kogo dotyczy, rozwija odczyt — patrz
+    // AuditController.
     const delegated = employeeId !== user.sub ? ' (w imieniu innego pracownika)' : '';
     return this.prisma.auditLog.create({
-      data: { entity: 'Absence', entityId: absenceId, action, userId: user.sub, description: desc + delegated },
+      data: { entity: 'Absence', entityId: absenceId, subjectId: employeeId, action, userId: user.sub, description: desc + delegated },
     });
   }
 
