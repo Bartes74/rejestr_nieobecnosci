@@ -1,7 +1,9 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import { polishHolidays, todayUtc } from '@nieobecnosci/core';
 import { PrismaService } from './prisma.service';
 import { CreateCalendarDto, CreateHolidayDto } from './dto';
 import { Roles } from './auth/decorators';
+import { isoDay } from './serialize';
 
 // FR-G3/G7 — kalendarze świąt i dni wolne (pomijane przy liczeniu).
 @Controller()
@@ -23,18 +25,36 @@ export class HolidaysController {
   }
 
   @Get('holidays')
-  holidays(@Query('calendarId') calendarId?: string) {
-    return this.prisma.holiday.findMany({
+  async holidays(@Query('calendarId') calendarId?: string) {
+    const rows = await this.prisma.holiday.findMany({
       where: calendarId ? { calendarId } : undefined,
       orderBy: { date: 'asc' },
     });
+    return rows.map(isoDay);
+  }
+
+  // Święta ustawowe są wyliczane (packages/core), nie pobierane z zewnątrz — wdrożenie jest
+  // on-prem. `skipDuplicates` opiera się na unikalności (calendarId, date), więc powtórny import
+  // tego samego roku nic nie psuje ani nie nadpisuje dni dodanych ręcznie.
+  @Roles('ADMIN')
+  @Post('holiday-calendars/:id/import-pl')
+  async importPolish(@Param('id') calendarId: string, @Query('year') year?: string) {
+    // `todayUtc()`, nie `new Date()`: o 23:30 UTC 31 grudnia w Warszawie jest już 1 stycznia,
+    // a surowy rok UTC podstawiłby tu rok poprzedni (ten sam błąd co w licznikach balansu).
+    const y = Number(year) || todayUtc().getUTCFullYear();
+    const { count } = await this.prisma.holiday.createMany({
+      data: polishHolidays(y).map((h) => ({ ...h, calendarId })),
+      skipDuplicates: true,
+    });
+    return { year: y, added: count };
   }
 
   @Roles('ADMIN')
   @Post('holidays')
-  createHoliday(@Body() dto: CreateHolidayDto) {
-    return this.prisma.holiday.create({
+  async createHoliday(@Body() dto: CreateHolidayDto) {
+    const created = await this.prisma.holiday.create({
       data: { name: dto.name, date: new Date(dto.date), calendarId: dto.calendarId },
     });
+    return isoDay(created);
   }
 }

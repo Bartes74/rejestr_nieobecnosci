@@ -1,8 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import type { EmploymentType } from '@prisma/client';
 import { balance, consumesPool, dayFraction, isoDate, proratePool, resolveBillingPeriod, todayUtc, usedLeaveDays } from '@nieobecnosci/core';
 import { PrismaService } from './prisma.service';
 
-const DEFAULT_POOL_KEY = 'leavePool.default';
+export const POOL_KEY_PREFIX = 'leavePool.';
+export const DEFAULT_POOL_KEY = `${POOL_KEY_PREFIX}default`;
+export type PoolsByType = Record<EmploymentType, number>;
 
 // Wspólna logika balansu — używana przez licznik (BalanceController) i walidację wpisów
 // (AbsencesService). Jedno miejsce prawdy zamiast duplikacji.
@@ -10,15 +13,25 @@ const DEFAULT_POOL_KEY = 'leavePool.default';
 export class BalanceService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async defaultPool(): Promise<number> {
-    const s = await this.prisma.adminSetting.findUnique({ where: { key: DEFAULT_POOL_KEY } });
-    return s ? Number(s.value) : 0;
+  // Pula domyślna per forma zatrudnienia (`leavePool.UOP` itd.); `leavePool.default` jest
+  // wspólnym fallbackiem dla form, dla których administrator nie ustawił własnej wartości.
+  // Jedno zapytanie na wszystkie formy — raporty liczą całą jednostkę wsadowo.
+  async defaultPools(): Promise<PoolsByType> {
+    const rows = await this.prisma.adminSetting.findMany({ where: { key: { startsWith: POOL_KEY_PREFIX } } });
+    const byKey = new Map(rows.map((r) => [r.key, Number(r.value)]));
+    const fallback = byKey.get(DEFAULT_POOL_KEY) ?? 0;
+    const of = (t: EmploymentType) => byKey.get(POOL_KEY_PREFIX + t) ?? fallback;
+    return { UOP: of('UOP'), B2B: of('B2B'), OUT: of('OUT') };
+  }
+
+  async defaultPool(employmentType: EmploymentType): Promise<number> {
+    return (await this.defaultPools())[employmentType];
   }
 
   // Pula efektywna: korekta indywidualna ma priorytet (bez proraty); baza/domyślna jest
   // naliczana proporcjonalnie do okresu zatrudnienia (FR-B9).
   async effectivePool(
-    emp: { id: string; startDate: Date; endDate: Date | null },
+    emp: { id: string; startDate: Date; endDate: Date | null; employmentType: EmploymentType },
     period: { from: Date; to: Date; year: number },
   ): Promise<{ pool: number; carriedOver: number }> {
     const allowance = await this.prisma.leaveAllowance.findUnique({
@@ -26,7 +39,7 @@ export class BalanceService {
     });
     const carriedOver = allowance?.carriedOver ?? 0;
     if (allowance?.overrideDays != null) return { pool: allowance.overrideDays, carriedOver };
-    const base = allowance?.baseDays ?? (await this.defaultPool());
+    const base = allowance?.baseDays ?? (await this.defaultPool(emp.employmentType));
     return { pool: proratePool(base, { from: period.from, to: period.to }, emp.startDate, emp.endDate), carriedOver };
   }
 

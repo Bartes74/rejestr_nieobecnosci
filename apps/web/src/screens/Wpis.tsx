@@ -78,7 +78,7 @@ function MiniCal({ from, to, existing }: { from: string; to: string; existing: {
   // na leksykalnym porównaniu napisów.
   // Scalone: L4 może nakładać się na zaplanowaną nieobecność, a siatka mówi wyłącznie o tym,
   // które dni są już zajęte — dwa zakresy na tych samych dniach niosłyby tu zero informacji.
-  const ranges = mergeIsoRanges(existing.map((a) => ({ from: a.dateFrom.slice(0, 10), to: a.dateTo.slice(0, 10) })));
+  const ranges = mergeIsoRanges(existing.map((a) => ({ from: a.dateFrom, to: a.dateTo })));
   const monthFrom = iso(first), monthTo = iso(new Date(Date.UTC(y, m + 1, 0)));
   // Sortowanie po dacie startu: `GET /absences` oddaje wpisy w kolejności utworzenia, więc zdanie
   // pod siatką czytało się „24.08…, 10.08…" — wstecz względem tego, co widać w kalendarzu.

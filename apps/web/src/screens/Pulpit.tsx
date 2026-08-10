@@ -92,7 +92,7 @@ export function Pulpit() {
   }, []);
   const sprint = useMemo(() => {
     const t = todayIso();
-    return sprints.find((s) => s.dateFrom.slice(0, 10) <= t && s.dateTo.slice(0, 10) >= t) ?? null;
+    return sprints.find((s) => s.dateFrom <= t && s.dateTo >= t) ?? null;
   }, [sprints]);
 
   // FR-C3 — kto nieobecny w tym tygodniu (jednolicie, bez typu); pomijamy siebie.
@@ -101,7 +101,7 @@ export function Pulpit() {
     for (const e of week) {
       if (current && e.employeeId === current.id) continue;
       const cur = byPerson.get(e.employeeId);
-      const from = e.dateFrom.slice(0, 10), to = e.dateTo.slice(0, 10);
+      const from = e.dateFrom, to = e.dateTo;
       if (!cur) byPerson.set(e.employeeId, { name: e.employee, from, to });
       else { if (from < cur.from) cur.from = from; if (to > cur.to) cur.to = to; }
     }
@@ -111,7 +111,7 @@ export function Pulpit() {
   // FR-I2 — moje najbliższe (przyszłe) nieobecności.
   const upcoming = useMemo(() => {
     const t = todayIso();
-    return mine.filter((a) => a.dateTo.slice(0, 10) >= t).sort((a, b) => a.dateFrom.localeCompare(b.dateFrom)).slice(0, 4);
+    return mine.filter((a) => a.dateTo >= t).sort((a, b) => a.dateFrom.localeCompare(b.dateFrom)).slice(0, 4);
   }, [mine]);
 
   const pool = bal ? bal.pool : 0;
@@ -266,7 +266,7 @@ export function Pulpit() {
             {loading && [0, 1].map((k) => <Skeleton key={k} w="100%" h={56} />)}
             {!loading && upcoming.length === 0 && <div style={{ fontFamily: 'var(--font-sans)', fontSize: 13.5, color: 'var(--muted)' }}>Brak zaplanowanych nieobecności.</div>}
             {!loading && upcoming.map((a) => {
-              const from = a.dateFrom.slice(0, 10), to = a.dateTo.slice(0, 10);
+              const from = a.dateFrom, to = a.dateTo;
               const part = a.dayPart === 'AM' ? ' · pół dnia (AM)' : a.dayPart === 'PM' ? ' · pół dnia (PM)' : a.dayPart === 'HOURS' ? ' · godziny' : '';
               return (
                 <div key={a.id} style={{ ...panel, display: 'flex', alignItems: 'center', gap: 13, padding: '12px 14px' }}>

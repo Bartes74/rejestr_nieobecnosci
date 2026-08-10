@@ -63,7 +63,7 @@ export function Kalendarz() {
         const sorted = [...s].sort((a, b) => a.dateFrom.localeCompare(b.dateFrom));
         setSprints(sorted);
         const t = todayIso();
-        const cur = sorted.findIndex((x) => x.dateFrom.slice(0, 10) <= t && x.dateTo.slice(0, 10) >= t);
+        const cur = sorted.findIndex((x) => x.dateFrom <= t && x.dateTo >= t);
         setSprintIdx(cur >= 0 ? cur : Math.max(0, sorted.length - 1));
       })
       .catch(() => setSprints([]));
@@ -79,7 +79,7 @@ export function Kalendarz() {
       return [mon, sun, `${dayMonth(mon)}–${dayMonth(sun)}`];
     }
     if (range === 'sprint' && sprint) {
-      const f = sprint.dateFrom.slice(0, 10), t = sprint.dateTo.slice(0, 10);
+      const f = sprint.dateFrom, t = sprint.dateTo;
       return [f, t, sprint.name];
     }
     const first = `${ym.y}-${String(ym.m + 1).padStart(2, '0')}-01`;
@@ -112,7 +112,7 @@ export function Kalendarz() {
     const byId = new Map<string, { from: string; to: string }[]>();
     for (const a of grid.absences) {
       const list = byId.get(a.employeeId) ?? [];
-      list.push({ from: a.dateFrom.slice(0, 10), to: a.dateTo.slice(0, 10) });
+      list.push({ from: a.dateFrom, to: a.dateTo });
       byId.set(a.employeeId, list);
     }
     const bySquad = new Map<string, TeamPerson[]>();

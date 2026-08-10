@@ -39,7 +39,9 @@ export function Raporty() {
 
   useEffect(() => {
     api.orgUnits().then((u) => { setUnits(u); setUnitId((p) => p || u[0]?.id || ''); }).catch(() => {});
-    api.poolDefault().then((d) => setPool(d.value)).catch(() => {});
+    // Skala wykresu: pula wspólna, a gdy jej nie ustawiono — pula UoP jako forma dominująca.
+    // Jednostka bywa mieszana, więc to i tak przybliżenie; bez żadnej z nich słupki idą względne.
+    api.poolDefault().then((d) => setPool(d.value ?? d.byType.UOP)).catch(() => {});
   }, []);
 
   useEffect(() => {

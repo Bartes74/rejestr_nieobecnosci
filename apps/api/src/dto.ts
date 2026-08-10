@@ -47,6 +47,8 @@ export class CreateMembershipDto {
 // FR-G2/B3/B6 — pula
 export class SetDefaultPoolDto {
   @IsNumber() value!: number;
+  // Brak → wspólny fallback dla wszystkich form zatrudnienia.
+  @IsOptional() @IsEnum(EmploymentType) employmentType?: EmploymentType;
 }
 export class SetAllowanceDto {
   @IsString() employeeId!: string;

@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import ExcelJS from 'exceljs';
 import { PrismaService } from './prisma.service';
 import { CreateSprintDto } from './dto';
+import { isoRange } from './serialize';
 
 // Domyślne mapowanie nagłówków .xlsx (układ docelowy QBR do potwierdzenia, FR-D4).
 // Można je nadpisać per import (parametr `mapping`).
@@ -17,14 +18,16 @@ export interface SprintImportResult {
 export class SprintsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  list() {
-    return this.prisma.sprint.findMany({ orderBy: { dateFrom: 'asc' }, include: { squad: true } });
+  async list() {
+    const rows = await this.prisma.sprint.findMany({ orderBy: { dateFrom: 'asc' }, include: { squad: true } });
+    return rows.map(isoRange);
   }
 
-  create(dto: CreateSprintDto) {
-    return this.prisma.sprint.create({
+  async create(dto: CreateSprintDto) {
+    const created = await this.prisma.sprint.create({
       data: { name: dto.name, dateFrom: new Date(dto.dateFrom), dateTo: new Date(dto.dateTo), squadId: dto.squadId ?? null },
     });
+    return isoRange(created);
   }
 
   // FR-D4 — import harmonogramu sprintów z .xlsx. `mapping` nadpisuje nagłówki kolumn.
