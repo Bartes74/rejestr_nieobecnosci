@@ -5,6 +5,7 @@ import { api, type Absence, type AbsenceType, type Employee } from '../api';
 import { Button } from '../design-system/components/core/Button';
 import { ConfirmDialog, Field, Section, Notice, field, th, td, useNotice } from '../admin/ui';
 import { cardClipped } from '../design-system/surfaces';
+import { useIsNarrow } from '../viewport';
 
 
 // Zakres szedł dotąd w surowym ISO („2026-08-03 – 2026-08-05") — jedyny ekran korygujący
@@ -14,6 +15,7 @@ const range = (a: Absence) => dateRange(a.dateFrom, a.dateTo, { long: true });
 // FR-A5 — lider/uprawniony koryguje nieobecności swojego zespołu. Typy są zamaskowane na serwerze,
 // gdy brak uprawnienia VIEW_L4 (L4 niewyróżniane) — tu prezentujemy je jednolicie. Każda zmiana jest audytowana.
 export function Zespol() {
+  const narrow = useIsNarrow(); // trzy kolumny nazwisk na telefonie to trzy słupki po jednej literze
   const [team, setTeam] = useState<Employee[]>([]);
   const [types, setTypes] = useState<AbsenceType[]>([]);
   const [memberId, setMemberId] = useState('');
@@ -33,7 +35,13 @@ export function Zespol() {
   const nameOf = (id: string) => { const e = team.find((t) => t.id === id); return e ? `${e.firstName} ${e.lastName}` : id; };
 
   useEffect(() => {
-    api.myTeam().then(setTeam).catch(() => setTeam([]));
+    // Zespół sortujemy raz, przy wczytaniu: lista wyboru osoby i lista do zaznaczania mają tę samą
+    // kolejność — po imieniu, nazwisko rozstrzyga imienników. `localeCompare(…, 'pl')`, bo zwykły
+    // `sort()` stawia „Łukasza" za „Zofią".
+    api.myTeam()
+      .then((t) => setTeam([...t].sort((a, b) =>
+        a.firstName.localeCompare(b.firstName, 'pl') || a.lastName.localeCompare(b.lastName, 'pl'))))
+      .catch(() => setTeam([]));
     api.types().then((t) => {
       setTypes(t);
       const def = t.find((x) => !x.specialCategory)?.id ?? '';
@@ -211,8 +219,8 @@ export function Zespol() {
             <legend style={{ fontFamily: 'var(--font-sans)', fontSize: 12, fontWeight: 600, color: 'var(--ink-2)', padding: 0, marginBottom: 8 }}>
               Osoby ({bulkSel.size} z {team.length} zaznaczonych)
             </legend>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 16px' }}>
-              <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontFamily: 'var(--font-sans)', fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: narrow ? '1fr' : 'repeat(3, minmax(0, 1fr))', gap: '6px 16px' }}>
+              <label style={{ gridColumn: '1 / -1', display: 'flex', gap: 6, alignItems: 'center', fontFamily: 'var(--font-sans)', fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>
                 <input type="checkbox" checked={allSel} onChange={() => setBulkSel(allSel ? new Set() : new Set(team.map((e) => e.id)))} /> Zaznacz wszystkich
               </label>
               {team.map((e) => (
