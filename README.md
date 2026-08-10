@@ -14,7 +14,7 @@ packages/core/   silnik wyliczeń (czyste funkcje, 83 testy) — okresy, dni rob
 apps/api/        NestJS + Prisma + PostgreSQL — ~53 endpointy, RBAC, ochrona L4, import/eksport .xlsx
 apps/web/        React + Vite — 12 ekranów na design systemie przeniesionym z prototypu
 prisma/          model danych (13 modeli)
-scripts/         backup bazy + jednostki systemd
+scripts/         backup bazy + test odtworzenia + jednostki systemd
 docker-compose.yml       PostgreSQL (dev, port 5440)
 docker-compose.prod.yml  wdrożenie on-prem: api + web (Caddy/TLS) + postgres
 ```
@@ -87,14 +87,16 @@ wobec puli urlopu (FR-B5).
 
 Zakres egzekwuje backend (guard + serializacja zależna od roli), nie ukrywanie w UI.
 Znacznik **L4** widzą wyłącznie role z uprawnieniem `VIEW_L4` (admin, osoby wskazane) — każdy taki
-odczyt trafia do audytu. Dla pozostałych L4 jest nieodróżnialne od zwykłej nieobecności: w kalendarzu,
+odczyt trafia do audytu, zarówno z listy wpisów, jak i z eksportu płacowego. Dla pozostałych L4 jest nieodróżnialne od zwykłej nieobecności: w kalendarzu,
 w kanale iCal zespołu, w powiadomieniach i w eksportach.
 
 ## Testy i weryfikacja
 
 ```bash
-pnpm run verify:offline    # build + typecheck (3 pakiety) + 83 testy silnika — bez bazy i API
-pnpm run verify:suites     # 30 suit integracyjnych (255 asercji) przeciw działającemu API
+pnpm run verify:offline               # build + typecheck (3 pakiety) + 83 testy silnika — bez bazy i API
+pnpm run verify:suites                # 30 suit integracyjnych (255 asercji) przeciw działającemu API
+pnpm -F @nieobecnosci/web lint        # bramka dostępności: reguły jsx-a11y na src/ (w tym .jsx design systemu)
+pnpm audit --prod --audit-level high  # bramka podatności w zależnościach produkcyjnych
 ```
 
 `verify:suites` wymaga **uruchomionego API** i zmiennej `API` (domyślnie `http://localhost:3100/api`).
@@ -105,7 +107,10 @@ Pojedynczą suitę uruchomisz bezpośrednio:
 API=http://localhost:3100/api node apps/api/verify-faza3-ical.mjs
 ```
 
-CI (`.github/workflows/ci.yml`) uruchamia dokładnie te same kroki na PostgreSQL w usłudze.
+CI (`.github/workflows/ci.yml`) uruchamia dokładnie te same cztery komendy na PostgreSQL w usłudze.
+Lint i audyt zależności są **blokujące** — bramka, która nigdy nie pada, nie jest bramką. Nową
+podatność „high" w zależności transitive domykaj przez `pnpm.overrides` w `package.json`, nie przez
+obniżenie progu.
 
 ### Test obciążeniowy (NFR-1)
 
@@ -160,12 +165,24 @@ Hasła hashowane `scrypt`; dostęp przez JWT + RBAC. Zdarzenia bezpieczeństwa (
 tabeli `AuditLog`. Szyfrowanie w tranzycie zapewnia Caddy (TLS); w spoczynku — dysk/Postgres
 na poziomie wdrożenia.
 
+`VIEW_TYPES` obejmuje **obie** drogi, którymi znacznik kategorii szczególnej wychodzi z systemu:
+listę wpisów (`GET /absences`) i eksport płacowy (`GET /reports/export/payroll`). Dodając trzecią,
+dopisz do niej ten sam wpis audytu tą samą akcją — inaczej filtry dziennika pokażą część odczytów.
+
+Podatności w zależnościach pilnuje `pnpm audit` w CI (próg „high", blokujący). Zależności transitive
+przypinane są przez `pnpm.overrides` w `package.json`.
+
 ## Monitoring i dostępność (NFR-2)
 
 `GET /api/health` to sonda dla monitoringu: **200** = aplikacja żyje i baza odpowiada
 (`{status, db, uptimeSec, version}`), **503** = baza niedostępna. Ustaw alerty na kod ≠ 200 oraz czas
 odpowiedzi. Adopcję mierzy `GET /api/analytics/adoption` (NFR-8) — panel „Analityka adopcji"
 w Konfiguracji.
+
+Tej samej sondy używa `healthcheck` kontenera `api` w `docker-compose.prod.yml`; `db` ma własny
+(`pg_isready`), a `api` czeka na jego wynik przez `depends_on: condition: service_healthy`. Kontener
+API startuje od `prisma migrate deploy`, więc bez tego warunku pierwsze uruchomienie wywracało się
+na migracji i wstawało dopiero z restartu.
 
 ## Dostępność cyfrowa (NFR-7, WCAG 2.1 AA)
 
@@ -191,16 +208,33 @@ podaje go pod `/node_modules/axe-core/axe.min.js`. W konsoli przeglądarki:
 axe.run(document, { preload: false, runOnly: { type: 'tag', values: ['wcag2a','wcag2aa','wcag21a','wcag21aa'] } }).then(r => console.table(r.violations))
 ```
 
+Ten przebieg jest **ręczny** — automat w CI to `pnpm -F @nieobecnosci/web lint` (reguły `jsx-a11y`),
+który łapie bariery widoczne statycznie w JSX. Pokrycia axe nie zastępuje i nie ma tego udawać.
+
+**Uwaga przy zmianach w konfiguracji lintu:** `jsx-a11y/no-noninteractive-tabindex` ma dopisaną rolę
+`region` (`apps/web/eslint.config.js`) i jest to celowe. Reguła domyślnie zabrania `tabIndex` na
+elemencie nieinteraktywnym, a axe wymaga go dokładnie tam — przewijane siatki kalendarza i heatmapy
+nie zawierają żadnej kontrolki, więc bez `tabIndex={0}` użytkownik klawiatury nie dosięgnie ich
+prawej części (2.1.1). Usunięcie `tabIndex`, żeby „uciszyć lint", cofa naprawę z audytu i wyjdzie
+dopiero przy kolejnym przebiegu axe.
+
 ## Stan i co dalej
 
 **Zrobione:** całe MVP, Faza 2 (16 pozycji), część Fazy 3 — heatmapa pokrycia (C4), operacje masowe
 (A10), kanały iCal (F4), powiadomienia in-app, scheduler, ekran „Zespół" (korekta wpisów przez lidera,
 FR-A5), import .xlsx z konfigurowalnym mapowaniem kolumn (FR-G5/D4), automatyczne rolowanie urlopu
-zaległego na przełomie okresu (FR-B7), zweryfikowana wydajność przy 300 użytkownikach (NFR-1)
-i audyt dostępności axe bez naruszeń (NFR-7).
+zaległego na przełomie okresu (FR-B7), zweryfikowana wydajność przy 300 użytkownikach (NFR-1),
+audyt dostępności axe bez naruszeń (NFR-7), bramki jakości w CI i test odtworzenia backupu (NFR-4).
 
 Stan każdej historyjki z backlogu odnotowuje kolumna **„Stan wdrożenia"** w
-`Backlog - aplikacja nieobecnosci.xlsx` (przegląd z 10.08.2026).
+`Backlog - aplikacja nieobecnosci.xlsx` — 74 historyjki, przegląd kodu z 10.08.2026. To wersja
+śledzona; `.docx` jest pierwotnym wydaniem bez tej kolumny.
+
+**Przegląd kodu 10.08.2026** potwierdził, że backlog nie zawyża stanu, i domknął trzy rzeczy, których
+backlog nie widział: brak wpisu audytu przy odczycie kategorii szczególnej w eksporcie płacowym,
+`GET /pools/default` bez kontroli roli oraz `GET /absences` bez `employeeId` zwracające adminowi
+wszystkie wpisy wszystkich osób. Wniosek na przyszłość: stan czytaj z kodu i z kolumny „Stan
+wdrożenia", nie z prozy w tym pliku.
 
 **Świadomie niezrobione** — do decyzji przed produkcją:
 
@@ -214,3 +248,14 @@ Stan każdej historyjki z backlogu odnotowuje kolumna **„Stan wdrożenia"** w
 - **1.4.10 Reflow** — wyłączone z deklaracji WCAG tą samą decyzją. Pozostałe kryteria AA obowiązują.
 - Układ kolumn plików importu do ustalenia z zamawiającym (na razie mapowanie konfigurowalne).
 - Hasło startowe `admin/admin` — zmienić przy pierwszym wdrożeniu.
+
+**Znane braki jakościowe** — nie są długiem wobec zamawiającego (żadne wymaganie ich nie żąda), ale są
+ryzykiem i lepiej, żeby ktoś nie odkrywał ich audytem po raz drugi:
+
+- **Zero testów frontendu.** `apps/web` nie ma skryptu `test`; 49 plików chroni `tsc --noEmit`
+  i lint `jsx-a11y`. Pierwszy sensowny test to `Wpis.tsx` — walidacja i budżet trzech kliknięć.
+- **Audyt axe tylko ręcznie.** Automatyzacja wymaga headless browsera i zalogowanej sesji na 12 tras.
+- **Kopia off-site backupu zakomentowana** w `scripts/nieobecnosci-backup.service`. Bez niej RPO ginie
+  razem z maszyną — sam komentarz w pliku to przyznaje.
+- **Obraz API jednoetapowy** (`apps/api/Dockerfile`): źródła, devDeps i cache pnpm jadą na produkcję.
+- **Brak testów jednostkowych API.** Serwisy weryfikują wyłącznie suity end-to-end.
