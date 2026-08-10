@@ -18,6 +18,17 @@ const iso = (n) => d(n).toISOString().slice(0, 10);
 const YEAR = anchor.getUTCFullYear();
 const yearStart = new Date(Date.UTC(YEAR, 0, 1));
 
+// FR-B7 — poprzedni okres rozliczeniowy, potrzebny do pokazania rolowania urlopu zaległego.
+const PREV = YEAR - 1;
+// Pierwszy poniedziałek danego miesiąca: zakresy nieobecności muszą wypadać na dni robocze
+// niezależnie od tego, w którym roku uruchomiono seed, inaczej liczba dni pływałaby rok do roku.
+const monday = (rok, miesiac) => {
+  const x = new Date(Date.UTC(rok, miesiac, 1));
+  x.setUTCDate(x.getUTCDate() + ((8 - x.getUTCDay()) % 7));
+  return x;
+};
+const plus = (date, n) => { const x = new Date(date); x.setUTCDate(x.getUTCDate() + n); return x; };
+
 async function main() {
   // czyszczenie
   await prisma.auditLog.deleteMany(); await prisma.absence.deleteMany(); await prisma.leaveAllowance.deleteMany();
@@ -45,7 +56,7 @@ async function main() {
   const squad = await prisma.orgUnit.create({ data: { name: 'Squad A1', type: 'SQUAD', parentId: tribe.id } });
 
   const mk = (first, last, login, role, pwd, extra = {}) => prisma.employee.create({
-    data: { firstName: first, lastName: last, email: `${login}@firma.example`, login, role, employmentType: extra.emp ?? 'UOP', isKeyRole: extra.key ?? false, startDate: yearStart, passwordHash: hashPassword(pwd) },
+    data: { firstName: first, lastName: last, email: `${login}@firma.example`, login, role, employmentType: extra.emp ?? 'UOP', isKeyRole: extra.key ?? false, startDate: extra.start ?? yearStart, passwordHash: hashPassword(pwd) },
   });
 
   const admin = await mk('Administrator', 'Systemu', 'admin', 'ADMIN', 'admin');
@@ -60,12 +71,18 @@ async function main() {
   // OUT obok UoP-owego `prac` — para do porównania: inny okres rozliczeniowy i inne
   // traktowanie L4 wobec puli (FR-B5) przy identycznej roli, czyli identycznych ekranach.
   const ext = await mk('Damian', 'Ostrowski', 'ext', 'EMPLOYEE', 'demo123', { emp: 'OUT' });
+  // FR-B7 — jedyna osoba z historią sprzed bieżącego okresu. Reszta demo startuje 1 stycznia,
+  // więc na nikim innym nie widać rolowania: nie ma z czego rolować.
+  const halina = await mk('Halina', 'Szczepańska', 'halina', 'EMPLOYEE', 'demo123', { start: new Date(Date.UTC(PREV, 0, 1)) });
 
   // wszyscy z zespołu w Squad A1 (lider/po też — żeby widzieli i liczyli się do capacity)
-  await prisma.orgUnitMembership.createMany({ data: [lider, po, prac, anna, bartek, celina, ext].map((e) => ({ employeeId: e.id, orgUnitId: squad.id })) });
+  await prisma.orgUnitMembership.createMany({ data: [lider, po, prac, anna, bartek, celina, ext, halina].map((e) => ({ employeeId: e.id, orgUnitId: squad.id })) });
 
-  // pracownik: zaległy urlop (przypomnienie + „kto zalega")
+  // pracownik: zaległy urlop wpisany RĘCZNIE przez administratora — korekta wygrywa nad wyliczeniem.
   await prisma.leaveAllowance.create({ data: { employeeId: prac.id, periodYear: YEAR, baseDays: 26, carriedOver: 3 } });
+  // Halina celowo NIE dostaje wiersza puli na bieżący okres: to jest sedno FR-B7 — brak wiersza
+  // znaczy „policz z poprzednich okresów", nie „zero". Jej 8 zaległych dni wylicza aplikacja
+  // (26 dni puli w roku PREV − 18 wykorzystanych), a nie seed.
 
   // nieobecności — d(0) = poniedziałek bieżącego tygodnia
   await prisma.absence.createMany({ data: [
@@ -75,6 +92,13 @@ async function main() {
     { employeeId: ext.id, typeId: urlop.id, dateFrom: d(3), dateTo: d(3) }, // OUT, czwartek
     { employeeId: prac.id, typeId: urlop.id, dateFrom: d(7), dateTo: d(8) }, // przyszły tydzień → „najbliższe nieobecności"
     { employeeId: anna.id, typeId: l4.id, dateFrom: d(14), dateTo: d(15) }, // L4 (nie obniża puli)
+  ] });
+
+  // Halina w poprzednim okresie: trzy pełne tygodnie (3 × 5 dni) + jeden pon.–śr. (3 dni) = 18 dni
+  // z puli 26. Zakresy liczone od poniedziałków, więc dni robocze wychodzą tak samo w każdym roku.
+  await prisma.absence.createMany({ data: [
+    ...[2, 6, 9].map((miesiac) => { const p = monday(PREV, miesiac); return { employeeId: halina.id, typeId: urlop.id, dateFrom: p, dateTo: plus(p, 4) }; }),
+    (() => { const p = monday(PREV, 4); return { employeeId: halina.id, typeId: urlop.id, dateFrom: p, dateTo: plus(p, 2) }; })(),
   ] });
 
   // sprint obejmujący bieżący tydzień
