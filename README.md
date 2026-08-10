@@ -176,7 +176,8 @@ WCAG 2.1.1) — obie mają teraz `role="region"`, nazwę i `tabIndex={0}`.
 
 **1.4.4 Resize Text:** przy powiększeniu 200% treść zawija się w kartach, żaden kontener nie przycina
 tekstu i żadna kontrolka nie znika. Poziome przewijanie przy 200% jest dopuszczone przez 1.4.4
-(zakazuje go dopiero 1.4.10 Reflow, wyłączone decyzją desktop-only — patrz `PRODUCT.md`).
+(zakazuje go dopiero **1.4.10 Reflow — wyłączone z deklaracji za zgodą zamawiającego z 10.08.2026**,
+patrz `PRODUCT.md` i `WNIOSEK-ZAWEZENIE-NFR.md`).
 
 Audyt powtórzysz bez dodatkowych narzędzi: `axe-core` jest devDependency `apps/web`, a serwer dev
 podaje go pod `/node_modules/axe-core/axe.min.js`. W konsoli przeglądarki:
@@ -202,8 +203,10 @@ Stan każdej historyjki z backlogu odnotowuje kolumna **„Stan wdrożenia"** w
 - **NFR-9** — interfejs EN dla współpracowników OUT (priorytet „Could", potrzeba nierozstrzygnięta).
 - **NFR-2** — progi i alerty monitoringu: aplikacja daje sondę `/api/health`, resztę konfiguruje się
   w monitoringu organizacji.
-- **NFR-6** (mobile) i **NFR-7** (1.4.10 Reflow) — zawężenia wymagające potwierdzenia zamawiającego;
-  wniosek gotowy w `WNIOSEK-ZAWEZENIE-NFR.md`.
+- **NFR-6** poza pulpitem i wpisem — pozostałe dziewięć ekranów zakłada stację roboczą.
+  Zawężenie **zatwierdzone przez Credit Agricole 10.08.2026** (`WNIOSEK-ZAWEZENIE-NFR.md`),
+  więc to uzgodniony zakres, nie dług.
+- **1.4.10 Reflow** — wyłączone z deklaracji WCAG tą samą decyzją. Pozostałe kryteria AA obowiązują.
 - Układ kolumn plików importu do ustalenia z zamawiającym (na razie mapowanie konfigurowalne).
 - Heatmapa pobiera capacity per squad×sprint (N×M zapytań) — przy większej skali dołożyć zbiorczy
   endpoint `/capacity/matrix`.

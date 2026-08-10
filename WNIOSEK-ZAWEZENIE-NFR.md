@@ -1,8 +1,22 @@
 # Wniosek o potwierdzenie zawężenia NFR-6 i NFR-7
 
-**Status: projekt do wysłania.** Dokument przygotował zespół wykonawczy 10.08.2026. Nie został
-nikomu wysłany — decyzję o wysłaniu i formę (mail, punkt na komitecie, aneks) podejmuje prowadzący
-projekt.
+> **STATUS: ZATWIERDZONY PRZEZ ZAMAWIAJĄCEGO — 10.08.2026.**
+>
+> Credit Agricole zaakceptował oba punkty. Wybrane warianty:
+>
+> - **NFR-6 → wariant pośredni.** Aplikacja pozostaje desktopowa, z wyjątkiem **pulpitu
+>   i formularza wpisu nieobecności**, które mają działać na telefonie. Pozostałe dziewięć ekranów
+>   zakłada stację roboczą.
+> - **NFR-7 → akceptacja wyłączenia kryterium 1.4.10 Reflow** przy utrzymaniu wszystkich pozostałych
+>   kryteriów WCAG 2.1 AA. Kryterium 1.4.4 Resize Text pozostaje w zakresie i jest spełnione.
+>
+> Zawężenie przestaje być propozycją wykonawcy i staje się uzgodnionym zakresem. Dokumentacja
+> projektu (`PRODUCT.md`, `README.md`, kolumna „Stan wdrożenia" w backlogu) została doprowadzona
+> do tego stanu.
+>
+> Treść poniżej pozostaje bez zmian — jako zapis tego, co przedstawiono do decyzji.
+
+---
 
 **Do:** Credit Agricole — właściciel biznesowy projektu „Nieobecności", z kopią do IOD
 **Dotyczy:** dokument „Wymagania funkcjonalne i niefunkcjonalne v2.0" z 22.06.2026, punkty NFR-6 i NFR-7
@@ -87,6 +101,23 @@ rekomendujemy zlecenie audytu eksperckiego przed wdrożeniem produkcyjnym.
 
 Prosimy o rozstrzygnięcie **przed wdrożeniem produkcyjnym**. Do tego czasu dokumentacja projektu
 opisuje oba punkty jako propozycje wykonawcy, a nie jako uzgodniony zakres.
+
+---
+
+## Rozstrzygnięcie (10.08.2026)
+
+| Punkt | Decyzja zamawiającego |
+| --- | --- |
+| NFR-6 | Wariant pośredni — desktop-only z pulpitem i formularzem wpisu dostępnymi na telefonie |
+| NFR-7 | Akceptacja wyłączenia 1.4.10 Reflow; pozostałe kryteria AA bez zmian |
+
+Wariant pośredni NFR-6 jest już zbudowany (PR #6): poniżej 768 px panel boczny kładzie się
+w poziomy pasek nawigacji, a siatki pulpitu i wpisu schodzą do jednej kolumny. Sprawdzone na
+375 px — audyt axe bez naruszeń, zapis nieobecności przechodzi end-to-end.
+
+Utrzymane zastrzeżenie z punktu 2: audyt WCAG jest automatyczny i pokrywa część kryteriów.
+Jeśli potrzebna będzie formalna deklaracja zgodności, rekomendacja audytu eksperckiego przed
+wdrożeniem produkcyjnym pozostaje w mocy.
 
 ## Materiały uzupełniające
 
