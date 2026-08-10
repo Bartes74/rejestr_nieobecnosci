@@ -39,7 +39,7 @@ Cztery cele z dokumentu wymagań: wyeliminowanie blokad pliku (wielodostęp w cz
 Trzy rzeczy, których sąsiedni produkt urlopowy nie mógłby uczciwie skopiować:
 
 1. **Dwa równoległe okresy rozliczeniowe jako reguła pierwszej klasy.** UoP rozliczany w roku kalendarzowym, B2B i OUT w roku budżetowym (przesunięcie o 1 miesiąc wstecz). To jedyny wprost zapisany **warunek akceptacji** całego projektu (FR-B1 / D5), nie opcja konfiguracyjna.
-2. **Jednolita prezentacja nieobecności jako wymaganie prawne.** Typ wpływa wyłącznie na algorytm; żaden widok, kanał iCal, eksport ani powiadomienie nie ujawnia, że wpis to L4. Znacznik L4 to dana o zdrowiu (art. 9 RODO) chroniona na poziomie serializacji per rola, a każdy uprawniony odczyt trafia do audytu. Standardowe „kolorowanie typów urlopu" jest tu wykluczone (D1/D2, ankieta oceniła je na 1/5).
+2. **Jednolita prezentacja nieobecności jako wymaganie prawne.** Typ wpływa wyłącznie na algorytm; żaden widok, kanał iCal, eksport ani powiadomienie nie ujawnia, że wpis to L4. Znacznik L4 to dana o zdrowiu (art. 9 RODO) chroniona na poziomie serializacji per rola, a każdy uprawniony odczyt trafia do audytu — sprawdzone w kodzie 10.08.2026 na obu drogach wyjścia znacznika: liście wpisów i eksporcie płacowym. To twierdzenie wymaga pokrycia **każdej** takiej drogi; wystarczy jedna nieaudytowana, żeby przestało być prawdziwe (tak było do przeglądu z 10.08.2026). Standardowe „kolorowanie typów urlopu" jest tu wykluczone (D1/D2, ankieta oceniła je na 1/5).
 3. **Planowanie zamiast akceptacji.** Brak workflow zatwierdzania wniosków (D3) — wpis obowiązuje od zapisania. Produkt służy widoczności i planowaniu capacity, nie procesowi kadrowemu; formalny wniosek urlopowy dla UoP pozostaje poza aplikacją (TETA/HR).
 
 Do tego: wdrożenie **on-premise**, bez zależności od zewnętrznych usług — świadoma decyzja instytucji finansowej, nie ograniczenie techniczne.
@@ -113,7 +113,9 @@ Materiały realne, do wykorzystania bez wymyślania:
 - `Makiety - aplikacja nieobecnosci (Credit Agricole).html`, `Aplikacja Nieobecnosci (offline).html` — prototypy referencyjne.
 - `README.md`, `HANDOFF.md` — stan wdrożenia, RBAC, uruchomienie, decyzje.
 - `apps/api/demo-seed.mjs` — realistyczny scenariusz demonstracyjny: Pion Operacji › Departament IT › Tribe Alfa › 5 squadów, 21 osób, 7 sprintów, nieobecności generowane względem dnia uruchomienia.
-- Dowód poprawności: 83 testy silnika wyliczeń, 30 suit integracyjnych (255 asercji), CI na PostgreSQL.
+- Dowód poprawności: 83 testy silnika wyliczeń, 30 suit integracyjnych (255 asercji), CI na PostgreSQL z blokującymi bramkami lintu dostępności i audytu zależności.
+- **Przegląd kodu 10.08.2026** (PR #9–#11): weryfikacja stanu wdrożenia wprost w kodzie, nie w dokumentacji. Potwierdził, że kolumna „Stan wdrożenia" nie zawyża stanu, i wyłapał trzy rzeczy, których backlog nie widział — brak wpisu audytu przy odczycie kategorii szczególnej w eksporcie płacowym, odczyt puli organizacji bez kontroli roli, listę nieobecności bez wymaganego identyfikatora pracownika. Wszystkie domknięte; `README.md`, `HANDOFF.md` i backlog doprowadzone do zgodności z kodem.
+- Test odtworzenia backupu (10.08.2026, `scripts/restore-test.sh` na dumpie bazy demo): odtworzone `Employee=23, Absence=49`. Dowód, że dump da się wczytać — nie dowód, że da się to zrobić na produkcyjnym wolumenie w oknie RTO.
 - Pomiar wydajności (10.08.2026, maszyna deweloperska, 300 pracowników, współbieżność 50): p95 pulpitu 43 ms, kalendarza 50 ms, balansu 30 ms — przy budżetach NFR-1 2000/2000 ms i FR-B2 1000 ms. Szczegóły w `README.md`.
 - Audyt dostępności axe-core 4.13 (10.08.2026): 12 ekranów, reguły WCAG 2.0/2.1 A i AA — 0 naruszeń.
 
@@ -123,7 +125,8 @@ Czego **nie ma** i czego nie wolno wymyślać:
 - **Brak opinii i cytatów użytkowników.**
 - Oceny priorytetów w sekcji 8 dokumentu pochodzą z **jednej odpowiedzi ankietowej z 09.06.2026** — to sygnał, nie badanie. Nie prezentować ich jako wyniku badań ilościowych.
 - Test obciążeniowy NFR-1 wykonany, ale **na maszynie deweloperskiej**, nie na docelowym sprzęcie i nie przez sieć organizacji. Wynik pokazuje zapas, nie zastępuje pomiaru przedprodukcyjnego.
-- Audyt WCAG jest **automatyczny (axe)**. Automat pokrywa część kryteriów — nie zastępuje testu z czytnikiem ekranu ani oceny eksperckiej.
+- Audyt WCAG jest **automatyczny (axe)** i uruchamiany **ręcznie** z konsoli przeglądarki. Automat pokrywa część kryteriów — nie zastępuje testu z czytnikiem ekranu ani oceny eksperckiej. Bramka `jsx-a11y` w CI łapie tylko bariery widoczne statycznie w JSX i nie jest odpowiednikiem przebiegu axe.
+- **Brak testów frontendu.** `apps/web` nie ma ani jednego testu — ekrany chroni kontrola typów i lint dostępności. Nie twierdzić, że interfejs jest „pokryty testami"; pokryty jest silnik wyliczeń i API na poziomie end-to-end.
 - Liczby „~300 użytkowników / 6 zespołów" pochodzą z D6 dokumentu wymagań i są jedynymi zweryfikowanymi liczbami o skali.
 
 ## Product Principles
@@ -140,6 +143,7 @@ Czego **nie ma** i czego nie wolno wymyślać:
 - **Zawężenie deklaracji — uzgodnione z Credit Agricole 2026-08-10 (zapis: `WNIOSEK-ZAWEZENIE-NFR.md`):** z zakresu wyłączone jest **wyłącznie 1.4.10 Reflow**, jako konsekwencja desktopowego zasięgu dziewięciu ekranów. **Wyłączenie dotyczy wyłącznie tego jednego kryterium.** Pozostałe kryteria AA — w tym 1.4.3 Contrast, 1.4.11 Non-text Contrast, 1.3.1 Info and Relationships, 2.1.1 Keyboard, 2.4.7 Focus Visible, 2.4.1 Bypass Blocks i 4.1.3 Status Messages — obowiązują bez zmian i nie podlegają negocjacji przy kolejnych pracach.
 - **1.4.4 Resize Text jest w zakresie i spełnione** — sprawdzone 10.08.2026 przy powiększeniu 200%: treść zawija się w kartach, żaden kontener nie przycina tekstu, żadna kontrolka nie znika. Poziome przewijanie, którego 1.4.4 nie zakazuje, pozostaje. (Propozycja z 07.08.2026 wyłączała także to kryterium — wycofana przed przedstawieniem zamawiającemu.)
 - Stan zgodności na 10.08.2026: audyt axe-core 4.13 na 12 ekranach (reguły `wcag2a, wcag2aa, wcag21a, wcag21aa`) — 0 naruszeń, po naprawieniu dwóch znalezionych (przewijane siatki kalendarza i heatmapy niedostępne z klawiatury, 2.1.1). Audyt automatyczny pokrywa część kryteriów i **nie zastępuje** testu z czytnikiem ekranu ani oceny eksperckiej; rekomendacja audytu eksperckiego przed wdrożeniem produkcyjnym pozostaje w mocy.
+- Od 10.08.2026 CI ma blokującą bramkę `jsx-a11y` (`pnpm -F @nieobecnosci/web lint`). Łapie bariery widoczne statycznie w JSX i **nie zastępuje** przebiegu axe, który pozostaje ręczny. Uwaga na jeden świadomy wyjątek w jej konfiguracji: przewijane siatki kalendarza i heatmapy muszą mieć `tabIndex={0}` (2.1.1, `scrollable-region-focusable`), więc rola `region` jest w regule dopuszczona. Usunięcie `tabIndex` „żeby lint przeszedł" cofa naprawę z audytu.
 - Interakcje mają się opierać na natywnych elementach (`<button>`, `<a>`, `<input type="date/time">`, `<select>`), bo to najtańsza droga do zgodności z klawiaturą i AT.
 - `<html lang="pl">`; kontrolki bez widocznej etykiety mają dostępną nazwę.
 - Dziewięć ekranów planistycznych i raportowych zakłada stację roboczą, więc obsługa dotyku nie jest tam wymagana. **Pulpit i formularz wpisu działają na telefonie** (uzgodniony wariant NFR-6) i tam dotyk obowiązuje. **Obsługa klawiatury i czytnika ekranu pozostaje wymagana w pełni na wszystkich ekranach.**
