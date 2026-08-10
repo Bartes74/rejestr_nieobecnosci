@@ -6,7 +6,7 @@
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["-F", "@nieobecnosci/web", "dev"],
       "port": 5188,
-      "autoPort": false
+      "autoPort": true
     }
   ]
 }

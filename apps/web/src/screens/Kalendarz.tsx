@@ -182,7 +182,11 @@ export function Kalendarz() {
         )}
       </div>
 
-      <div style={{ ...card, overflowX: 'auto' }} aria-busy={state === 'loading'}>
+      {/* WCAG 2.1.1 — siatka przewija się w poziomie, a nie ma w niej nic, co da się kliknąć,
+          więc bez `tabIndex` użytkownik klawiatury nie dosięgnie prawej części miesiąca.
+          Obszar przewijany musi umieć przyjąć fokus i mieć nazwę, po której da się go rozpoznać. */}
+      <div role="region" aria-label="Siatka kalendarza — przewijana w poziomie" tabIndex={0}
+        style={{ ...card, overflowX: 'auto' }} aria-busy={state === 'loading'}>
         {state === 'loading' && <div role="status" style={{ padding: 20, color: 'var(--muted)', fontFamily: 'var(--font-sans)', fontSize: 14 }}>Wczytywanie kalendarza…</div>}
         {state === 'error' && (
           <div role="alert" style={{ padding: 20, fontFamily: 'var(--font-sans)', fontSize: 14, color: 'var(--ink-2)' }}>

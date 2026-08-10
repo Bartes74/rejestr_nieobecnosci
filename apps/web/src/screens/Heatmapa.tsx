@@ -85,7 +85,10 @@ export function Heatmapa() {
         Kolor prowadzi od zielonego (spokojnie) po czerwony (wymaga uwagi).
       </p>
 
-      <div style={{ ...card, padding: 22, overflowX: 'auto' }}>
+      {/* WCAG 2.1.1 — jak w kalendarzu: siatka przewija się w poziomie i nie zawiera żadnej
+          kontrolki, więc obszar przewijany sam musi przyjmować fokus. */}
+      <div role="region" aria-label="Siatka pokrycia — przewijana w poziomie" tabIndex={0}
+        style={{ ...card, padding: 22, overflowX: 'auto' }}>
         <div role="alert" aria-live="assertive">
           {err && <div style={{ fontFamily: 'var(--font-sans)', fontSize: 13.5, color: 'var(--ink-2)', padding: '8px 0' }}>{err}</div>}
         </div>
