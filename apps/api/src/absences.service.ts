@@ -73,6 +73,10 @@ export class AbsencesService {
   }
 
   async listForEmployee(employeeId: string, user: AuthUser) {
+    // Bez parametru Prisma dostałaby `employeeId: undefined`, czyli warunek bez filtra: admin
+    // wyciągnąłby jednym żądaniem wszystkie nieobecności wszystkich osób razem z typami,
+    // a wpis audytu wskazywałby pustą encję. Brak parametru to błąd wywołania, nie zapytanie.
+    if (!employeeId) throw new BadRequestException('Podaj employeeId.');
     if (employeeId === user.sub) {
       const own = await this.prisma.absence.findMany({ where: { employeeId }, include: { type: true }, orderBy: { dateFrom: 'desc' } });
       return this.withWorkingDays(employeeId, own);

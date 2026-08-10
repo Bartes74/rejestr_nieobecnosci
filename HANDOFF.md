@@ -55,8 +55,6 @@ DO ZROBIENIA (priorytety do ustalenia z użytkownikiem):
    już przeszedł bez naruszeń, ale pokrywa tylko część kryteriów).
 4. Układ kolumn plików importu .xlsx (FR-G5/D4) — do ustalenia z zamawiającym; obecnie mapowanie
    kolumn jest konfigurowalne.
-5. Wydajność heatmapy: pobiera capacity per squad×sprint (N×M zapytań) — przy większej skali
-   dołożyć zbiorczy endpoint /capacity/matrix.
 
 Kontekst źródłowy: wymagania i backlog to pliki .docx/.xlsx w katalogu głównym; decyzje projektowe
 i model danych opisuje README.md.

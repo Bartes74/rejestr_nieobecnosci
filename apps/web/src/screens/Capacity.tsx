@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { TriangleAlert, Zap } from 'lucide-react';
 import { count } from '@nieobecnosci/core/plural';
 import { dateRange } from '../format';
-import { api, type Capacity as Cap, type OrgUnit, type Sprint } from '../api';
+import { api, type CapacityCell, type OrgUnit, type Sprint } from '../api';
 import { card } from '../design-system/surfaces';
 import { ProgressBar } from '../design-system/components/data/ProgressBar';
 
@@ -15,7 +15,7 @@ export function Capacity() {
   const [sprints, setSprints] = useState<Sprint[]>([]);
   const [squads, setSquads] = useState<OrgUnit[]>([]);
   const [sprintId, setSprintId] = useState('');
-  const [caps, setCaps] = useState<Cap[]>([]);
+  const [cells, setCells] = useState<CapacityCell[]>([]);
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -25,13 +25,35 @@ export function Capacity() {
   }, []);
 
   useEffect(() => {
-    if (!sprintId || squads.length === 0) { setCaps([]); setLoading(false); return; }
+    if (!sprintId || squads.length === 0) { setCells([]); setLoading(false); return; }
     setErr(''); setLoading(true);
     let alive = true;
-    Promise.all(squads.map((sq) => api.capacity(sprintId, sq.id).catch((e: Error) => { if (/403|uprawnie/.test(e.message)) setErr('Brak uprawnień do widoku capacity.'); return null; })))
-      .then((res) => { if (!alive) return; setCaps(res.filter((c): c is Cap => !!c)); setLoading(false); });
+    // Jedno żądanie na cały sprint zamiast jednego na squad — ten sam endpoint, z którego korzysta
+    // heatmapa. Komórka bez pomiaru (null) nie jest zerem, więc odpada z widoku zamiast zaniżać sumy.
+    api.capacityMatrix([sprintId], squads.map((sq) => sq.id))
+      .then(({ cells: res }) => { if (!alive) return; setCells(res.filter((c) => c.totalPersonDays !== null)); setLoading(false); })
+      .catch((e: Error) => {
+        if (!alive) return;
+        setErr(/403|uprawnie/.test(e.message) ? 'Brak uprawnień do widoku capacity.' : e.message);
+        setCells([]); setLoading(false);
+      });
     return () => { alive = false; };
   }, [sprintId, squads]);
+
+  // Nazwa jednostki nie jedzie w komórce — mamy ją już z `/org/units`, tak samo jak heatmapa.
+  const caps = useMemo(() => {
+    const nameOf = new Map(squads.map((s) => [s.id, s.name]));
+    return cells.map((c) => ({
+      unit: { id: c.unitId, name: nameOf.get(c.unitId) ?? c.unitId },
+      memberCount: c.memberCount ?? 0,
+      totalPersonDays: c.totalPersonDays ?? 0,
+      absentPersonDays: c.absentPersonDays ?? 0,
+      available: c.available ?? 0,
+      // `?? []` na wypadek starszego API pod tym samym frontendem (zdarza się przy dev, gdy
+      // proces API nie został zrestartowany): brak alertu jest do przeżycia, biały ekran nie.
+      keyRoleCollisions: c.keyRoleCollisions ?? [],
+    }));
+  }, [cells, squads]);
 
   const sprint = useMemo(() => sprints.find((s) => s.id === sprintId) ?? null, [sprints, sprintId]);
   const workdays = useMemo(() => { const c = caps.find((x) => x.memberCount > 0); return c ? Math.round(c.totalPersonDays / c.memberCount) : 0; }, [caps]);

@@ -11,14 +11,32 @@ services:
     volumes:
       - dbdata:/var/lib/postgresql/data
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nieobecnosci -d nieobecnosci"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   api:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
     env_file: .env.prod
-    depends_on: [db]
+    # Kontener startuje od `prisma migrate deploy`, więc bez czekania na gotową bazę pierwsze
+    # uruchomienie wywraca się na migracji i wstaje dopiero z restartu. Warunek zamienia
+    # „padnij i spróbuj ponownie" na „poczekaj".
+    depends_on:
+      db:
+        condition: service_healthy
     restart: unless-stopped
+    # Ta sama sonda, którą monitoring organizacji odpytuje z zewnątrz (NFR-2): 200 = aplikacja
+    # żyje i baza odpowiada. Dzięki temu `web` czeka na działające API, nie na sam proces.
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   web:
     build:
