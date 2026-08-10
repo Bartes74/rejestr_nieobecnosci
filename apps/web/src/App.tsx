@@ -8,6 +8,7 @@ import {
   LayoutDashboard, LogOut, Moon, ShieldCheck, SlidersHorizontal, Sun, UserCog, Users, Zap,
 } from 'lucide-react';
 import { useAuth } from './current-employee';
+import { useIsNarrow } from './viewport';
 import { api, type Me, type Role } from './api';
 import { Login } from './screens/Login';
 import { Avatar } from './design-system/components/core/Avatar';
@@ -110,42 +111,62 @@ const navA = (active: boolean) => ({
   color: active ? 'var(--brand)' : 'var(--ink-2)', background: active ? 'var(--brand-tint)' : 'transparent',
 } as const);
 
-function Sidebar() {
+// Na wąskim ekranie panel boczny kładzie się na płasko: pasek nawigacji przewijany w poziomie,
+// bez nagłówków grup i bez etykiet. Świadomie NIE szuflada — szuflada to stan, przycisk, pułapka
+// fokusu i obsługa Escape, czyli więcej kodu i więcej sposobów na zepsucie dostępności niż
+// zwykły `<nav>`, który już działa z klawiatury.
+function Sidebar({ narrow }: { narrow: boolean }) {
   const { current, logout } = useAuth();
   const initials = current ? `${current.firstName[0] ?? ''}${current.lastName[0] ?? ''}` : '';
+  const groups = visibleGroups(current);
   return (
-    <aside style={{ width: 250, flex: 'none', background: 'var(--surface)', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', padding: '20px 14px', position: 'sticky', top: 0, height: '100vh' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '4px 8px 18px' }}>
+    <aside style={narrow
+      ? { flex: 'none', background: 'var(--surface)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px' }
+      : { width: 250, flex: 'none', background: 'var(--surface)', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', padding: '20px 14px', position: 'sticky', top: 0, height: '100vh' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: narrow ? 0 : '4px 8px 18px', flex: 'none' }}>
         <div style={{ width: 36, height: 36, borderRadius: 'var(--radius-md)', background: 'var(--brand)', color: 'var(--on-brand)', display: 'grid', placeItems: 'center' }}>
           <Calendar size={19} aria-hidden="true" />
         </div>
-        <span style={{ fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 15, color: 'var(--ink)' }}>Nieobecności</span>
+        {!narrow && <span style={{ fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 15, color: 'var(--ink)' }}>Nieobecności</span>}
       </div>
-      <nav aria-label="Menu główne" style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 1 }}>
-        {visibleGroups(current).map(({ group, items }) => (
-          <div key={group}>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, letterSpacing: '.13em', textTransform: 'uppercase', color: 'var(--muted)', padding: '16px 11px 6px' }}>{group}</div>
-            {items.map(({ to, label, icon: Icon }) => (
-              <NavLink key={to} to={to} className="ds-nav" style={({ isActive }) => navA(isActive)}>
-                <Icon size={18} aria-hidden="true" /> {label}
-              </NavLink>
-            ))}
-          </div>
-        ))}
+      <nav aria-label="Menu główne" style={narrow
+        ? { flex: 1, minWidth: 0, overflowX: 'auto', display: 'flex', gap: 2 }
+        : { flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 1 }}>
+        {narrow
+          ? groups.flatMap((g) => g.items).map(({ to, label, icon: Icon }) => (
+            <NavLink key={to} to={to} className="ds-nav" title={label} aria-label={label}
+              style={({ isActive }) => ({ ...navA(isActive), padding: '9px 10px', flex: 'none' })}>
+              <Icon size={19} aria-hidden="true" />
+            </NavLink>
+          ))
+          : groups.map(({ group, items }) => (
+            <div key={group}>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, letterSpacing: '.13em', textTransform: 'uppercase', color: 'var(--muted)', padding: '16px 11px 6px' }}>{group}</div>
+              {items.map(({ to, label, icon: Icon }) => (
+                <NavLink key={to} to={to} className="ds-nav" style={({ isActive }) => navA(isActive)}>
+                  <Icon size={18} aria-hidden="true" /> {label}
+                </NavLink>
+              ))}
+            </div>
+          ))}
       </nav>
-      <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, marginTop: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div style={narrow
+        ? { display: 'flex', alignItems: 'center', gap: 6, flex: 'none' }
+        : { borderTop: '1px solid var(--border)', paddingTop: 12, marginTop: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
         <Avatar initials={initials} size={34} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: 'var(--font-sans)', fontWeight: 600, fontSize: 13, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{current ? `${current.firstName} ${current.lastName}` : ''}</div>
-          <div style={{ fontFamily: 'var(--font-sans)', fontSize: 11, color: 'var(--muted)' }}>{current ? (ROLE_LABEL[current.role] ?? current.role) : ''}</div>
-        </div>
+        {!narrow && (
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: 'var(--font-sans)', fontWeight: 600, fontSize: 13, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{current ? `${current.firstName} ${current.lastName}` : ''}</div>
+            <div style={{ fontFamily: 'var(--font-sans)', fontSize: 11, color: 'var(--muted)' }}>{current ? (ROLE_LABEL[current.role] ?? current.role) : ''}</div>
+          </div>
+        )}
         <button type="button" className="ds-quiet" aria-label="Wyloguj" title="Wyloguj" onClick={logout} style={{ cursor: 'pointer', color: 'var(--muted)', display: 'flex', padding: 6, borderRadius: 'var(--radius-sm)', border: 'none', background: 'transparent' }}><LogOut size={17} aria-hidden="true" /></button>
       </div>
     </aside>
   );
 }
 
-function Topbar({ dark, onToggleTheme }: { dark: boolean; onToggleTheme: () => void }) {
+function Topbar({ dark, onToggleTheme, narrow }: { dark: boolean; onToggleTheme: () => void; narrow: boolean }) {
   const location = useLocation();
   const { current } = useAuth();
   // Tytuł tylko z pozycji widocznych dla zalogowanego — inaczej ekran bez dostępu dostałby
@@ -172,13 +193,15 @@ function Topbar({ dark, onToggleTheme }: { dark: boolean; onToggleTheme: () => v
 
   const iconBtn = { width: 38, height: 38, flex: 'none', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-2)', background: 'var(--surface)', color: 'var(--ink-2)', display: 'grid', placeItems: 'center', cursor: 'pointer' } as const;
   return (
-    <header style={{ height: 64, flex: 'none', borderBottom: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', alignItems: 'center', gap: 18, padding: '0 26px', position: 'sticky', top: 0, zIndex: 5 }}>
+    <header style={{ height: 64, flex: 'none', borderBottom: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', alignItems: 'center', gap: narrow ? 10 : 18, padding: narrow ? '0 12px' : '0 26px', position: 'sticky', top: 0, zIndex: 5 }}>
       <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 11, minWidth: 0 }}>
-          <h1 style={{ fontFamily: 'var(--font-sans)', fontSize: 19, fontWeight: 700, margin: 0, letterSpacing: '-.01em', whiteSpace: 'nowrap', color: 'var(--ink)' }}>{meta?.label ?? 'Nieobecności'}</h1>
+          <h1 style={{ fontFamily: 'var(--font-sans)', fontSize: narrow ? 16 : 19, fontWeight: 700, margin: 0, letterSpacing: '-.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--ink)' }}>{meta?.label ?? 'Nieobecności'}</h1>
         </div>
       </div>
-      <TopSearch />
+      {/* Wyszukiwarka osób to narzędzie przeglądania, nie ścieżka wpisu — na telefonie zabierałaby
+          większość paska, a scenariusz mobilny jej nie potrzebuje. */}
+      {!narrow && <TopSearch />}
       <button type="button" className="ds-quiet" aria-label={dark ? 'Tryb jasny' : 'Tryb ciemny'} title="Przełącz motyw" onClick={onToggleTheme} style={iconBtn}>
         {dark ? <Sun size={18} aria-hidden="true" /> : <Moon size={18} aria-hidden="true" />}
       </button>
@@ -233,6 +256,7 @@ const initialDark = () => {
 export function App() {
   const { current, ready } = useAuth();
   const location = useLocation();
+  const narrow = useIsNarrow(); // NFR-6, wariant pośredni — patrz viewport.ts
   const [dark, setDark] = useState(initialDark);
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
@@ -243,16 +267,16 @@ export function App() {
   if (!current) return <Login />;
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--canvas)', color: 'var(--ink)', fontFamily: 'var(--font-sans)' }}>
+    <div style={{ display: 'flex', flexDirection: narrow ? 'column' : 'row', minHeight: '100vh', background: 'var(--canvas)', color: 'var(--ink)', fontFamily: 'var(--font-sans)' }}>
       <a className="ds-skip" href="#tresc">Przejdź do treści</a>
-      <Sidebar />
+      <Sidebar narrow={narrow} />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        <Topbar dark={dark} onToggleTheme={() => setDark((v) => !v)} />
+        <Topbar dark={dark} onToggleTheme={() => setDark((v) => !v)} narrow={narrow} />
         {/* Klucz na trasie: każde wejście na ekran to nowy węzeł, więc animacja wejścia gra raz
             i w jednym miejscu — ekrany nie noszą już własnych kopii `animation: fu`. */}
         {/* `tabIndex={-1}` jest warunkiem działania linku pomijającego: bez niego skok pod
             kotwicę przewija stronę, ale fokus zostaje w nawigacji i następny Tab wraca na jej środek. */}
-        <main id="tresc" tabIndex={-1} key={location.pathname} className="ds-screen" style={{ flex: 1, overflowY: 'auto', padding: '28px 30px 60px', outline: 'none' }}>
+        <main id="tresc" tabIndex={-1} key={location.pathname} className="ds-screen" style={{ flex: 1, overflowY: 'auto', padding: narrow ? '18px 14px 48px' : '28px 30px 60px', outline: 'none' }}>
           <ErrorBoundary>
             <Suspense fallback={<ScreenFallback />}>
             <Routes>

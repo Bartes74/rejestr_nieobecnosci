@@ -5,6 +5,7 @@ import { count, plural } from '@nieobecnosci/core/plural';
 import { dateRange, mergeIsoRanges, todayIso } from '../format';
 import { api, type Absence, type AbsenceType, type Preview } from '../api';
 import { useAuth } from '../current-employee';
+import { useIsNarrow } from '../viewport';
 import { Notice, useNotice } from '../admin/ui';
 import { card } from '../design-system/surfaces';
 
@@ -150,6 +151,7 @@ function MiniCal({ from, to, existing }: { from: string; to: string; existing: {
 export function Wpis() {
   const { current } = useAuth();
   const navigate = useNavigate();
+  const narrow = useIsNarrow(); // NFR-6, wariant pośredni: pulpit i wpis działają na telefonie
   const [types, setTypes] = useState<AbsenceType[]>([]);
   const [typeId, setTypeId] = useState('');
   const [from, setFrom] = useState(todayIso());
@@ -242,7 +244,9 @@ export function Wpis() {
 
   return (
     <div style={{ maxWidth: 1080 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1.25fr .95fr', gap: 18, alignItems: 'start' }}>
+      {/* Na telefonie formularz idzie pierwszy, mini-kalendarz i podsumowanie pod nim — kolejność
+          w kodzie jest już kolejnością ważności, więc wystarczy zwinąć siatkę do jednej kolumny. */}
+      <div style={{ display: 'grid', gridTemplateColumns: narrow ? '1fr' : '1.25fr .95fr', gap: 18, alignItems: 'start' }}>
         {/* FORMULARZ */}
         <div style={{ ...card, padding: 24 }}>
           {/* Nazwę ekranu niesie już nagłówek w topbarze — karta nazywa własną zawartość.
@@ -260,7 +264,9 @@ export function Wpis() {
             </span>
           </label>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 20 }}>
+          {/* Dwa pola daty obok siebie mieszczą się od ~400 px; niżej ściskałyby natywny
+              wskaźnik kalendarza do nieklikalnego paska. */}
+          <div style={{ display: 'grid', gridTemplateColumns: narrow ? '1fr' : '1fr 1fr', gap: 14, marginBottom: 20 }}>
             <DateField label={partial ? 'Data' : 'Data od'} value={from} onChange={editFrom} />
             <DateField label="Data do" value={effTo} min={from} disabled={partial} invalid={badRange} onChange={editTo} />
           </div>
@@ -284,7 +290,7 @@ export function Wpis() {
             </div>
           </div>
           {dayPart === 'HOURS' && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 24 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: narrow ? '1fr' : '1fr 1fr', gap: 14, marginBottom: 24 }}>
               <label><span style={labelStyle}>Od godz.</span><span className="ds-field" style={inputBox}><input type="time" value={hourFrom} onChange={(e) => { clear(); setHourFrom(e.target.value); }} style={inputEl} /></span></label>
               <label><span style={labelStyle}>Do godz.</span><span className="ds-field" style={inputBox}><input type="time" value={hourTo} aria-invalid={badHours || undefined} onChange={(e) => { clear(); setHourTo(e.target.value); }} style={inputEl} /></span></label>
             </div>
