@@ -1,6 +1,6 @@
 // FR-B5 — brak wpływu L4 na pulę urlopu dotyczy WYŁĄCZNIE UoP.
-// Poza UoP (B2B/OUT) dzień choroby zjada ten sam budżet dni co urlop, więc nic nie wraca do puli:
-// zamiast wyprzeć zaplanowany urlop, L4 zostaje z nim w zwykłej kolizji, a konwersja jest zamknięta.
+// Poza UoP (B2B/OUT) dzień choroby zjada ten sam budżet dni co urlop, więc nic nie wraca do puli.
+// Zapis L4 przechodzi przy każdej formie — różni się wyłącznie to, co dzieje się z pulą.
 // Daty stałe w 2026 — jak w pozostałych suitach; muszą leżeć w bieżącym okresie obu form.
 import { PrismaClient } from '@prisma/client';
 import { hashPassword } from './dist/auth/auth.service.js';
@@ -34,21 +34,23 @@ const aExt = as(await login('fzext', 'haslo123'));
 const post = (a, body) => a('/absences', { method: 'POST', body: JSON.stringify(body) });
 const usedOf = async (a, id) => (await j(await a(`/employees/${id}/balance`))).used;
 
-// --- UoP: zachowanie dotychczasowe (regresja) — L4 wypiera urlop, dni wracają do puli ---
+// --- UoP: L4 przykrywa dzień urlopu, dzień wraca do puli ---
 await j(await post(aUop, { employeeId: uop.id, typeId: urlop.id, dateFrom: '2026-09-07', dateTo: '2026-09-11' }));
 ok((await usedOf(aUop, uop.id)) === 5, 'UoP: urlop pn–pt → wykorzystano 5');
 await j(await post(aUop, { employeeId: uop.id, typeId: l4.id, dateFrom: '2026-09-09', dateTo: '2026-09-09' }));
 ok((await usedOf(aUop, uop.id)) === 4, 'UoP: L4 w środku urlopu → dzień wrócił do puli (4)');
-const uopParts = await prisma.absence.findMany({ where: { employeeId: uop.id, typeId: urlop.id }, orderBy: { dateFrom: 'asc' } });
-ok(uopParts.length === 2 && iso(uopParts[1].dateFrom) === '2026-09-10', 'UoP: urlop rozcięty na dwa zakresy');
+const uopRows = await prisma.absence.findMany({ where: { employeeId: uop.id, typeId: urlop.id } });
+ok(uopRows.length === 1 && iso(uopRows[0].dateFrom) === '2026-09-07' && iso(uopRows[0].dateTo) === '2026-09-11',
+  'UoP: urlop nietknięty w bazie — przykrycie jest projekcją, nie cięciem');
 
-// --- OUT: L4 nie ma czego wypierać — nakładanie zostaje kolizją, urlop nietknięty ---
+// --- OUT: ten sam zapis przechodzi, ale puli nie zwalnia ---
 const extUrlop = await j(await post(aExt, { employeeId: ext.id, typeId: urlop.id, dateFrom: '2026-09-07', dateTo: '2026-09-11' }));
 ok((await usedOf(aExt, ext.id)) === 5, 'OUT: urlop pn–pt → wykorzystano 5');
-ok((await post(aExt, { employeeId: ext.id, typeId: l4.id, dateFrom: '2026-09-09', dateTo: '2026-09-09' })).status === 409, 'OUT: L4 na zaplanowanym urlopie → 409 (brak pierwszeństwa)');
+ok((await post(aExt, { employeeId: ext.id, typeId: l4.id, dateFrom: '2026-09-09', dateTo: '2026-09-09' })).ok,
+  'OUT: L4 na zaplanowanym urlopie → zapisuje się (choroby nie da się przełożyć)');
 const extNadal = await prisma.absence.findUnique({ where: { id: extUrlop.id } });
-ok(iso(extNadal.dateFrom) === '2026-09-07' && iso(extNadal.dateTo) === '2026-09-11', 'OUT: urlop po odrzuconym L4 bez zmian');
-ok((await usedOf(aExt, ext.id)) === 5, 'OUT: pula po odrzuconym L4 bez zmian (5)');
+ok(iso(extNadal.dateFrom) === '2026-09-07' && iso(extNadal.dateTo) === '2026-09-11', 'OUT: urlop po zapisie L4 bez zmian');
+ok((await usedOf(aExt, ext.id)) === 5, 'OUT: pula bez zmian — zmienił się rodzaj dnia, nie ich liczba');
 
 // --- OUT: L4 w wolnym terminie obciąża pulę jak każda inna nieobecność ---
 await j(await post(aExt, { employeeId: ext.id, typeId: l4.id, dateFrom: '2026-09-14', dateTo: '2026-09-15' }));
@@ -66,9 +68,11 @@ ok(pUop.returnedDays === 0 && pUop.remainingAfter === pUop.remaining, 'UoP: podg
 const przekr = await post(aExt, { employeeId: ext.id, typeId: l4.id, dateFrom: '2026-10-01', dateTo: '2026-11-13' });
 ok(przekr.status === 400 && (await przekr.text()).includes('Przekroczenie puli'), 'OUT: L4 ponad dostępne dni → 400 przekroczenie puli');
 
-// --- FR-B10: konwersja na L4 zamknięta poza UoP (druga furtka do zwrotu dni) ---
+// --- FR-B10: konwersja działa przy obu formach, ale znaczy co innego ---
+const extPrzed = await usedOf(aExt, ext.id);
 const extDoKonw = await j(await post(aExt, { employeeId: ext.id, typeId: urlop.id, dateFrom: '2026-11-16', dateTo: '2026-11-17' }));
-ok((await aAdmin(`/absences/${extDoKonw.id}/convert-to-l4`, { method: 'POST' })).status === 400, 'OUT: konwersja na L4 → 400');
+ok((await aAdmin(`/absences/${extDoKonw.id}/convert-to-l4`, { method: 'POST' })).ok, 'OUT: konwersja na L4 przechodzi');
+ok((await usedOf(aExt, ext.id)) === extPrzed + 2, 'OUT: konwersja nie zwalnia dni — zmienia sam rodzaj');
 const uopDoKonw = await j(await post(aUop, { employeeId: uop.id, typeId: urlop.id, dateFrom: '2026-09-21', dateTo: '2026-09-22' }));
 ok((await aAdmin(`/absences/${uopDoKonw.id}/convert-to-l4`, { method: 'POST' })).ok, 'UoP: konwersja na L4 nadal działa');
 ok((await usedOf(aUop, uop.id)) === 4, 'UoP: po konwersji dni wróciły do puli (nadal 4)');

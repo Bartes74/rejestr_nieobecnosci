@@ -56,6 +56,7 @@ export class BalanceService {
       absences.map((a) => ({
         dateFrom: a.dateFrom, dateTo: a.dateTo,
         affectsPool: consumesPool(emp.employmentType, a.type.affectsPool), // FR-B5 — brak wpływu L4 tylko na UoP
+        overrides: !a.type.affectsPool, // wpis chorobowy przejmuje dzień — liczy się raz, nie dwa
         fraction: dayFraction(a.dayPart, a.hourFrom ?? undefined, a.hourTo ?? undefined),
       })),
       period,

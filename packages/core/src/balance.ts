@@ -3,7 +3,7 @@
 // FR-B7 — urlop zaległy zawsze powiększa dostępną pulę (nigdy nie przepada).
 
 import type { EmploymentType } from './period.js';
-import { countWorkingDays } from './workdays.js';
+import { countOverlaidDays } from './overlay.js';
 
 /**
  * Czy dzień takiej nieobecności zabiera dzień z puli danej osoby.
@@ -22,7 +22,8 @@ export const consumesPool = (employmentType: EmploymentType, affectsPool: boolea
 export interface AbsenceSpan {
   dateFrom: Date;
   dateTo: Date;
-  affectsPool: boolean;
+  affectsPool: boolean; // czy dzień tego wpisu zabiera z puli — już po `consumesPool`
+  overrides?: boolean; // wpis chorobowy (typ z affectsPool=false) — przejmuje dzień
   fraction?: number; // dla niepełnych dni; domyślnie 1
 }
 
@@ -31,20 +32,28 @@ export interface PeriodRange {
   to: Date;
 }
 
-/** Dni urlopowe wykorzystane w okresie — tylko typy obniżające pulę; przycięte do okresu. */
+/**
+ * Dni urlopowe wykorzystane w okresie, przycięte do okresu.
+ *
+ * Wpisy jednej osoby mogą się nakładać (L4 na zaplanowanej nieobecności), więc liczenie idzie
+ * po dniach kalendarzowych, nie po wpisach — inaczej ten sam dzień policzyłby się dwa razy
+ * poza UoP, a na UoP nie oddałby się do puli.
+ */
 export function usedLeaveDays(
   absences: readonly AbsenceSpan[],
   period: PeriodRange,
   holidays: ReadonlySet<string> = new Set(),
 ): number {
-  let used = 0;
-  for (const a of absences) {
-    if (!a.affectsPool) continue; // L4 i inne niepomniejszające puli
-    const from = a.dateFrom > period.from ? a.dateFrom : period.from;
-    const to = a.dateTo < period.to ? a.dateTo : period.to;
-    used += countWorkingDays(from, to, holidays) * (a.fraction ?? 1);
-  }
-  return used;
+  return countOverlaidDays(
+    absences.map((a) => ({
+      dateFrom: a.dateFrom, dateTo: a.dateTo,
+      overrides: a.overrides ?? false,
+      counts: a.affectsPool,
+      fraction: a.fraction,
+    })),
+    period,
+    holidays,
+  );
 }
 
 export interface Balance {

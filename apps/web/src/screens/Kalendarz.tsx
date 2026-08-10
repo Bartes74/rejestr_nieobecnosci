@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
 import { count } from '@nieobecnosci/core/plural';
-import { addDays, currentYearMonth, dateRange, dayMonth, todayIso, weekBounds } from '../format';
+import { addDays, currentYearMonth, dateRange, dayMonth, mergeIsoRanges, todayIso, weekBounds } from '../format';
 import { api, type Sprint, type TeamGrid, type TeamPerson } from '../api';
 import { card } from '../design-system/surfaces';
 import { SegmentedControl } from '../design-system/components/forms/SegmentedControl';
@@ -124,7 +124,10 @@ export function Kalendarz() {
       .sort(([a], [b]) => a.localeCompare(b, 'pl'))
       .map(([key, people]) => ({
         label: key.startsWith('￿') ? 'Bez przypisania do squadu' : key,
-        people: people.map((p) => ({ ...p, ranges: byId.get(p.id) ?? [] })),
+        // Zakresy scalone: siatka nie rozróżnia rodzaju nieobecności, a nakładające się wpisy
+        // dałyby tu dwa paski na tych samych dniach — i przerwę w środku ciągłej nieobecności,
+        // bo krawędź pigułki wypadałaby na końcu pierwszego z nich.
+        people: people.map((p) => ({ ...p, ranges: mergeIsoRanges(byId.get(p.id) ?? []) })),
       }));
   }, [grid]);
 

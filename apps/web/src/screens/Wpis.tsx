@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CalendarDays, ChevronLeft, ChevronRight, RotateCcw, TriangleAlert } from 'lucide-react';
 import { count, plural } from '@nieobecnosci/core/plural';
-import { dateRange, todayIso } from '../format';
+import { dateRange, mergeIsoRanges, todayIso } from '../format';
 import { api, type Absence, type AbsenceType, type Preview } from '../api';
 import { useAuth } from '../current-employee';
 import { Notice, useNotice } from '../admin/ui';
@@ -76,7 +76,9 @@ function MiniCal({ from, to, existing }: { from: string; to: string; existing: {
   // jak `/calendar` — stąd `slice`. Bez niego doklejenie „T00:00:00Z" dawało `NaN` i pętla dni
   // nie wykonywała się ani razu, a filtr miesiąca wychodził dobrze wyłącznie przypadkiem,
   // na leksykalnym porównaniu napisów.
-  const ranges = existing.map((a) => ({ from: a.dateFrom.slice(0, 10), to: a.dateTo.slice(0, 10) }));
+  // Scalone: L4 może nakładać się na zaplanowaną nieobecność, a siatka mówi wyłącznie o tym,
+  // które dni są już zajęte — dwa zakresy na tych samych dniach niosłyby tu zero informacji.
+  const ranges = mergeIsoRanges(existing.map((a) => ({ from: a.dateFrom.slice(0, 10), to: a.dateTo.slice(0, 10) })));
   const monthFrom = iso(first), monthTo = iso(new Date(Date.UTC(y, m + 1, 0)));
   // Sortowanie po dacie startu: `GET /absences` oddaje wpisy w kolejności utworzenia, więc zdanie
   // pod siatką czytało się „24.08…, 10.08…" — wstecz względem tego, co widać w kalendarzu.
@@ -220,12 +222,6 @@ export function Wpis() {
     (e.currentTarget.parentElement?.querySelector(`[data-part="${next}"]`) as HTMLElement | null)?.focus();
   };
 
-  // Poza UoP żaden wpis nie ustępuje wcześniejszemu (FR-B5), więc kolizja jest tu regułą, a nie
-  // pomyłką użytkownika: ta sama operacja u osoby na UoP skróciłaby zaplanowaną nieobecność.
-  // Bez tego zdania ekran blokuje bez powodu, o który nie da się zapytać. Warunek na fladze
-  // `affectsPool`, nie na nazwie typu (D1) — komunikat nie nazywa L4.
-  const selectedType = types.find((t) => t.id === typeId);
-  const noPrecedence = !!current && current.employmentType !== 'UOP' && !!selectedType && !selectedType.affectsPool;
 
   const blocked = !typeId || !!preview?.collision || badRange || badHours;
   const save = async () => {
@@ -306,7 +302,7 @@ export function Wpis() {
           <div id="wpis-blokada" role="status" aria-live="polite" style={{ fontFamily: 'var(--font-sans)', fontSize: 12.5, color: 'var(--amber)', marginTop: blocked ? 10 : 0 }}>
             {badRange ? 'Zapis zablokowany: data „do" jest wcześniejsza niż „od".'
               : badHours ? 'Zapis zablokowany: godzina zakończenia musi być późniejsza niż rozpoczęcia.'
-                : preview?.collision ? 'Zapis zablokowany: masz już nieobecność w tym terminie. Zmień daty.'
+                : preview?.collision ? 'Zapis zablokowany: masz już zaplanowaną nieobecność w tym terminie. Zmień daty.'
                   : !typeId ? 'Zapis zablokowany: wybierz typ nieobecności.' : ''}
           </div>
           <Notice {...notice} />
@@ -333,10 +329,7 @@ export function Wpis() {
               <TriangleAlert size={18} color="var(--amber)" style={{ flex: 'none', marginTop: 1 }} aria-hidden="true" />
               <div>
                 <div style={{ fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 13, color: 'var(--ink)', marginBottom: 3 }}>Kolizja z istniejącym wpisem</div>
-                <div style={{ fontFamily: 'var(--font-sans)', fontSize: 12.5, lineHeight: 1.5, color: 'var(--ink-2)' }}>Masz już nieobecność w terminie {preview.collisionFrom && preview.collisionTo ? dateRange(preview.collisionFrom, preview.collisionTo, { long: true }) : '—'}. Zmień daty, aby zapisać.</div>
-                {noPrecedence && (
-                  <div style={{ fontFamily: 'var(--font-sans)', fontSize: 12.5, lineHeight: 1.5, color: 'var(--ink-2)', marginTop: 6 }}>Przy Twojej formie zatrudnienia ten wpis nie ma pierwszeństwa przed wcześniejszą nieobecnością — nie skróci jej za Ciebie. Zwolnij termin, zmieniając tamten wpis.</div>
-                )}
+                <div style={{ fontFamily: 'var(--font-sans)', fontSize: 12.5, lineHeight: 1.5, color: 'var(--ink-2)' }}>Masz już zaplanowaną nieobecność w terminie {preview.collisionFrom && preview.collisionTo ? dateRange(preview.collisionFrom, preview.collisionTo, { long: true }) : '—'}. Zmień daty albo popraw tamten wpis.</div>
               </div>
             </div>
           )}

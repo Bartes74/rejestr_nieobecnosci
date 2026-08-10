@@ -12,6 +12,10 @@
     "./today": {
       "types": "./dist/today.d.ts",
       "default": "./dist/today.js"
+    },
+    "./overlay": {
+      "types": "./dist/overlay.d.ts",
+      "default": "./dist/overlay.js"
     }
   },
   "files": [

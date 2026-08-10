@@ -57,7 +57,10 @@ export function Heatmapa() {
             const c = byKey.get(`${sq.id}:${sp.id}`);
             const total = c?.totalPersonDays ?? 0;
             return total > 0 && c
-              ? { pct: Math.round((c.absentPersonDays! / total) * 100), title: `${sq.name} · ${sp.name}: ${c.absentPersonDays}/${total} osobodni` }
+              // Zacisk do 100%: skala kolorów nie ma odcienia na „130% nieobecności", a tooltip
+              // „65/50 osobodni" przeczyłby sam sobie. Serwer liczy dni bez dublowania, więc to
+              // bezpiecznik na wypadek danych z przyszłości, nie maskowanie znanego błędu.
+              ? { pct: Math.min(100, Math.round((c.absentPersonDays! / total) * 100)), title: `${sq.name} · ${sp.name}: ${c.absentPersonDays}/${total} osobodni` }
               : { pct: null, title: `${sq.name} · ${sp.name}: brak danych` };
           });
         }

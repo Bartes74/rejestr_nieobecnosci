@@ -17,7 +17,7 @@ STACK (TypeScript end-to-end, on-premise, UI po polsku):
 - apps/web — React + Vite + design system przeniesiony z prototypu („Analiza dokumentów i ekranów/").
 
 STAN: MVP + Faza 2 (16 pozycji) + część Fazy 3 — zbudowane i zweryfikowane.
-Ostatni pełny przebieg: silnik 50/50 testów, 27 suit integracyjnych (212 asercji), build+typecheck czysto.
+Ostatni pełny przebieg: silnik 66/66 testów, 27 suit integracyjnych (218 asercji), build+typecheck czysto.
 Działa m.in.: wpis/edycja/undo (≤3 kliknięcia), kalendarz Tribe (jednolity, bez typów), RBAC 6 ról,
 ochrona L4 (art. 9 RODO — znacznik tylko dla VIEW_L4/admin, każdy odczyt audytowany), capacity per sprint
 + alert kolizji kluczowych ról, heatmapa pokrycia, operacje masowe, raporty z drążeniem hierarchii,

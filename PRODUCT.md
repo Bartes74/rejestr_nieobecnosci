@@ -60,7 +60,14 @@ Do tego: wdrożenie **on-premise**, bez zależności od zewnętrznych usług —
 **Reguły biznesowe, które muszą zostać zachowane:**
 
 - Urlop **nigdy nie przepada** — niewykorzystane dni przechodzą na kolejny okres jako zaległy, bez terminu wygaśnięcia. Rozstrzygnięcie zapadłe w trakcie prac; przypomnienia mają charakter wyłącznie informacyjny.
-- L4 dla UoP obniża capacity zespołu, ale **nie** obniża puli urlopu (FR-B5); jeśli pokryje zaplanowany urlop, ma przed nim pierwszeństwo — dni wspólne wracają do puli. **Poza UoP jest odwrotnie:** L4 obciąża pulę jak każda inna nieobecność, więc nie wypiera urlopu (nakładanie to zwykła kolizja) i nie zwraca dni żadną ścieżką, także konwersją (FR-B10).
+- **L4 przykrywa zaplanowaną nieobecność, ale jej nie kasuje** (FR-B5/FR-B10). Zapisać je można zawsze — choroby nie da się przełożyć — a oba wpisy zostają w bazie, więc skasowanie błędnie wpisanego L4 samo przywraca pierwotny plan. Kolizją zostaje wyłącznie nieobecność na nieobecności — zapis chorobowy nie blokuje się nigdy, także na innym zwolnieniu (dzień i tak liczy się raz). Dzień kalendarzowy liczy się najwyżej raz i należy do L4; capacity obniża każdy z nich. Rachunek dla 5 dni nieobecności i 8 dni L4 z 3 wspólnymi (suma 10 dni kalendarzowych):
+
+  | | Widzi / liczy |
+  | --- | --- |
+  | Bez prawa do powodu (lider bez `VIEW_L4`) | 10 dni nieobecności, jednolicie |
+  | Z prawem do powodu (admin, `VIEW_L4`, sam pracownik) | 2 dni nieobecności + 8 dni L4 |
+  | Pula na UoP | zwrot 3 dni (wykorzystanie 5 → 2) |
+  | Pula na B2B/OUT | −10 dni |
 - Pulę definiuje administrator globalnie, z korektą indywidualną — brak integracji z TETA (D4).
 - Backend jest źródłem prawdy dla uprawnień: guard plus serializacja zależna od roli. UI odzwierciedla zakres, ale go nie egzekwuje.
 - Weekendy i dni z tabeli świąt nie są naliczane; liczbę dni roboczych wylicza serwer kalendarzem właściwym dla danej osoby.
