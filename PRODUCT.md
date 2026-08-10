@@ -55,7 +55,7 @@ Do tego: wdrożenie **on-premise**, bez zależności od zewnętrznych usług —
 
 ## Capabilities and Constraints
 
-**Zbudowane i zweryfikowane:** całe MVP (wszystkie „Must"), Faza 2 w 16 pozycjach, część Fazy 3 — heatmapa pokrycia (C4), operacje masowe (A10), kanały iCal (F4), powiadomienia in-app, scheduler przypomnień i retencji, ekran korekty wpisów przez lidera (A5), import .xlsx z konfigurowalnym mapowaniem kolumn (G5/D4), automatyczne rolowanie urlopu zaległego (B7), rejestr czynności przetwarzania, analityka adopcji, health/monitoring, backup, CI. Stan każdej historyjki odnotowuje kolumna „Stan wdrożenia" w pliku backlogu.
+**Zbudowane i zweryfikowane:** całe MVP (wszystkie „Must"), Faza 2 w 16 pozycjach, część Fazy 3 — heatmapa pokrycia (C4), operacje masowe (A10), kanały iCal (F4), powiadomienia in-app, scheduler przypomnień i retencji, ekran korekty wpisów przez lidera (A5), import .xlsx z konfigurowalnym mapowaniem kolumn (G5/D4), automatyczne rolowanie urlopu zaległego (B7), rejestr czynności przetwarzania, analityka adopcji, health/monitoring, backup, CI z bramkami jakości (lint dostępności, audyt zależności) i zautomatyzowanym testem odtworzenia backupu. Stan każdej historyjki odnotowuje kolumna „Stan wdrożenia" w pliku backlogu.
 
 **Reguły biznesowe, które muszą zostać zachowane:**
 
@@ -106,7 +106,8 @@ Do tego: wdrożenie **on-premise**, bez zależności od zewnętrznych usług —
 Materiały realne, do wykorzystania bez wymyślania:
 
 - `Wymagania funkcjonalne - aplikacja do monitorowania nieobecnosci.docx` — wersja 2.0 z 22.06.2026: FR-A…FR-J, NFR-1…9, decyzje D1–D7, macierz uprawnień, model danych, fazowanie MoSCoW.
-- `Backlog - aplikacja nieobecnosci.docx` / `.xlsx` — 11 epików, 67 historii.
+- `Backlog - aplikacja nieobecnosci.docx` / `.xlsx` — 11 epików, 74 historyjki (`.xlsx` jest wersją
+  śledzoną: ma kolumnę „Stan wdrożenia"; `.docx` to pierwotne wydanie bez tej kolumny).
 - `Aplikacja do rejestrowania nadgodzin.docx` — dokument biznesowy będący źródłem wymagań.
 - `Analiza dokumentów i ekranów/` — udokumentowany system projektowy z prototypu (tokeny, komponenty, wytyczne, odtworzone ekrany hi-fi, `readme.md`).
 - `Makiety - aplikacja nieobecnosci (Credit Agricole).html`, `Aplikacja Nieobecnosci (offline).html` — prototypy referencyjne.

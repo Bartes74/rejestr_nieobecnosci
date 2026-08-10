@@ -12,6 +12,11 @@ export class PoolsController {
 
   // `value` = wspólny fallback, `byType` = wartości ustawione wprost (null = „dziedziczy fallback").
   // Surowo, nie rozstrzygnięte: administrator ma widzieć, czy forma ma własną pulę, czy nie.
+  //
+  // Odczyt zawężony do ról, które faktycznie go używają (Raporty, Konfiguracja) — zgodnie
+  // z macierzą RBAC w README. Pracownik widzi własną pulę przez `/employees/:id/balance`,
+  // a nie przez ustawienia organizacji.
+  @Roles('LEADER', 'DIRECTOR', 'ADMIN', 'PMO')
   @Get('default')
   async getDefault() {
     const rows = await this.prisma.adminSetting.findMany({ where: { key: { startsWith: POOL_KEY_PREFIX } } });

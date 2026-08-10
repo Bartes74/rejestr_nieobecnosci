@@ -10,10 +10,10 @@ Wymagania, backlog i prototyp: dokumenty w katalogu głównym; design system w
 ## Struktura
 
 ```
-packages/core/   silnik wyliczeń (czyste funkcje, 27 testów) — okresy, dni robocze, balans, capacity, iCal
-apps/api/        NestJS + Prisma + PostgreSQL — ~50 endpointów, RBAC, ochrona L4, import/eksport .xlsx
+packages/core/   silnik wyliczeń (czyste funkcje, 83 testy) — okresy, dni robocze, balans, capacity, iCal
+apps/api/        NestJS + Prisma + PostgreSQL — ~53 endpointy, RBAC, ochrona L4, import/eksport .xlsx
 apps/web/        React + Vite — 12 ekranów na design systemie przeniesionym z prototypu
-prisma/          model danych (11 modeli)
+prisma/          model danych (13 modeli)
 scripts/         backup bazy + jednostki systemd
 docker-compose.yml       PostgreSQL (dev, port 5440)
 docker-compose.prod.yml  wdrożenie on-prem: api + web (Caddy/TLS) + postgres
@@ -139,14 +139,19 @@ włącza nocne przypomnienia o zaległym urlopie i retencję danych.
 ## Backup i odtwarzanie (NFR-4)
 
 ```bash
-scripts/backup.sh /var/backups/nieobecnosci      # dump + gzip + retencja 30 dni
-# odtworzenie:
+scripts/backup.sh /var/backups/nieobecnosci        # dump + gzip + retencja 30 dni
+scripts/restore-test.sh /var/backups/nieobecnosci  # odtworzenie najnowszego dumpu do bazy tymczasowej
+# odtworzenie właściwe:
 gunzip -c BACKUP.sql.gz | docker compose exec -T db psql -U nieobecnosci nieobecnosci
 ```
 
 Codzienny backup: cron albo `scripts/nieobecnosci-backup.{service,timer}` (systemd).
-**RPO** = odstęp backupów (~24 h), **RTO** = czas odtworzenia z dumpu; test odtworzenia rób okresowo
-na osobnej bazie.
+**RPO** = odstęp backupów (~24 h), **RTO** = czas odtworzenia z dumpu.
+
+`restore-test.sh` uruchamiaj **kwartalnie**: bierze najnowszy dump, odtwarza go do bazy tymczasowej
+obok produkcyjnej, liczy wiersze i sprząta po sobie. `pg_dump` kończy się sukcesem także wtedy, gdy
+plik da się później wczytać tylko częściowo — backup bez odtworzenia ma nieznaną wartość.
+Ostatni przebieg (10.08.2026, baza demo): `Employee=23, Absence=49`, wynik OK.
 
 ## Bezpieczeństwo (NFR-5)
 
@@ -208,6 +213,4 @@ Stan każdej historyjki z backlogu odnotowuje kolumna **„Stan wdrożenia"** w
   więc to uzgodniony zakres, nie dług.
 - **1.4.10 Reflow** — wyłączone z deklaracji WCAG tą samą decyzją. Pozostałe kryteria AA obowiązują.
 - Układ kolumn plików importu do ustalenia z zamawiającym (na razie mapowanie konfigurowalne).
-- Heatmapa pobiera capacity per squad×sprint (N×M zapytań) — przy większej skali dołożyć zbiorczy
-  endpoint `/capacity/matrix`.
 - Hasło startowe `admin/admin` — zmienić przy pierwszym wdrożeniu.

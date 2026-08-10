@@ -34,6 +34,14 @@ jobs:
       - run: pnpm exec prisma generate
       # build + typecheck + testy rdzenia (offline)
       - run: pnpm run verify:offline
+      # NFR-7 — jedyna automatyczna bramka dostępności w repo. Reguły jsx-a11y istniały wcześniej,
+      # ale nikt ich nie uruchamiał, więc nie chroniły niczego. Audyt axe zostaje ręczny
+      # (wymaga przeglądarki i zalogowanej sesji) — to łapie regresje widoczne statycznie.
+      - run: pnpm -F @nieobecnosci/web lint
+      # NFR-5 — próg „high" jest dziś przechodzony (podatności transitive domknięte przez
+      # pnpm.overrides). Blokujący celowo: bramka, która nigdy nie pada, nie jest bramką.
+      # Nowa podatność „high" ma zatrzymać merge, a nie czekać na czyjś ręczny przegląd.
+      - run: pnpm audit --prod --audit-level high
       # migracje, API w tle, suity integracyjne (czyszczą bazę i sprawdzają API end-to-end)
       - run: |
           pnpm exec prisma migrate deploy

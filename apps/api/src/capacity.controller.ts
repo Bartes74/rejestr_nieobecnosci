@@ -28,6 +28,10 @@ export class CapacityController {
    * i kompletem zapytań do bazy. Trafiało to w okno planowania sprintu, czyli w godzinę, w której
    * NFR-1 stawia najostrzejszy wymóg przy 300 równoczesnych użytkownikach.
    *
+   * Ten sam kształt obsługuje ekran „Capacity sprintu" (jeden sprint × wszystkie squady), dlatego
+   * komórka niesie też `keyRoleCollisions` — bez nich ekran musiałby dopytywać per squad i wracał
+   * do pętli, którą ten endpoint likwiduje (FR-D3). Na heatmapie pole jest zwykle pustą tablicą.
+   *
    * Kontrola zasięgu zostaje bez zmian — każda jednostka przechodzi przez `assertUnitInScope`,
    * tylko raz na jednostkę zamiast raz na parę. Pojedyncza para poza zasięgiem odrzuca całe
    * żądanie: cicha podmiana na wynik częściowy dałaby planiście niepełną siatkę wyglądającą
@@ -56,9 +60,9 @@ export class CapacityController {
         // odróżnia brak pomiaru od zera i ma czym tę różnicę pokazać.
         try {
           const c = await this.capacity.forSprint(sprintId, unitId);
-          return { sprintId, unitId, totalPersonDays: c.totalPersonDays, absentPersonDays: c.absentPersonDays, available: c.available, memberCount: c.memberCount };
+          return { sprintId, unitId, totalPersonDays: c.totalPersonDays, absentPersonDays: c.absentPersonDays, available: c.available, memberCount: c.memberCount, keyRoleCollisions: c.keyRoleCollisions };
         } catch {
-          return { sprintId, unitId, totalPersonDays: null, absentPersonDays: null, available: null, memberCount: null };
+          return { sprintId, unitId, totalPersonDays: null, absentPersonDays: null, available: null, memberCount: null, keyRoleCollisions: [] };
         }
       })),
     );

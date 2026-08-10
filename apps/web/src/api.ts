@@ -5,9 +5,6 @@ export function setToken(t: string | null) {
   token = t;
   if (t) localStorage.setItem('token', t);
   else localStorage.removeItem('token');
-  // Zmiana tokenu = zmiana zasięgu widoczności. Bez tego dane capacity poprzedniego
-  // użytkownika zostałyby pokazane następnemu zalogowanemu w tej samej karcie.
-  invalidateCapacity();
 }
 export function getToken() {
   return token;
@@ -89,20 +86,12 @@ export interface TeamPerson { id: string; name: string; initials: string; squad:
 export interface TeamGrid { people: TeamPerson[]; absences: { employeeId: string; dateFrom: string; dateTo: string; dayPart: string }[] }
 export interface Sprint { id: string; name: string; dateFrom: string; dateTo: string; squad?: { id: string; name: string } | null }
 export interface OrgUnit { id: string; name: string; type: string }
-export interface Capacity {
-  sprint: { id: string; name: string; dateFrom: string; dateTo: string };
-  unit: { id: string; name: string };
-  memberCount: number;
-  totalPersonDays: number;
-  absentPersonDays: number;
-  available: number;
-  keyRoleCollisions: { dateFrom: string; dateTo: string; employees: [string, string] }[];
-}
 /** Komórka siatki pokrycia. `null` oznacza brak pomiaru (nie ma sprintu albo jednostki), nie zero. */
 export interface CapacityCell {
   sprintId: string; unitId: string;
   totalPersonDays: number | null; absentPersonDays: number | null;
   available: number | null; memberCount: number | null;
+  keyRoleCollisions: { dateFrom: string; dateTo: string; employees: [string, string] }[];
 }
 export interface UsageRow { employeeId: string; name: string; employmentType: string; pool: number; carriedOver: number; used: number; remaining: number }
 export interface UsageReport { unitId: string; rows: UsageRow[]; totals: { pool: number; used: number; remaining: number } }
@@ -129,35 +118,6 @@ async function upload<T>(path: string, file: File, fields?: Record<string, strin
   return res.json() as Promise<T>;
 }
 
-/**
- * Capacity per squad × sprint jest jedynym miejscem, gdzie liczba żądań rośnie iloczynowo:
- * heatmapa pyta o każdą parę osobno (przy 5 squadach i 12 sprintach to 60 wywołań, każde
- * z weryfikacją tokenu, kontrolą zasięgu i zapytaniami do bazy). Dopóki nie ma zbiorczego
- * endpointu, trzymamy trzy tanie zabezpieczenia po stronie klienta:
- *
- *  1. deduplikacja w locie — dwa równoległe pytania o tę samą parę to jedno żądanie,
- *  2. pamięć wyników z terminem ważności — powrót na ekran i wspólne pary z ekranu
- *     „Capacity sprintu" są darmowe, ale nie w nieskończoność (patrz niżej),
- *  3. unieważnianie przy każdej zmianie nieobecności, bo to jedyne, co zmienia wynik.
- *
- * Punkt 3 obejmuje wyłącznie zmiany wprowadzone w TEJ karcie. Capacity zależy od wpisów całego
- * squadu, więc korekta zrobiona przez lidera obok nie ma jak unieważnić naszej pamięci — bez
- * terminu ważności planista widziałby liczby sprzed cudzej zmiany do końca sesji, a sesja
- * w oknie planowania sprintu trwa godzinami. Stąd TTL: krótki na tyle, żeby cudza zmiana
- * dotarła w rozsądnym czasie, długi na tyle, żeby przeklikiwanie się między heatmapą
- * a capacity nadal nie kosztowało ani jednego żądania.
- *
- * ponytail: sufit tego rozwiązania to pierwsze wejście — nadal N×M żądań. Zbiorczy
- *           `GET /capacity/matrix` zbija je do jednego; to zmiana po stronie API.
- */
-const CAPACITY_TTL_MS = 120_000;
-const capacityCache = new Map<string, { at: number; value: Capacity }>();
-const capacityInFlight = new Map<string, Promise<Capacity>>();
-export function invalidateCapacity() {
-  capacityCache.clear();
-  capacityInFlight.clear();
-}
-
 export const api = {
   login: async (login: string, password: string) => {
     const r = await req<{ token: string; user: unknown }>('/auth/login', { method: 'POST', body: JSON.stringify({ login, password }) });
@@ -178,32 +138,24 @@ export const api = {
     return req<Preview>(`/absences/preview?${q.toString()}`);
   },
   createAbsence: (body: { employeeId: string; typeId: string; dateFrom: string; dateTo: string; dayPart?: string; hourFrom?: string; hourTo?: string }) =>
-    req<Absence>('/absences', { method: 'POST', body: JSON.stringify(body) }).finally(invalidateCapacity),
+    req<Absence>('/absences', { method: 'POST', body: JSON.stringify(body) }),
   bulkCreateAbsences: (body: { employeeIds: string[]; typeId: string; dateFrom: string; dateTo: string; dayPart?: string }) =>
-    req<{ created: number; errors: { employeeId: string; message: string }[] }>('/absences/bulk', { method: 'POST', body: JSON.stringify(body) }).finally(invalidateCapacity),
+    req<{ created: number; errors: { employeeId: string; message: string }[] }>('/absences/bulk', { method: 'POST', body: JSON.stringify(body) }),
   updateAbsence: (id: string, body: { typeId?: string; dateFrom?: string; dateTo?: string; dayPart?: string }) =>
-    req<Absence>(`/absences/${id}`, { method: 'PATCH', body: JSON.stringify(body) }).finally(invalidateCapacity),
-  deleteAbsence: (id: string) => req<void>(`/absences/${id}`, { method: 'DELETE' }).finally(invalidateCapacity),
+    req<Absence>(`/absences/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  deleteAbsence: (id: string) => req<void>(`/absences/${id}`, { method: 'DELETE' }),
   calendar: (from: string, to: string) => req<CalEntry[]>(`/calendar?from=${from}&to=${to}`),
   /** Siatka zespołu: skład Tribe plus nieobecności w oknie — jedno żądanie na widok osi czasu. */
   calendarTeam: (from: string, to: string) => req<TeamGrid>(`/calendar/team?from=${from}&to=${to}`),
   feedToken: (regenerate = false) => req<{ token: string }>(`/me/feed-token${regenerate ? '?regenerate=true' : ''}`),
   sprints: () => req<Sprint[]>('/sprints'),
   orgUnits: () => req<OrgUnit[]>('/org/units'),
-  capacity: (sprintId: string, unitId: string): Promise<Capacity> => {
-    const key = `${sprintId}:${unitId}`;
-    const hit = capacityCache.get(key);
-    if (hit && Date.now() - hit.at < CAPACITY_TTL_MS) return Promise.resolve(hit.value);
-    if (hit) capacityCache.delete(key);
-    const pending = capacityInFlight.get(key);
-    if (pending) return pending;
-    const p = req<Capacity>(`/capacity?sprintId=${sprintId}&unitId=${unitId}`)
-      .then((r) => { capacityCache.set(key, { at: Date.now(), value: r }); return r; })
-      .finally(() => capacityInFlight.delete(key));
-    capacityInFlight.set(key, p);
-    return p;
-  },
-  /** Cała siatka pokrycia w jednym żądaniu — zastępuje N×M wywołań `capacity` na heatmapie. */
+  /**
+   * Cała siatka pokrycia w jednym żądaniu — używa jej heatmapa i ekran capacity sprintu.
+   * Wyniki nie są pamiętane po stronie klienta: capacity zależy od wpisów całego squadu, więc
+   * korekta zrobiona przez lidera obok i tak nie miałaby jak unieważnić naszej pamięci, a jedno
+   * żądanie na wejście na ekran mieści się w budżecie NFR-1 z zapasem dwóch rzędów wielkości.
+   */
   capacityMatrix: (sprintIds: string[], unitIds: string[]) =>
     req<{ cells: CapacityCell[] }>(`/capacity/matrix?sprintIds=${sprintIds.join(',')}&unitIds=${unitIds.join(',')}`),
   reportUsage: (unitId: string) => req<UsageReport>(`/reports/usage?unitId=${unitId}`),

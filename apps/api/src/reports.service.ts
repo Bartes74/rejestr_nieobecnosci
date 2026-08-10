@@ -158,6 +158,16 @@ export class ReportsService {
     for (const a of absences) (absByEmp.get(a.employeeId) ?? absByEmp.set(a.employeeId, []).get(a.employeeId)!).push(a);
 
     const seeL4 = canViewL4(user);
+    // Ten eksport jest drugą — obok `GET /absences` — drogą, którą znacznik kategorii szczególnej
+    // wychodzi z systemu. Deklaracja wobec zamawiającego brzmi „każdy uprawniony odczyt trafia do
+    // audytu", więc akcja musi być ta sama (`VIEW_TYPES`), inaczej istniejące filtry dziennika
+    // pokazywałyby tylko połowę odczytów.
+    if (seeL4) {
+      await this.prisma.auditLog.create({
+        data: { entity: 'Report', entityId: unitId, action: 'VIEW_TYPES', userId: user.sub,
+          description: 'Eksport płacowy z dniami kategorii szczególnej (L4) dla jednostki.' },
+      });
+    }
     const now = todayUtc();
     const records = employees.map((e) => {
       const period = resolveBillingPeriod(e.employmentType, now);

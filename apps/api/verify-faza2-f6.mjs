@@ -48,6 +48,13 @@ ok(rp.leaveDaysUsed === 5 && rp.specialCategoryDays === undefined, 'PMO: dni url
 // pracownik nie ma dostępu
 ok((await as(await login('f6anna', 'haslo123'))(`/reports/export/payroll?unitId=${squad.id}`)).status === 403, 'pracownik nie ma dostępu do eksportu płac → 403');
 
+// FR-J1 — eksport jest drugą drogą, którą znacznik kategorii szczególnej wychodzi z systemu.
+// Deklaracja „każdy uprawniony odczyt trafia do audytu" obejmuje więc i ten odczyt.
+const audit = await j(await aAdmin(`/audit?entity=Report&action=VIEW_TYPES&entityId=${squad.id}`));
+// Powyżej eksport pobrali admin (widzi L4) i PMO (nie widzi) — ślad ma zostać po jednym z nich.
+// Wpis po odczycie PMO byłby fałszywym tropem w dzienniku, brak wpisu po odczycie admina — luką.
+ok(audit.length === 1 && audit[0].userId, 'odczyt L4 w eksporcie płac zapisany w audycie (VIEW_TYPES), eksport bez uprawnienia — nie');
+
 await prisma.$disconnect();
 console.log(failures === 0 ? '\nFAZA 2 (eksport płac F6) OK ✅' : `\n${failures} ASERCJI NIE PRZESZŁO ❌`);
 process.exit(failures === 0 ? 0 : 1);
