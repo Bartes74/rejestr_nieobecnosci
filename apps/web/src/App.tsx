@@ -122,7 +122,9 @@ function Sidebar({ narrow }: { narrow: boolean }) {
   return (
     <aside style={narrow
       ? { flex: 'none', background: 'var(--surface)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px' }
-      : { width: 250, flex: 'none', background: 'var(--surface)', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', padding: '20px 14px', position: 'sticky', top: 0, height: '100vh' }}>
+      // `boxSizing` nie jest ozdobą: bez niego 100vh + 40px pionowego paddingu daje panel wyższy
+      // niż okno, więc stopka z wylogowaniem lądowała pod krawędzią ekranu (arkusz nie ma resetu).
+      : { width: 250, flex: 'none', boxSizing: 'border-box', background: 'var(--surface)', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', padding: '20px 14px', position: 'sticky', top: 0, height: '100vh' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: narrow ? 0 : '4px 8px 18px', flex: 'none' }}>
         <div style={{ width: 36, height: 36, borderRadius: 'var(--radius-md)', background: 'var(--brand)', color: 'var(--on-brand)', display: 'grid', placeItems: 'center' }}>
           <Calendar size={19} aria-hidden="true" />
@@ -267,7 +269,11 @@ export function App() {
   if (!current) return <Login />;
 
   return (
-    <div style={{ display: 'flex', flexDirection: narrow ? 'column' : 'row', minHeight: '100vh', background: 'var(--canvas)', color: 'var(--ink)', fontFamily: 'var(--font-sans)' }}>
+    // Powłoka jest „boxed": na szerokim monitorze menu i treść trzymają się środka, a nie lewej
+    // krawędzi. 1500 px = 250 menu + 60 marginesów wewnętrznych + 1190 na najszerszy ekran, więc
+    // box kończy się tam, gdzie i tak kończyła się treść. Pionowe krawędzie odcinają powłokę od
+    // tła (`body` ma to samo `--canvas`) — bez nich centrowanie czyta się jak przypadkowy margines.
+    <div style={{ maxWidth: 1500, margin: '0 auto', borderInline: narrow ? 'none' : '1px solid var(--border)', display: 'flex', flexDirection: narrow ? 'column' : 'row', minHeight: '100vh', background: 'var(--canvas)', color: 'var(--ink)', fontFamily: 'var(--font-sans)' }}>
       <a className="ds-skip" href="#tresc">Przejdź do treści</a>
       <Sidebar narrow={narrow} />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
