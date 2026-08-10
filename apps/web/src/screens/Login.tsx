@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Info, Lock, User } from 'lucide-react';
+import { Calendar, Eye, EyeOff, Info, Lock, User } from 'lucide-react';
 import { useAuth } from '../current-employee';
 import { panel } from '../design-system/surfaces';
 
@@ -22,6 +22,7 @@ export function Login() {
   const [l, setL] = useState('');
   const [p, setP] = useState('');
   const [err, setErr] = useState('');
+  const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const submit = async (e: FormEvent) => {
@@ -55,21 +56,14 @@ export function Login() {
         </div>
         <div style={{ position: 'relative', maxWidth: 460 }}>
           <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '.16em', textTransform: 'uppercase', opacity: 0.75, marginBottom: 18 }}>Jedno źródło prawdy</div>
-          <h1 style={{ fontFamily: 'var(--font-sans)', fontSize: 40, lineHeight: 1.12, fontWeight: 800, margin: '0 0 18px', letterSpacing: '-.02em' }}>Planowanie i monitorowanie nieobecności całego departamentu</h1>
-          <p style={{ fontFamily: 'var(--font-sans)', fontSize: 15.5, lineHeight: 1.6, opacity: 0.86, margin: 0 }}>Koniec z awaryjnymi plikami Excel i blokadami. Wielodostęp w czasie rzeczywistym, automatyczna agregacja w górę hierarchii i czytelny licznik wykorzystania urlopu.</p>
-        </div>
-        <div style={{ position: 'relative', display: 'flex', gap: 30, fontFamily: 'var(--font-sans)', fontSize: 13, opacity: 0.82 }}>
-          {[['~300', 'użytkowników'], ['6', 'zespołów'], ['0', 'blokad pliku']].map(([n, t]) => (
-            <div key={t}><div style={{ fontWeight: 700, fontSize: 21, fontFamily: 'var(--font-mono)' }}>{n}</div>{t}</div>
-          ))}
+          <h1 style={{ fontFamily: 'var(--font-sans)', fontSize: 40, lineHeight: 1.12, fontWeight: 800, margin: 0, letterSpacing: '-.02em' }}>Planowanie i monitorowanie nieobecności</h1>
         </div>
       </div>
 
       {/* FORMULARZ (prawa) */}
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 48 }}>
         <form onSubmit={submit} style={{ width: '100%', maxWidth: 380 }}>
-          <h2 style={{ fontFamily: 'var(--font-sans)', fontSize: 25, fontWeight: 700, margin: '0 0 6px', letterSpacing: '-.01em', color: 'var(--ink)' }}>Zaloguj się</h2>
-          <p style={{ fontFamily: 'var(--font-sans)', color: 'var(--muted)', fontSize: 14, margin: '0 0 30px' }}>Użyj konta służbowego, aby kontynuować.</p>
+          <h2 style={{ fontFamily: 'var(--font-sans)', fontSize: 25, fontWeight: 700, margin: '0 0 30px', letterSpacing: '-.01em', color: 'var(--ink)' }}>Zaloguj się</h2>
 
           <label htmlFor="login" style={labelEl}>Login</label>
           <div className="ds-field" style={inputWrap}>
@@ -81,8 +75,12 @@ export function Login() {
           <label htmlFor="haslo" style={labelEl}>Hasło</label>
           <div className="ds-field" style={{ ...inputWrap, marginBottom: 22 }}>
             <Lock size={17} color="var(--muted)" style={{ flex: 'none' }} aria-hidden="true" />
-            <input id="haslo" type="password" style={inputEl} value={p} onChange={(e) => setP(e.target.value)} autoComplete="current-password"
+            <input id="haslo" type={show ? 'text' : 'password'} style={inputEl} value={p} onChange={(e) => setP(e.target.value)} autoComplete="current-password"
               placeholder="••••••••" required aria-invalid={!!err || undefined} aria-describedby={err ? 'login-error' : undefined} />
+            <button type="button" onClick={() => setShow(!show)} aria-label={show ? 'Ukryj hasło' : 'Pokaż hasło'} aria-pressed={show}
+              style={{ flex: 'none', display: 'grid', placeItems: 'center', border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', color: 'var(--muted)' }}>
+              {show ? <EyeOff size={17} /> : <Eye size={17} />}
+            </button>
           </div>
 
           <div id="login-error" role="alert" aria-live="assertive">
@@ -93,10 +91,7 @@ export function Login() {
             {busy ? 'Logowanie…' : 'Zaloguj się'}
           </button>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '20px 0', color: 'var(--muted)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
-            <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />MVP<div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-          </div>
-          <div style={{ ...panel, display: 'flex', alignItems: 'flex-start', gap: 9, padding: '12px 13px', color: 'var(--ink-2)', fontFamily: 'var(--font-sans)', fontSize: 12.5, lineHeight: 1.5 }}>
+          <div style={{ ...panel, display: 'flex', alignItems: 'flex-start', gap: 9, marginTop: 22, padding: '12px 13px', color: 'var(--ink-2)', fontFamily: 'var(--font-sans)', fontSize: 12.5, lineHeight: 1.5 }}>
             <Info size={16} color="var(--brand)" style={{ flex: 'none', marginTop: 1 }} />
             <span>Logowanie kontem w aplikacji. Logowanie jednokrotne <b>SSO przez Active Directory</b> planowane w wersji docelowej.</span>
           </div>

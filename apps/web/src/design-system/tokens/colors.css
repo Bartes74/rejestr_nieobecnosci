@@ -21,6 +21,7 @@
 :root {
   /* --- Surfaces & neutrals --- */
   --canvas:   #EAEEEC;  /* app background behind cards   */
+  --page:     #D6DEDA;  /* poza powłoką (boxed) — ciemniejsze od --canvas */
   --surface:  #FFFFFF;  /* card / panel background       */
   --surface-2:#F5F8F6;  /* subtle inset panel            */
   --surface-3:#EEF3F0;  /* track / chip / hover fill     */
@@ -70,6 +71,7 @@
 
 [data-theme="dark"] {
   --canvas:   #0E1413;
+  --page:     #070A09;
   --surface:  #18211E;
   --surface-2:#1E2925;
   --surface-3:#243029;

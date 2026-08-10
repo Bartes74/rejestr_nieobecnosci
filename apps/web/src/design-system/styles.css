@@ -12,7 +12,9 @@ html, body, #root { height: 100%; }
    wskaźnik kalendarza był ciemną ikoną na ciemnym polu. */
 :root { color-scheme: light; }
 [data-theme="dark"] { color-scheme: dark; }
-body { margin: 0; font-family: var(--font-sans); color: var(--ink); background: var(--canvas); -webkit-font-smoothing: antialiased; }
+/* Tło strony jest ciemniejsze niż tło powłoki — to ono odcina wyśrodkowany box od reszty okna.
+   Sama powłoka i ekran logowania malują się własnym `--canvas`, więc nic tu nie prześwituje. */
+body { margin: 0; font-family: var(--font-sans); color: var(--ink); background: var(--page); -webkit-font-smoothing: antialiased; }
 @keyframes fu { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 /* WCAG 2.3.3 — kto wyłączył animacje w systemie, dostaje ten sam stan końcowy bez ruchu.
    Nie zerujemy czasu globalnie: przejścia stanów (hover, aktywna pozycja) niosą informację
@@ -76,3 +78,7 @@ body { margin: 0; font-family: var(--font-sans); color: var(--ink); background: 
 
 /* Wejście ekranu — jeden gest na całą aplikację, nakładany na wymienianą trasę. */
 .ds-screen { animation: fu .2s ease; }
+/* Każdy ekran ma własną szerokość maksymalną (1080–1200) i przy szerokim oknie lgnął do lewej
+   krawędzi. Centrujemy tutaj, a nie w jedenastu ekranach — element bez `max-width` i tak
+   wypełnia szerokość, więc `auto` jest dla niego bez skutku. */
+.ds-screen > * { margin-inline: auto; }
