@@ -63,7 +63,7 @@ export class EmployeesService {
     }
     const updated = await this.prisma.employee.update({ where: { id }, data: { employmentType }, omit: { passwordHash: true } });
     await this.prisma.auditLog.create({
-      data: { entity: 'Employee', entityId: id, action: 'EMPLOYMENT_TYPE_CHANGE', userId: user.sub,
+      data: { entity: 'Employee', entityId: id, subjectId: id, action: 'EMPLOYMENT_TYPE_CHANGE', userId: user.sub,
         description: `Zmiana formy zatrudnienia: ${emp.employmentType} → ${employmentType}.` },
     });
     return updated;
@@ -74,7 +74,7 @@ export class EmployeesService {
     const emp = await this.prisma.employee.findUnique({ where: { id } });
     if (!emp) throw new NotFoundException('Pracownik nie istnieje.');
     const updated = await this.prisma.employee.update({ where: { id }, data: { role }, omit: { passwordHash: true } });
-    await this.prisma.auditLog.create({ data: { entity: 'Employee', entityId: id, action: 'ROLE_CHANGE', userId: user.sub, description: `Zmiana roli: ${emp.role} → ${role}.` } });
+    await this.prisma.auditLog.create({ data: { entity: 'Employee', entityId: id, subjectId: id, action: 'ROLE_CHANGE', userId: user.sub, description: `Zmiana roli: ${emp.role} → ${role}.` } });
     return updated;
   }
 
@@ -89,13 +89,13 @@ export class EmployeesService {
       create: { employeeId: id, scope, grantedById: user.sub },
       update: { grantedById: user.sub, grantedAt: new Date() },
     });
-    await this.prisma.auditLog.create({ data: { entity: 'Permission', entityId: id, action: 'PERMISSION_GRANT', userId: user.sub, description: `Nadano uprawnienie ${scope}.` } });
+    await this.prisma.auditLog.create({ data: { entity: 'Permission', entityId: id, subjectId: id, action: 'PERMISSION_GRANT', userId: user.sub, description: `Nadano uprawnienie ${scope}.` } });
     return this.listPermissions(id);
   }
 
   async revokePermission(id: string, scope: PermissionScope, user: AuthUser) {
     await this.prisma.permission.deleteMany({ where: { employeeId: id, scope } });
-    await this.prisma.auditLog.create({ data: { entity: 'Permission', entityId: id, action: 'PERMISSION_REVOKE', userId: user.sub, description: `Odebrano uprawnienie ${scope}.` } });
+    await this.prisma.auditLog.create({ data: { entity: 'Permission', entityId: id, subjectId: id, action: 'PERMISSION_REVOKE', userId: user.sub, description: `Odebrano uprawnienie ${scope}.` } });
     return this.listPermissions(id);
   }
 
@@ -108,7 +108,7 @@ export class EmployeesService {
       where: { id },
       data: { firstName: 'Pracownik', lastName: 'zanonimizowany', email: `anon-${id}@example.invalid`, login: `anon-${id}`, passwordHash: null },
     });
-    await this.prisma.auditLog.create({ data: { entity: 'Employee', entityId: id, action: 'ANONYMIZE', userId: user.sub, description: 'Anonimizacja danych osobowych (RODO).' } });
+    await this.prisma.auditLog.create({ data: { entity: 'Employee', entityId: id, subjectId: id, action: 'ANONYMIZE', userId: user.sub, description: 'Anonimizacja danych osobowych (RODO).' } });
     return { anonymized: true };
   }
 

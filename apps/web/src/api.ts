@@ -96,7 +96,8 @@ export interface CapacityCell {
 export interface UsageRow { employeeId: string; name: string; employmentType: string; pool: number; carriedOver: number; used: number; remaining: number }
 export interface UsageReport { unitId: string; rows: UsageRow[]; totals: { pool: number; used: number; remaining: number } }
 export interface ReportTreeNode { id: string; name: string; type: string; headcount: number; used: number; children: ReportTreeNode[] }
-export interface AuditEntry { id: string; entity: string; action: string; userId: string | null; description: string | null; timestamp: string }
+/** `subjectId` — kogo zdarzenie dotyczy; `*Name` to identyfikatory rozwinięte przez API przy odczycie. */
+export interface AuditEntry { id: string; entity: string; entityId: string | null; action: string; userId: string | null; userName: string | null; subjectId: string | null; subjectName: string | null; description: string | null; timestamp: string }
 export interface Calendar { id: string; name: string; isDefault: boolean; _count?: { holidays: number } }
 export type EmploymentType = 'UOP' | 'B2B' | 'OUT';
 /** `value` = pula wspólna, `byType` = pula ustawiona wprost dla formy (null = dziedziczy wspólną). */

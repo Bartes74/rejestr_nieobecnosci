@@ -19,10 +19,12 @@ export class MailService {
   async send(to: string, subject: string, text: string, recipientId?: string): Promise<void> {
     try {
       await this.transport.sendMail({ from: this.from, to, subject, text });
-      await this.prisma.auditLog.create({ data: { entity: 'Email', action: 'EMAIL_SENT', userId: recipientId ?? null, description: `do=${to}; temat=${subject}` } });
+      // Adresat to nie sprawca: wysyłką steruje zadanie cykliczne, a nie osoba, która list dostała.
+      // Trzymany w `userId` wychodził w dzienniku jako ten, kto wysłał sobie powiadomienie.
+      await this.prisma.auditLog.create({ data: { entity: 'Email', action: 'EMAIL_SENT', subjectId: recipientId ?? null, description: `do=${to}; temat=${subject}` } });
     } catch (e) {
       this.log.warn(`E-mail do ${to} nieudany: ${(e as Error).message}`);
-      await this.prisma.auditLog.create({ data: { entity: 'Email', action: 'EMAIL_FAILED', userId: recipientId ?? null, description: `do=${to}; temat=${subject}` } }).catch(() => {});
+      await this.prisma.auditLog.create({ data: { entity: 'Email', action: 'EMAIL_FAILED', subjectId: recipientId ?? null, description: `do=${to}; temat=${subject}` } }).catch(() => {});
     }
   }
 }

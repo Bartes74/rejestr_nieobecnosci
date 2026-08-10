@@ -216,6 +216,10 @@ model AuditLog {
   entityId    String?
   action      String
   userId      String?
+  // Kogo zdarzenie dotyczy — osobno od `entityId`, bo ten wskazuje sam obiekt (np. nieobecność),
+  // a ten po usunięciu obiektu nie prowadzi już do nikogo. Identyfikator, nie nazwisko: dziennik
+  // ma odpowiadać „kogo dotyczy" i jednocześnie dać się wyczyścić anonimizacją (FR-J2).
+  subjectId   String?
   description String?
   timestamp   DateTime @default(now())
 

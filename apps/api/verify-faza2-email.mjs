@@ -36,7 +36,7 @@ const aUna = as(await login('f2euna', 'haslo123'));
 
 // --- FR-E1: B2B → powiadomienie lidera ---
 await j(await aBob('/absences', { method: 'POST', body: JSON.stringify({ employeeId: bob.id, typeId: urlop.id, dateFrom: '2026-06-08', dateTo: '2026-06-09' }) }));
-ok(!!(await prisma.auditLog.findFirst({ where: { entity: 'Email', action: 'EMAIL_SENT', userId: lider.id } })), 'lider powiadomiony o nieobecności B2B (FR-E1)');
+ok(!!(await prisma.auditLog.findFirst({ where: { entity: 'Email', action: 'EMAIL_SENT', subjectId: lider.id } })), 'lider powiadomiony o nieobecności B2B (FR-E1)');
 
 // --- negatywny: UoP nie generuje powiadomienia do lidera ---
 const before = await emailCount();
@@ -46,7 +46,7 @@ ok((await emailCount()) === before, 'UoP nie generuje powiadomienia (FR-E1 tylko
 // --- FR-E3: przypomnienia o zaległym urlopie ---
 const rem = await j(await aAdmin('/notifications/overdue-reminders', { method: 'POST' }));
 ok(rem.sent >= 1, `wysłano przypomnienia (${rem.sent})`);
-ok(!!(await prisma.auditLog.findFirst({ where: { entity: 'Email', action: 'EMAIL_SENT', userId: bob.id, description: { contains: 'Przypomnienie' } } })), 'Bob dostał przypomnienie o zaległym urlopie (FR-E3)');
+ok(!!(await prisma.auditLog.findFirst({ where: { entity: 'Email', action: 'EMAIL_SENT', subjectId: bob.id, description: { contains: 'Przypomnienie' } } })), 'Bob dostał przypomnienie o zaległym urlopie (FR-E3)');
 
 // --- RBAC: pracownik nie odpala przypomnień ---
 ok((await aBob('/notifications/overdue-reminders', { method: 'POST' })).status === 403, 'pracownik nie odpala przypomnień → 403');
