@@ -31,6 +31,15 @@ ok((await mkAbs(await login('hjbob', 'haslo123'), alice.id, '08')).ok, 'po nadan
 await j(await aAdmin(`/employees/${bob.id}/permissions/MODIFY_ABSENCE`, { method: 'DELETE' }));
 ok((await mkAbs(await login('hjbob', 'haslo123'), alice.id, '09')).status === 403, 'po odebraniu: bob znów nie wpisuje → 403');
 
+// Lista zakresów zawiera wyłącznie te, na których coś stoi. ADMIN i REPORTS dawały się nadać
+// i nie robiły nic (dostęp administratora i raportowy wynika z ROLI) — mylące przy nadawaniu,
+// a groźne, gdyby ktoś kiedyś oparł na takiej nazwie warunek. Odrzucenie na wejściu pilnuje,
+// żeby nie wróciły niepostrzeżenie.
+for (const martwy of ['ADMIN', 'REPORTS']) {
+  const odp = await aAdmin(`/employees/${bob.id}/permissions`, { method: 'POST', body: JSON.stringify({ scope: martwy }) });
+  ok(odp.status === 400, `martwy zakres ${martwy} odrzucony na wejściu → 400`);
+}
+
 // rola
 const r = await j(await aAdmin(`/employees/${bob.id}/role`, { method: 'PATCH', body: JSON.stringify({ role: 'LEADER' }) }));
 ok(r.role === 'LEADER', 'admin zmienił rolę bob → LEADER');

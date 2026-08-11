@@ -47,9 +47,16 @@ enum DayPart {
   HOURS
 }
 
+// Uprawnienia rozszerzone (FR-H4) — nadawane imiennie, ponad rolę.
+//
+// Wyłącznie te, które coś robią. Były tu jeszcze ADMIN i REPORTS, których nie czytało żadne
+// miejsce w kodzie: dostęp administratora i raportowy wynika z ROLI (@Roles, rbac.ts), nie
+// z uprawnienia. Nadanie ich nie dawało niczego — co samo w sobie jest bezpieczne, ale mylące
+// w najgorszym momencie: administrator widzi w API zakres „ADMIN", nadaje go w dobrej wierze
+// i sądzi, że komuś czegoś udzielił. Groźniejsze było to, co zostawiały na przyszłość — nazwa
+// sugerująca uprawnienie kusi, żeby kiedyś na niej oprzeć warunek, a wtedy martwa wartość
+// z dnia na dzień staje się drogą do podniesienia uprawnień.
 enum PermissionScope {
-  ADMIN
-  REPORTS
   MODIFY_ABSENCE
   VIEW_L4
 }
