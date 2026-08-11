@@ -39,4 +39,21 @@ describe('dayFraction — FR-A3', () => {
   it('HOURS bez godzin = 0', () => {
     expect(dayFraction('HOURS')).toBe(0);
   });
+
+  // Ułamek dnia trafia do sumowania w countOverlaidDays i stamtąd do salda urlopu.
+  // Wartość spoza 0–1 albo NaN psuje saldo całej osoby, więc granice pilnujemy tutaj.
+  it('zakres odwrócony = 0 (nie wartość ujemna)', () => {
+    expect(dayFraction('HOURS', '17:00', '09:00')).toBe(0);
+  });
+
+  it('godziny w złym formacie = 0, nigdy NaN', () => {
+    expect(dayFraction('HOURS', 'abc', 'def')).toBe(0);
+    expect(dayFraction('HOURS', '', '13:00')).toBe(0);
+    expect(dayFraction('HOURS', '09:00', 'xx:yy')).toBe(0);
+  });
+
+  it('zakres dłuższy niż dzień pracy zaciska się do 1', () => {
+    expect(dayFraction('HOURS', '00:00', '23:59')).toBe(1);
+    expect(dayFraction('HOURS', '06:00', '20:00')).toBe(1);
+  });
 });

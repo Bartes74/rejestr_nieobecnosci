@@ -155,8 +155,17 @@ export class AbsencesService {
     const to = dto.dateTo ? new Date(dto.dateTo) : existing.dateTo;
     const typeId = dto.typeId ?? existing.typeId;
     const dayPart = dto.dayPart ?? existing.dayPart;
-    await this.validate(existing.employeeId, typeId, from, to, dayPart, existing.hourFrom, existing.hourTo, id);
-    const updated = await this.prisma.absence.update({ where: { id }, data: { typeId, dateFrom: from, dateTo: to, dayPart } });
+    // Jedna reguła: godziny istnieją wyłącznie dla wpisu godzinowego. Wcześniej walidacja
+    // dostawała godziny z rekordu, a zapis nie brał ich w ogóle — więc przestawienie wpisu
+    // całodniowego na HOURS zostawiało godziny puste (wpis o zerowym koszcie puli), a poprawka
+    // samych godzin nie robiła nic i wracała jako sukces.
+    const hourFrom = dayPart === 'HOURS' ? (dto.hourFrom ?? existing.hourFrom) : null;
+    const hourTo = dayPart === 'HOURS' ? (dto.hourTo ?? existing.hourTo) : null;
+    await this.validate(existing.employeeId, typeId, from, to, dayPart, hourFrom, hourTo, id);
+    const updated = await this.prisma.absence.update({
+      where: { id },
+      data: { typeId, dateFrom: from, dateTo: to, dayPart, hourFrom, hourTo },
+    });
     await this.audit('ABSENCE_UPDATE', updated.id, existing.employeeId, user, `Zmieniono na ${isoDate(updated.dateFrom)}–${isoDate(updated.dateTo)}.`);
     return isoRange(updated);
   }
@@ -293,6 +302,13 @@ export class AbsencesService {
     if (to < from) throw new BadRequestException('Data „do" jest wcześniejsza niż „od".');
     if (dayPart !== 'FULL' && from.getTime() !== to.getTime()) {
       throw new BadRequestException('Niepełny dzień (AM/PM/godziny) dotyczy pojedynczej daty.');
+    }
+    // Wpis godzinowy bez sensownego zakresu godzin daje ułamek dnia równy zeru — czyli
+    // nieobecność widoczną w kalendarzu, która nie zabiera nic z puli. Formularz pilnował tego
+    // po swojej stronie (`badHours` w Wpis.tsx), ale walidacja klienta chroni tylko klienta.
+    // Warunek stoi tutaj, bo przez `validate` przechodzi i zapis, i edycja.
+    if (dayPart === 'HOURS' && !(hourFrom && hourTo && hourTo > hourFrom)) {
+      throw new BadRequestException('Wpis godzinowy wymaga zakresu godzin, w którym koniec jest późniejszy niż początek.');
     }
 
     const emp = await this.prisma.employee.findUnique({ where: { id: employeeId } });

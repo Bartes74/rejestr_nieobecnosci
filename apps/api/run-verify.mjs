@@ -14,6 +14,8 @@ const SUITES = [
   'verify-faza3-scheduler.mjs', 'verify-faza3-bulk.mjs', 'verify-faza3-ical.mjs', 'verify-faza3-feed.mjs', 'verify-dlug-konfiguracja.mjs', 'verify-zakres-jednostek.mjs',
   'verify-l4-nakladka.mjs', 'verify-l4-forma-zatrudnienia.mjs', 'verify-pula-formy-swieta.mjs', 'verify-format-dat.mjs',
   'verify-b7-rolowanie.mjs',
+  // Regresje po przeglądzie kodu — każda odtwarza konkretną lukę, nie funkcję.
+  'verify-godziny-walidacja.mjs',
 ];
 
 if (run('db-wipe.mjs') !== 0) { console.error('Czyszczenie bazy nie powiodło się.'); process.exit(1); }
