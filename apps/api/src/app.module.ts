@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { isLocalEnv } from './env';
 import { PrismaService } from './prisma.service';
 import { SchedulerService } from './scheduler.service';
 import { HealthController } from './health.controller';
@@ -45,8 +46,12 @@ import { AuthGuard } from './auth/auth.guard';
   imports: [
     ScheduleModule.forRoot(),
     // M1 — globalny limit 300/min/IP (ochrona DoS); na /auth/login surowszy 5/min (@Throttle).
-    // Aktywny tylko w produkcji, by dev/CI/suity i test obciążeniowy nie były ograniczane.
-    ThrottlerModule.forRoot({ throttlers: [{ ttl: 60_000, limit: 300 }], skipIf: () => process.env.NODE_ENV !== 'production' }),
+    // Limity są WYŁĄCZANE tylko na uruchomieniu jawnie lokalnym (dev/CI/suity i test obciążeniowy
+    // muszą móc strzelać bez ograniczeń — same suity logują się 79 razy przy limicie 5/min).
+    // Warunkiem było wcześniej „cokolwiek innego niż production", więc staging albo wdrożenie
+    // z nieustawionym NODE_ENV zostawało bez żadnej ochrony przed zgadywaniem haseł — a to
+    // dokładnie te środowiska, które bywają wystawione i trzymają prawdziwe dane.
+    ThrottlerModule.forRoot({ throttlers: [{ ttl: 60_000, limit: 300 }], skipIf: () => isLocalEnv() }),
   ],
   controllers: [
     HealthController,
