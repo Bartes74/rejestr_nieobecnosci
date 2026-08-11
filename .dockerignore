@@ -7,5 +7,32 @@ node_modules
 backups
 *.log
 .DS_Store
-Analiza dokumentów i ekranów
+
+# Dokumentacja wymagań i materiały projektowe. Kontekst budowania to katalog główny monorepo,
+# a `COPY . .` bierze wszystko — więc bez tego w obrazie produkcyjnym lądowało ~1,5 MB
+# dokumentów wewnętrznych, łącznie z wymaganiami funkcjonalnymi i makietami. Obraz trafia
+# tam, gdzie aplikacja; te pliki nie mają powodu z nią jechać.
+# Wzorzec bez polskich znaków celowo: macOS zapisuje nazwy plików w postaci rozłożonej (NFD,
+# „o" + akcent), więc wpis „Analiza dokumentów…" napisany normalnie (NFC) nie trafiał w nic
+# i katalog mimo wszystko lądował w obrazie.
+Analiza*
 *.zip
+*.docx
+*.xlsx
+*.pptx
+*.html
+!apps/web/index.html
+
+# Narzędzia deweloperskie: skrypt czyszczący bazę i suity integracyjne. W obrazie
+# produkcyjnym są bezużyteczne, a db-wipe.mjs jest wręcz niebezpieczny — kasuje wszystkie
+# tabele i wystarczy go uruchomić z poświadczeniami, które kontener ma w środowisku.
+apps/api/db-wipe.mjs
+apps/api/verify-*.mjs
+apps/api/run-verify.mjs
+apps/api/loadtest.mjs
+apps/api/demo-seed.mjs
+
+# Materiały robocze i plany, nieużywane przy budowaniu.
+.claude
+.impeccable
+NAPRAWY-PO-REVIEW.md

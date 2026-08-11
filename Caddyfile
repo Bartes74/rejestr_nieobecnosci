@@ -1,6 +1,25 @@
 # Caddy: terminuje TLS, serwuje SPA i proxuje /api do kontenera api (same-origin, więc web używa względnego BASE='/api').
 # SITE_ADDRESS: domena z automatycznym TLS (ACME), albo "localhost"/wewn. host (Caddy użyje certyfikatu internal).
 {$SITE_ADDRESS:localhost} {
+	# Nagłówki bezpieczeństwa dla SPA. `helmet()` w API obejmuje wyłącznie odpowiedzi API,
+	# a dokument HTML podaje Caddy — więc strona, w której siedzi token sesji, szła dotąd
+	# bez CSP i bez ochrony przed osadzeniem w ramce. Token leży w localStorage, więc jedyny
+	# skuteczny XSS oznacza przejęcie sesji; CSP jest tu drugą warstwą, nie ozdobą.
+	header {
+		# 'unsafe-inline' wyłącznie dla stylów: React ustawia wygląd atrybutem `style`,
+		# którego CSP nie odróżnia od arkusza wstawionego przez atakującego. Skrypty i tak
+		# schodzą osobnymi plikami z tego samego źródła, więc dla nich zostaje 'self'.
+		# Fonty są własne (apps/web/public/fonts), obrazy dopuszczają `data:` (ikony w SVG).
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+		X-Frame-Options DENY
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		# Aplikacja nie używa kamery, mikrofonu ani lokalizacji — nie ma powodu, by mogła.
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+		# Wersja serwera nikomu tu nie służy poza tym, kto szuka znanej podatności.
+		-Server
+	}
+
 	handle /api/* {
 		reverse_proxy api:3000
 	}
