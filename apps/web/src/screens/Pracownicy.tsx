@@ -64,11 +64,10 @@ export function Pracownicy() {
   const [tree, setTree] = useState<TreeNode[]>([]);
   const [query, setQuery] = useState('');
   const [form, setForm] = useState({ ...empty });
-  const { notice, ok, fail, clear } = useNotice();
+  const { notice, busy, run } = useNotice();
   const [showAdd, setShowAdd] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [colMap, setColMap] = useState<Record<string, string>>(empColDefaults);
-  const [busy, setBusy] = useState(false);
   // Operacje wymagające potwierdzenia trzymają wybraną osobę — dialog musi wiedzieć, kogo dotyczy.
   const [pwdFor, setPwdFor] = useState<Employee | null>(null);
   const [anonFor, setAnonFor] = useState<Employee | null>(null);
@@ -89,15 +88,6 @@ export function Pracownicy() {
   const set = (k: keyof typeof form) => (e: { target: { value: string } }) => setForm((f) => ({ ...f, [k]: e.target.value }));
   const nameOf = (e: Employee) => `${e.firstName} ${e.lastName}`.trim();
   const required = form.firstName.trim() && form.lastName.trim() && form.login.trim();
-
-  // Każda operacja zapisu blokuje przycisk na czas trwania — bez tego podwójne kliknięcie
-  // tworzy dwa wpisy albo dwa razy odpala import.
-  const run = async (fn: () => Promise<string>) => {
-    if (busy) return;
-    setBusy(true);
-    clear();
-    try { ok(await fn()); } catch (e) { fail(e); } finally { setBusy(false); }
-  };
 
   const add = () => run(async () => {
     await api.createEmployee(form);

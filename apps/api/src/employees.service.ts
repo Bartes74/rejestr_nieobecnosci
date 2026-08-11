@@ -1,7 +1,7 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { EmploymentType, PermissionScope, Role } from '@prisma/client';
-import ExcelJS from 'exceljs';
 import { PrismaService } from './prisma.service';
+import { readSheet } from './xlsx';
 import { CreateEmployeeDto } from './dto';
 import { hashPassword } from './auth/auth.service';
 import type { AuthUser } from './auth/current-user.decorator';
@@ -152,20 +152,7 @@ export class EmployeesService {
   // `mapping` nadpisuje nagłówki kolumn (gdy plik zamawiającego używa innych nazw).
   async importXlsx(buffer: Buffer, mapping?: EmployeeColMap): Promise<ImportResult> {
     const cols = { ...COLS, ...(mapping ?? {}) };
-    const wb = new ExcelJS.Workbook();
-    // ponytail: cast łata różnicę typów (Buffer generyczny w @types/node 22 vs typy exceljs); runtime OK.
-    await wb.xlsx.load(buffer as unknown as ArrayBuffer);
-    const ws = wb.worksheets[0];
-    if (!ws) throw new BadRequestException('Plik nie zawiera arkusza.');
-
-    const headerIndex: Record<string, number> = {};
-    ws.getRow(1).eachCell((cell, col) => {
-      headerIndex[String(cell.value ?? '').trim()] = col;
-    });
-    const cellOf = (row: ExcelJS.Row, header: string): string => {
-      const col = headerIndex[header];
-      return col ? String(row.getCell(col).value ?? '').trim() : '';
-    };
+    const { ws, cell: cellOf } = await readSheet(buffer);
 
     const result: ImportResult = { created: 0, updated: 0, errors: [] };
     for (let r = 2; r <= ws.rowCount; r++) {

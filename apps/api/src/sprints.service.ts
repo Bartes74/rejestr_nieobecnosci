@@ -1,6 +1,6 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
-import ExcelJS from 'exceljs';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from './prisma.service';
+import { readSheet } from './xlsx';
 import { CreateSprintDto } from './dto';
 import { isoRange } from './serialize';
 
@@ -33,17 +33,7 @@ export class SprintsService {
   // FR-D4 — import harmonogramu sprintów z .xlsx. `mapping` nadpisuje nagłówki kolumn.
   async importXlsx(buffer: Buffer, mapping?: SprintColMap): Promise<SprintImportResult> {
     const cols = { ...COLS, ...(mapping ?? {}) };
-    const wb = new ExcelJS.Workbook();
-    await wb.xlsx.load(buffer as unknown as ArrayBuffer); // ponytail: różnica typów Buffer (jak w employees)
-    const ws = wb.worksheets[0];
-    if (!ws) throw new BadRequestException('Plik nie zawiera arkusza.');
-
-    const header: Record<string, number> = {};
-    ws.getRow(1).eachCell((cell, col) => { header[String(cell.value ?? '').trim()] = col; });
-    const cell = (row: ExcelJS.Row, name: string): string => {
-      const c = header[name];
-      return c ? String(row.getCell(c).value ?? '').trim() : '';
-    };
+    const { ws, cell } = await readSheet(buffer);
 
     // squady po nazwie → id (do powiązania sprintu z jednostką)
     const squads = await this.prisma.orgUnit.findMany({ where: { type: 'SQUAD' } });

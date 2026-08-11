@@ -83,8 +83,9 @@ export function Notice({ text, tone = 'info' }: { text?: string; tone?: NoticeTo
 const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
 /**
- * Stan komunikatu operacji. Region live musi istnieć w DOM zanim pojawi się treść,
- * więc `Notice` renderuje pusty kontener zawsze — hook trzyma tylko treść i ton.
+ * Stan komunikatu operacji wraz z blokadą na czas jej trwania. Region live musi istnieć
+ * w DOM zanim pojawi się treść, więc `Notice` renderuje pusty kontener zawsze — hook trzyma
+ * treść, ton i to, czy coś właśnie leci.
  */
 export function useNotice(initial: NoticeState = { text: '', tone: 'info' }) {
   const [notice, setNotice] = useState<NoticeState>(initial);
@@ -92,7 +93,34 @@ export function useNotice(initial: NoticeState = { text: '', tone: 'info' }) {
   const info = useCallback((text: string) => setNotice({ text, tone: 'info' }), []);
   const fail = useCallback((e: unknown) => setNotice({ text: errorText(e), tone: 'error' }), []);
   const clear = useCallback(() => setNotice({ text: '', tone: 'info' }), []);
-  return { notice, ok, info, fail, clear };
+
+  const [busy, setBusy] = useState(false);
+  const running = useRef(false);
+  /**
+   * Jedna operacja naraz: kasuje poprzedni komunikat, blokuje przyciski na czas trwania,
+   * a wynik pokazuje jako potwierdzenie (gdy funkcja zwróci zdanie) albo jako błąd.
+   * Wcześniej każdy ekran miał własną kopię tej pętli — sześć razy to samo pięć linijek.
+   *
+   * Zamek stoi na `ref`, nie na `busy`: dwa kliknięcia w tym samym takcie renderu widzą
+   * jeszcze `false`, więc stan sam z siebie nie powstrzymałby drugiego zapisu.
+   */
+  const run = useCallback(async (fn: () => Promise<string | void>) => {
+    if (running.current) return;
+    running.current = true;
+    setBusy(true);
+    clear();
+    try {
+      const done = await fn();
+      if (done) ok(done);
+    } catch (e) {
+      fail(e);
+    } finally {
+      running.current = false;
+      setBusy(false);
+    }
+  }, [clear, ok, fail]);
+
+  return { notice, ok, info, fail, clear, busy, run };
 }
 
 export function AdminOnly({ ok, children }: { ok: boolean; children: ReactNode }) {

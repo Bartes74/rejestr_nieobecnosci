@@ -46,14 +46,17 @@ async function send(path: string, init: RequestInit): Promise<Response> {
   }
 }
 
-async function req<T>(path: string, opts?: RequestInit): Promise<T> {
-  const res = await send(path, {
-    headers: {
-      'content-type': 'application/json',
-      ...(token ? { authorization: `Bearer ${token}` } : {}),
-    },
-    ...opts,
-  });
+// Typ zwrotny wprost: bez niego wnioskowana unia („z tokenem" | „bez") nie jest zgodna
+// z `HeadersInit` i każde z trzech wywołań kończy się błędem kompilacji.
+const authHeader = (): Record<string, string> => (token ? { authorization: `Bearer ${token}` } : {});
+
+/**
+ * Wspólna reakcja na odpowiedź: wygasła sesja i błąd HTTP wyglądają tak samo bez względu na to,
+ * czy żądanie niosło JSON, plik do wgrania czy arkusz do pobrania. Wcześniej każda z tych trzech
+ * dróg miała własną kopię — a eksport .xlsx nie miał jej wcale, więc po wygaśnięciu sesji
+ * kończył się nagim „Eksport nieudany" i zostawiał aplikację na ekranie, z którego nic nie działa.
+ */
+async function assertOk(res: Response): Promise<void> {
   if (res.status === 401) {
     setToken(null);
     // Sam token nie wystarczy — bez tego sygnału aplikacja zostaje na ekranie z wygasłą sesją
@@ -64,6 +67,14 @@ async function req<T>(path: string, opts?: RequestInit): Promise<T> {
   if (!res.ok) {
     throw new Error(await errorMessage(res));
   }
+}
+
+async function req<T>(path: string, opts?: RequestInit): Promise<T> {
+  const res = await send(path, {
+    headers: { 'content-type': 'application/json', ...authHeader() },
+    ...opts,
+  });
+  await assertOk(res);
   return res.status === 204 ? (null as T) : ((await res.json()) as T);
 }
 
@@ -109,13 +120,8 @@ async function upload<T>(path: string, file: File, fields?: Record<string, strin
   const fd = new FormData();
   fd.append('file', file);
   for (const [k, v] of Object.entries(fields ?? {})) fd.append(k, v);
-  const res = await send(path, { method: 'POST', headers: token ? { authorization: `Bearer ${token}` } : {}, body: fd });
-  if (res.status === 401) {
-    setToken(null);
-    window.dispatchEvent(new Event(UNAUTHORIZED));
-    throw new Error('Sesja wygasła. Zaloguj się ponownie.');
-  }
-  if (!res.ok) throw new Error(await errorMessage(res));
+  const res = await send(path, { method: 'POST', headers: authHeader(), body: fd });
+  await assertOk(res);
   return res.json() as Promise<T>;
 }
 
@@ -164,10 +170,8 @@ export const api = {
   reportTree: (unitId: string) => req<ReportTreeNode>(`/reports/tree?unitId=${unitId}`),
   reportOverdue: (unitId: string) => req<{ unitId: string; threshold: number; rows: (UsageRow & { zalega: boolean })[] }>(`/reports/overdue?unitId=${unitId}`),
   exportUsage: async (unitId: string): Promise<Blob> => {
-    const res = await fetch(`${BASE}/reports/usage/export?unitId=${unitId}`, {
-      headers: token ? { authorization: `Bearer ${token}` } : {},
-    });
-    if (!res.ok) throw new Error('Eksport nieudany.');
+    const res = await send(`/reports/usage/export?unitId=${unitId}`, { headers: authHeader() });
+    await assertOk(res);
     return res.blob();
   },
 
