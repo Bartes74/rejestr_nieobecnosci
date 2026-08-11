@@ -19,24 +19,38 @@ export class EmployeesController {
     private readonly org: OrgService,
   ) {}
 
-  // M3 — pełny katalog (e-mail/login/rola/uprawnienia) tylko dla zarządzających; pozostali dostają
-  // minimalny zestaw (id+imię+nazwisko+forma), bez ujawniania kontaktów i kto ma jakie uprawnienia.
-  // Zawężenie dotyczy też WIERSZY: nieuprawnieni widzą wyłącznie swój Tribe (FR-H1), tak jak
-  // w kalendarzu i „moim zespole" — inaczej każdy zalogowany pobierał spis całej firmy.
+  // M3 — katalog odpowiada na DWA niezależne pytania, wcześniej zlane w jedną flagę `privileged`:
+  // które WIERSZE wolno zobaczyć i które POLA z wiersza. Zlanie ich znaczyło, że kto potrzebuje
+  // szerszej listy osób, dostaje przy okazji dane administracyjne całej firmy.
+  //
+  // Uderzało to w uprawnienia delegowane (FR-H4). MODIFY_ABSENCE i VIEW_L4 nadaje się imiennie,
+  // zwykle komuś z rolą EMPLOYEE — kadrom albo asystentce wpisującej nieobecności za innych.
+  // Taka osoba faktycznie potrzebuje WIERSZY spoza swojego Tribe (wpisuje w całej firmie), ale
+  // do wskazania człowieka wystarczy jej imię i nazwisko. Dostawała natomiast e-maile i loginy
+  // wszystkich oraz mapę „kto ma jakie uprawnienie" — czyli gotową listę celów: komu odebranie
+  // hasła daje wgląd w znacznik L4. Nadanie wąskiego uprawnienia otwierało widok administracyjny.
+  //
+  // Stąd podział: zasięg wierszy zostaje szeroki tam, gdzie wynika z zadania, a pola
+  // administracyjne schodzą do ról, których ekrany faktycznie ich używają. Mapa uprawnień idzie
+  // wyłącznie do administratora, bo tylko jego ekran (Pracownicy) nią zarządza; dyrektor i PMO
+  // zachowują katalog z kontaktami (Konfiguracja i raporty), ale bez mapy uprawnień.
   @Get()
   async list(@CurrentUser() user: AuthUser) {
-    const privileged = ['ADMIN', 'DIRECTOR', 'PMO'].includes(user.role)
-      || user.permissions.includes('MODIFY_ABSENCE') || user.permissions.includes('VIEW_L4');
-    if (privileged) {
+    const orgWide = ['ADMIN', 'DIRECTOR', 'PMO'].includes(user.role);
+    const delegat = user.permissions.includes('MODIFY_ABSENCE') || user.permissions.includes('VIEW_L4');
+    // Zasięg wierszy: całą firmę widzą role ogólnofirmowe i posiadacze uprawnień delegowanych
+    // (działają poza własnym Tribe). Reszta — własny Tribe (FR-H1), jak w kalendarzu.
+    const where = orgWide || delegat ? {} : { id: { in: await this.org.tribePeers(user.sub) } };
+    const orderBy = { lastName: 'asc' } as const;
+
+    if (user.role === 'ADMIN') {
       return this.prisma.employee.findMany({
-        orderBy: { lastName: 'asc' },
-        omit: HIDDEN_EMPLOYEE_FIELDS,
-        include: { permissions: { select: { scope: true } } },
+        where, orderBy, omit: HIDDEN_EMPLOYEE_FIELDS, include: { permissions: { select: { scope: true } } },
       });
     }
+    if (orgWide) return this.prisma.employee.findMany({ where, orderBy, omit: HIDDEN_EMPLOYEE_FIELDS });
     return this.prisma.employee.findMany({
-      where: { id: { in: await this.org.tribePeers(user.sub) } },
-      orderBy: { lastName: 'asc' },
+      where, orderBy,
       select: { id: true, firstName: true, lastName: true, employmentType: true },
     });
   }

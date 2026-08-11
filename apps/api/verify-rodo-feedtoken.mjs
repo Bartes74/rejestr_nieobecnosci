@@ -35,12 +35,35 @@ const l4 = await prisma.absenceType.create({ data: { name: 'L4 SEKRET FEEDTOKEN'
 await prisma.absence.create({ data: { employeeId: anna.id, typeId: l4.id, dateFrom: new Date('2026-06-08'), dateTo: new Date('2026-06-10') } });
 
 // --- KATALOG NIE ODDAJE POŚWIADCZEŃ --------------------------------------------------------
-// Wszystkie cztery role trafiają do gałęzi „privileged" w EmployeesController.list.
+// Wszystkie cztery role widzą katalog całej firmy (role ogólnofirmowe wprost, MODIFY_ABSENCE
+// jako uprawnienie delegowane działające poza własnym Tribe).
 for (const [nazwa, l] of [['administrator', 'ftadmin'], ['dyrektor', 'ftdyr'], ['PMO', 'ftpmo'], ['MODIFY_ABSENCE', 'ftmod']]) {
   const rows = await j(await as(await login(l, 'haslo123'))('/employees'));
   ok(rows.length > 0 && rows.every((e) => e.feedToken === undefined), `${nazwa}: katalog nie ujawnia feedToken`);
   ok(rows.every((e) => e.passwordHash === undefined), `${nazwa}: katalog nie ujawnia passwordHash`);
 }
+
+// --- M3: UPRAWNIENIE DELEGOWANE NIE OTWIERA WIDOKU ADMINISTRACYJNEGO ------------------------
+// Regresja minimalizacji danych. MODIFY_ABSENCE nadaje się imiennie osobie z rolą EMPLOYEE,
+// żeby wpisywała nieobecności za innych — potrzebuje więc listy osób z całej firmy, ale nie
+// ich kontaktów ani mapy „kto ma jakie uprawnienie" (ta ostatnia to gotowa lista celów:
+// komu warto przejąć konto, żeby zobaczyć znacznik L4).
+const wierszeMod = await j(await as(await login('ftmod', 'haslo123'))('/employees'));
+ok(wierszeMod.every((e) => e.email === undefined), 'MODIFY_ABSENCE: katalog nie ujawnia e-maili');
+ok(wierszeMod.every((e) => e.login === undefined), 'MODIFY_ABSENCE: katalog nie ujawnia loginów');
+ok(wierszeMod.every((e) => e.permissions === undefined), 'MODIFY_ABSENCE: katalog nie ujawnia mapy uprawnień');
+ok(wierszeMod.every((e) => e.role === undefined), 'MODIFY_ABSENCE: katalog nie ujawnia ról');
+// Zasięg zostaje szeroki — inaczej naprawa zabrałaby funkcję, dla której uprawnienie istnieje.
+ok(wierszeMod.some((e) => e.id === anna.id) && wierszeMod.length >= 5,
+  'MODIFY_ABSENCE: nadal widzi osoby z całej firmy (id + imię i nazwisko wystarczą do wskazania)');
+ok(wierszeMod.every((e) => e.firstName && e.lastName), 'MODIFY_ABSENCE: imię i nazwisko zostają — po nich wybiera się osobę');
+
+// Mapa uprawnień idzie wyłącznie do administratora; dyrektor katalog z kontaktami ma, mapy nie.
+const wierszeAdmin = await j(await as(await login('ftadmin', 'haslo123'))('/employees'));
+ok(wierszeAdmin.some((e) => Array.isArray(e.permissions)), 'administrator: mapa uprawnień nadal dostępna (ekran Pracownicy nią zarządza)');
+const wierszeDyr = await j(await as(await login('ftdyr', 'haslo123'))('/employees'));
+ok(wierszeDyr.every((e) => e.permissions === undefined), 'dyrektor: katalog bez mapy uprawnień');
+ok(wierszeDyr.some((e) => e.email !== undefined), 'dyrektor: kontakty zostają (katalog zarządczy)');
 
 // Ten sam warunek na surowej treści odpowiedzi — gdyby pole wróciło pod inną nazwą.
 await prisma.employee.update({ where: { id: anna.id }, data: { feedToken: 'ft-token-kontrolny' } });
