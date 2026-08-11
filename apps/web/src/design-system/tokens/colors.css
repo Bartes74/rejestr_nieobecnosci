@@ -67,6 +67,9 @@
   /* --- Elevation --- */
   --shadow-sm: 0 1px 2px rgba(16,40,32,.07);
   --shadow:    0 8px 28px rgba(16,40,32,.10);
+  /* Przyciemnienie pod oknem modalnym. Zieleń wpadająca w czerń, nie neutralna czerń —
+     tak samo jak cienie, które biorą odcień z --ink, a nie z zera. */
+  --scrim:     rgba(10,20,16,.45);
 }
 
 [data-theme="dark"] {
