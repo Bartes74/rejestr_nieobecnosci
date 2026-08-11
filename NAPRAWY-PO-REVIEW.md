@@ -84,7 +84,7 @@ Celem jest domknięcie wszystkich znalezisk bez naruszania tego, co w repozytori
 
 ## Część 3 — K2 + K3: `feedToken` i anonimizacja
 
-- [ ] **3.1 — jedno miejsce prawdy dla pól ukrywanych.** W [`apps/api/src/employees.service.ts`](apps/api/src/employees.service.ts) (albo osobny `employee-fields.ts`, jeśli czytelniej):
+- [x] **3.1 — jedno miejsce prawdy dla pól ukrywanych.** W [`apps/api/src/employees.service.ts`](apps/api/src/employees.service.ts) (albo osobny `employee-fields.ts`, jeśli czytelniej):
   ```ts
   /** Pola, które nigdy nie opuszczają API: hash hasła i token subskrypcji kanału iCal
    *  (ten drugi działa jak hasło — `/feed/me.ics?token=` jest trasą publiczną). */
@@ -93,9 +93,9 @@ Celem jest domknięcie wszystkich znalezisk bez naruszania tego, co w repozytori
   Podstaw we **wszystkich** `omit:` zwracających pracownika — [`employees.controller.ts:33`](apps/api/src/employees.controller.ts) (ścieżka wycieku), `employees.service.create`, `changeEmploymentType`, `changeRole`, oraz `setPassword`, które dziś nie ma `omit` w ogóle i zwraca `passwordHash` (kontroler go odrzuca, ale to przypadek, nie zabezpieczenie).
   Nie dotyczy [`calendar-feed.controller.ts:20`](apps/api/src/calendar-feed.controller.ts) `myToken` — tam oddanie **własnego** tokenu jest celem endpointu.
 
-- [ ] **3.2 — K3: `feedToken: null` w `anonymize()`.** [`employees.service.ts:107`](apps/api/src/employees.service.ts). Komentarz: token subskrypcji przeżywający anonimizację oddaje pełną historię przez trasę publiczną, więc żądanie usunięcia danych (FR-J2) go nie obejmowało. Automatycznie naprawia też retencję, która woła tę samą metodę.
+- [x] **3.2 — K3: `feedToken: null` w `anonymize()`.** [`employees.service.ts:107`](apps/api/src/employees.service.ts). Komentarz: token subskrypcji przeżywający anonimizację oddaje pełną historię przez trasę publiczną, więc żądanie usunięcia danych (FR-J2) go nie obejmowało. Automatycznie naprawia też retencję, która woła tę samą metodę.
 
-- [ ] **3.3 — suita regresji.** Nowy `apps/api/verify-rodo-feedtoken.mjs` (prefiks `ft`). Suita tworzy `ftadmin` (ADMIN), `ftdyr` (DIRECTOR), `ftpmo` (PMO), `ftmod` (EMPLOYEE + `Permission{MODIFY_ABSENCE}`) i `ftanna` (EMPLOYEE z wpisem L4). Asercje:
+- [x] **3.3 — suita regresji.** Nowy `apps/api/verify-rodo-feedtoken.mjs` (prefiks `ft`). Suita tworzy `ftadmin` (ADMIN), `ftdyr` (DIRECTOR), `ftpmo` (PMO), `ftmod` (EMPLOYEE + `Permission{MODIFY_ABSENCE}`) i `ftanna` (EMPLOYEE z wpisem L4). Asercje:
   - dla każdej z czterech uprzywilejowanych ról: `GET /employees` → `rows.every((e) => e.feedToken === undefined)` **oraz** `e.passwordHash === undefined`
   - `ftanna` pobiera swój token przez `/me/feed-token`, po czym `POST /employees/:id/anonymize` → ten sam `GET /feed/me.ics?token=` zwraca `404`
   - wzorzec asercji „pole nie wyciekło" jak w [`verify-faza3-feed.mjs:30`](apps/api/verify-faza3-feed.mjs) i [`verify-mvp-h4-j2.mjs:43`](apps/api/verify-mvp-h4-j2.mjs)
@@ -109,8 +109,8 @@ Celem jest domknięcie wszystkich znalezisk bez naruszania tego, co w repozytori
 
 **Podejście:** token nosi wyłącznie tożsamość (`sub`); rola, uprawnienia i status zatrudnienia pochodzą z bazy przy każdym żądaniu. `PrismaService` jest już wstrzyknięty w `AuthGuard`, więc nie dochodzi żadna zależność.
 
-- [ ] **4.1** [`auth.service.ts:36`](apps/api/src/auth/auth.service.ts) — payload tokenu ograniczony do `{ sub: emp.id }`; `verify()` zwraca `{ sub: string }` zamiast `AuthUser`. Komentarz: uprawnienia w tokenie to kopia, która nie da się unieważnić.
-- [ ] **4.2** [`auth.guard.ts:27`](apps/api/src/auth/auth.guard.ts) — po weryfikacji podpisu doczytaj pracownika i zbuduj `AuthUser`:
+- [x] **4.1** [`auth.service.ts:36`](apps/api/src/auth/auth.service.ts) — payload tokenu ograniczony do `{ sub: emp.id }`; `verify()` zwraca `{ sub: string }` zamiast `AuthUser`. Komentarz: uprawnienia w tokenie to kopia, która nie da się unieważnić.
+- [x] **4.2** [`auth.guard.ts:27`](apps/api/src/auth/auth.guard.ts) — po weryfikacji podpisu doczytaj pracownika i zbuduj `AuthUser`:
   ```ts
   const { sub } = this.auth.verify(token);
   const emp = await this.prisma.employee.findUnique({
@@ -123,9 +123,9 @@ Celem jest domknięcie wszystkich znalezisk bez naruszania tego, co w repozytori
   ```
   `todayUtc()` z `@nieobecnosci/core`, nie `new Date()` — z tego samego powodu co w [`balance.service.ts:120`](apps/api/src/balance.service.ts).
   Komentarz `ponytail:` — jedno zapytanie na żądanie; przy 300 użytkownikach z NFR-1 bez znaczenia, przy większej skali wchodzi cache z krótkim TTL unieważniany przy zmianie uprawnień.
-- [ ] **4.3** Ten sam warunek `endDate` w [`auth-provider.ts:17`](apps/api/src/auth/auth-provider.ts) — logowanie ma odmawiać od razu, a nie wydawać token bezużyteczny przy pierwszym żądaniu.
-- [ ] **4.4** Sprawdź, czy `AuthUser` nie jest nigdzie budowany z tokenu z pominięciem guarda. `SYSTEM` w [`scheduler.service.ts:10`](apps/api/src/scheduler.service.ts) to obiekt in-process — zostaje bez zmian.
-- [ ] **4.5** Nowa suita `apps/api/verify-sesja-uniewaznienie.mjs` (prefiks `su`): token wydany → admin odbiera `MODIFY_ABSENCE` → **to samo żądanie tym samym tokenem** → `403`; token wydany → `anonymize` → `401`; pracownik z `endDate` w przeszłości → logowanie `401`. Rejestracja w `SUITES`.
+- [x] **4.3** Ten sam warunek `endDate` w [`auth-provider.ts:17`](apps/api/src/auth/auth-provider.ts) — logowanie ma odmawiać od razu, a nie wydawać token bezużyteczny przy pierwszym żądaniu.
+- [x] **4.4** Sprawdź, czy `AuthUser` nie jest nigdzie budowany z tokenu z pominięciem guarda. `SYSTEM` w [`scheduler.service.ts:10`](apps/api/src/scheduler.service.ts) to obiekt in-process — zostaje bez zmian.
+- [x] **4.5** Nowa suita `apps/api/verify-sesja-uniewaznienie.mjs` (prefiks `su`): token wydany → admin odbiera `MODIFY_ABSENCE` → **to samo żądanie tym samym tokenem** → `403`; token wydany → `anonymize` → `401`; pracownik z `endDate` w przeszłości → logowanie `401`. Rejestracja w `SUITES`.
 
 ---
 
@@ -256,6 +256,29 @@ Po każdej części: `pnpm run verify:offline` + odpowiednia suita. Pełny przeb
 
 ---
 
+## Do decyzji (wyszło w trakcie prac)
+
+### Anonimizacja nie zamyka trwającej sesji
+
+Odkryte przy Części 4. `anonymize()` zeruje hasło i dane osobowe, ale **nie usuwa wiersza
+pracownika** — i słusznie, bo trzyma integralność wpisów nieobecności. Strażnik znajduje więc
+takie konto i wpuszcza je dalej: zalogować się ponownie nie da (brak hasła), ale token wydany
+przed anonimizacją działa jeszcze do 12 godzin.
+
+Nie naprawiłem tego samodzielnie, bo każde wyjście łamie jedno z wcześniejszych ustaleń:
+
+| Wariant | Koszt |
+|---|---|
+| Kolumna `tokenVersion` albo `active` na `Employee` | Migracja schematu — odrzucona wprost przy wyborze podejścia do Części 4 |
+| Strażnik odrzuca konta z `passwordHash = null` | Wiąże autoryzację z lokalnym providerem haseł i zabiłby przyszłe SSO/OIDC, pod które [`auth-provider.ts`](apps/api/src/auth/auth-provider.ts) zostawia szew (FR-H5) |
+| `anonymize()` ustawia `endDate` na dziś | Bez migracji i działa od ręki, ale `endDate` wchodzi do proraty puli ([`proratePool`](packages/core/src/balance.ts)), więc zmieniałby historyczne saldo tej osoby — anonimizacja przestałaby być operacją wyłącznie na danych osobowych |
+
+Praktyczna skala ryzyka jest niewielka (okno ≤12 h, wymaga aktywnej sesji w momencie
+anonimizacji), ale to ścieżka RODO, więc decyzja należy do właściciela produktu, nie do
+implementacji. Domyślnie zostaje jak jest.
+
+---
+
 ## Dziennik postępu
 
 > Po ukończeniu części dopisz wiersz: data, numer części, co faktycznie weszło, czy suity przeszły, co zostało odłożone.
@@ -263,4 +286,6 @@ Po każdej części: `pnpm run verify:offline` + odpowiednia suita. Pełny przeb
 | Data | Część | Status | Notatki |
 |---|---|---|---|
 | 2026-08-11 | — | — | plan utworzony, gałąź `naprawy-po-review`, kopia planu w repo jako `NAPRAWY-PO-REVIEW.md` |
+| 2026-08-11 | 4 | ✅ ukończone | Token niesie tylko `sub`; strażnik czyta rolę, uprawnienia i `endDate` z bazy przy każdym żądaniu; `endDate` blokuje też logowanie. Nowa suita `verify-sesja-uniewaznienie.mjs` (11 asercji, w tym kontrola pozytywna „niezwiązana zmiana nie wylogowuje"). **Kontrola odwrotna:** 5 asercji pada na starym kodzie — w tym usunięte konto, którego token dalej działał. **Kolizja z istniejącą suitą:** `verify-faza2-proration.mjs` logował się jako osoba po `endDate`, czyli polegał na naprawianym defekcie; wpisy przeniesione na administratora (badana reguła FR-B9 dotyczy osoby, której wpis dotyczy), a nieudane logowanie dopisane tam jako asercja. Przebieg: `✅ Wszystkie 33 suit OK` + `verify:offline` OK. **Luka pozostała, wymaga decyzji:** anonimizacja nie zamyka trwającej sesji — patrz sekcja „Do decyzji". |
+| 2026-08-11 | 3 | ✅ ukończone | `HIDDEN_EMPLOYEE_FIELDS` (hash hasła + `feedToken`) podstawione w 6 miejscach zwracających pracownika, w tym `setPassword`, które wcześniej nie miało `omit` w ogóle. `anonymize()` czyści `feedToken`. Nowa suita `verify-rodo-feedtoken.mjs` (15 asercji). **Kontrola odwrotna:** 7 asercji pada na starym kodzie — token wyciekał do wszystkich czterech uprzywilejowanych ról, a kanał przeżywał anonimizację. Przebieg: `✅ Wszystkie 32 suit OK`. |
 | 2026-08-11 | 1 + 2 | ✅ ukończone | Zacisk `0..1` w `dayFraction` (`NaN` → `0`), `@Matches(HH:MM)` na godzinach we wszystkich trzech DTO, strażnik `HOURS` w `validate()`, godziny zapisywane i walidowane w `update()` z regułą „godziny wyłącznie dla `HOURS`". Testy: +4 przypadki vitest (86 → 90), nowa suita `verify-godziny-walidacja.mjs` (17 asercji). **Kontrola odwrotna wykonana:** na kodzie sprzed poprawki suita pada na wszystkich 7 asercjach odrzucenia i wywraca się na kolizji 409 — czyli śmieciowe wpisy faktycznie się zapisywały. Pełny przebieg: `✅ Wszystkie 31 suit OK`, brak regresji. Części 1 i 2 połączone w jeden przebieg, bo dotykają tej samej funkcji `validate()`. |
