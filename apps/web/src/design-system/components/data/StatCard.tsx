@@ -1,6 +1,19 @@
-import React from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 
-export function StatCard({ label, value, unit, sub, accent, style }) {
+export interface StatCardProps {
+  label: ReactNode;
+  value: ReactNode;
+  unit?: ReactNode;
+  sub?: ReactNode;
+  /** Kolor akcentu dla liczby (np. var(--amber) przy zagrożeniu). */
+  accent?: string;
+  style?: CSSProperties;
+}
+
+/**
+ * @startingPoint section="Data" subtitle="Big-figure metric card" viewport="380x150"
+ */
+export function StatCard({ label, value, unit, sub, accent, style }: StatCardProps) {
   return (
     <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-xl)',
       boxShadow: 'var(--shadow-sm)', padding: 20, ...style }}>

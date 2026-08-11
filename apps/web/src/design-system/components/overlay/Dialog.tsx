@@ -1,4 +1,16 @@
-import React from 'react';
+import { useEffect, useMemo, useRef, type ReactNode, type RefObject } from 'react';
+
+export interface DialogProps {
+  open: boolean;
+  onClose?: () => void;
+  title?: ReactNode;
+  children?: ReactNode;
+  /** Stopka — zwykle przyciski. */
+  footer?: ReactNode;
+  width?: number;
+  /** Element do sfokusowania po otwarciu; domyślnie pierwszy element interaktywny. */
+  initialFocusRef?: RefObject<HTMLElement | null>;
+}
 
 const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
 let seq = 0;
@@ -8,27 +20,29 @@ let seq = 0;
  * Esc zamyka, Tab krąży wewnątrz okna, a po zamknięciu fokus wraca tam, skąd przyszedł —
  * bez tego użytkownik klawiatury po zamknięciu okna ląduje na początku dokumentu.
  */
-export function Dialog({ open, onClose, title, children, footer, width = 460, initialFocusRef }) {
-  const panelRef = React.useRef(null);
-  const restoreRef = React.useRef(null);
-  const titleId = React.useMemo(() => `ds-dialog-title-${++seq}`, []);
+export function Dialog({ open, onClose, title, children, footer, width = 460, initialFocusRef }: DialogProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const restoreRef = useRef<HTMLElement | null>(null);
+  const titleId = useMemo(() => `ds-dialog-title-${++seq}`, []);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!open) return undefined;
-    restoreRef.current = document.activeElement;
+    restoreRef.current = document.activeElement as HTMLElement | null;
     const panel = panelRef.current;
-    const first = initialFocusRef?.current ?? panel?.querySelector(FOCUSABLE) ?? panel;
-    first?.focus?.();
+    const first = initialFocusRef?.current ?? panel?.querySelector<HTMLElement>(FOCUSABLE) ?? panel;
+    first?.focus();
 
-    const onKeyDown = (e) => {
+    const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') { e.stopPropagation(); onClose && onClose(); return; }
       if (e.key !== 'Tab' || !panel) return;
-      const items = [...panel.querySelectorAll(FOCUSABLE)].filter((el) => el.offsetParent !== null);
+      // `Array.from`, nie rozkładanie: projekt nie włącza `lib: DOM.Iterable`, a NodeList bez niej
+      // nie jest dla kompilatora iterowalna. W przeglądarce jedno i drugie działa tak samo.
+      const items = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => el.offsetParent !== null);
       if (items.length === 0) return;
       const edge = e.shiftKey ? items[0] : items[items.length - 1];
       if (document.activeElement === edge || !panel.contains(document.activeElement)) {
         e.preventDefault();
-        (e.shiftKey ? items[items.length - 1] : items[0]).focus();
+        (e.shiftKey ? items[items.length - 1] : items[0])?.focus();
       }
     };
     document.addEventListener('keydown', onKeyDown, true);
@@ -37,7 +51,7 @@ export function Dialog({ open, onClose, title, children, footer, width = 460, in
     return () => {
       document.removeEventListener('keydown', onKeyDown, true);
       document.body.style.overflow = overflow;
-      restoreRef.current?.focus?.();
+      restoreRef.current?.focus();
     };
   }, [open, onClose, initialFocusRef]);
 
