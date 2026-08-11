@@ -68,6 +68,12 @@ model Employee {
   isKeyRole      Boolean        @default(false) // FR-D3 — rolę kluczową oznacza administrator
   minimumToLeave Float          @default(0)     // FR-B4 — minimum urlopu do pozostawienia (UoP)
   feedToken      String?        @unique         // FR-F4 — token subskrypcji kanału iCal (webcal nie wysyła Bearer)
+  // FR-J2 — tokeny wydane PRZED tą chwilą są nieważne. `null` = nigdy nie unieważniano.
+  // Anonimizacja i reset hasła zerują wiersz z danych, ale wiersz pracownika zostaje
+  // (integralność wpisów nieobecności), więc strażnik nie miał po czym poznać, że sesja
+  // sprzed tej operacji nie powinna już działać. Data, nie licznik: mówi wprost, od kiedy,
+  // i porównuje się z `iat`, które JWT niesie sam z siebie.
+  sessionsValidFrom DateTime?
 
   holidayCalendarId String?
   holidayCalendar   HolidayCalendar? @relation(fields: [holidayCalendarId], references: [id])

@@ -67,7 +67,16 @@ export class EmployeesService {
   setPassword(id: string, password: string) {
     // Kontroler i tak odrzuca wynik, ale metoda oddawała świeżo policzony hash hasła — to, że
     // nikt go dziś nie przepuszcza dalej, jest przypadkiem, nie zabezpieczeniem.
-    return this.prisma.employee.update({ where: { id }, data: { passwordHash: hashPassword(password) }, omit: HIDDEN_EMPLOYEE_FIELDS });
+    //
+    // `sessionsValidFrom` kończy sesje już trwające. Administrator resetuje cudze hasło przede
+    // wszystkim wtedy, gdy podejrzewa przejęcie konta — zostawienie działających sesji mijałoby
+    // się wtedy z celem resetu. Przy zwykłym „zapomniałem hasła" cena to wylogowanie
+    // z pozostałych kart, czyli zachowanie i tak spotykane w większości systemów.
+    return this.prisma.employee.update({
+      where: { id },
+      data: { passwordHash: hashPassword(password), sessionsValidFrom: new Date() },
+      omit: HIDDEN_EMPLOYEE_FIELDS,
+    });
   }
 
   // FR-B8 — zmiana formy zatrudnienia w trakcie roku. Od zmiany obowiązują reguły nowej formy
@@ -127,7 +136,13 @@ export class EmployeesService {
       // samym tokenem w adresie, więc token, który przeżywał anonimizację, dalej oddawał pełną
       // historię nieobecności wraz z typami. Prawo do bycia zapomnianym nie obejmowało wtedy
       // jedynej drogi, którą te dane wychodziły bez logowania.
-      data: { firstName: 'Pracownik', lastName: 'zanonimizowany', email: `anon-${id}@example.invalid`, login: `anon-${id}`, passwordHash: null, feedToken: null },
+      //
+      // `sessionsValidFrom` kończy sesje trwające w chwili anonimizacji. Wiersz pracownika
+      // zostaje, bo wiszą na nim wpisy nieobecności — a skoro zostaje, to strażnik go znajduje
+      // i bez tego znacznika wpuszczałby dalej. Zalogować się ponownie i tak nie sposób (brak
+      // hasła), ale token wydany wcześniej działał do wygaśnięcia, czyli nawet pół doby po
+      // realizacji prawa do bycia zapomnianym.
+      data: { firstName: 'Pracownik', lastName: 'zanonimizowany', email: `anon-${id}@example.invalid`, login: `anon-${id}`, passwordHash: null, feedToken: null, sessionsValidFrom: new Date() },
     });
     await this.prisma.auditLog.create({ data: { entity: 'Employee', entityId: id, subjectId: id, action: 'ANONYMIZE', userId: user.sub, description: 'Anonimizacja danych osobowych (RODO).' } });
     return { anonymized: true };

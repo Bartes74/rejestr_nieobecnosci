@@ -23,6 +23,10 @@ Celem jest domknięcie wszystkich znalezisk bez naruszania tego, co w repozytori
 
 **Żadna zmiana nie wymaga migracji schematu Prismy.** Jedyny SQL to jednorazowy skrypt roli bazodanowej (Część 8).
 
+> **Dopisek z 11.08.2026, po zamknięciu Części 1–9.** Powyższe dotyczy Części 1–9. Doszła
+> **Część 10** — zamknięcie sesji przy anonimizacji i resecie hasła — i ona migracji wymaga:
+> to jedyna luka, której nie da się domknąć bez trwałego znacznika w bazie. Plan niżej.
+
 ### Konwencje repozytorium, których trzymamy się bez wyjątku
 
 - **Testy integracyjne**: `apps/api/verify-*.mjs`, każdy samowystarczalny, z lokalną kopią helperów `ok/j/login/as`, własnym prefiksem loginów, hasłem `haslo123`, health-waitem na starcie i stopką `process.exit(failures === 0 ? 0 : 1)`. Nową suitę **trzeba ręcznie dopisać** do `SUITES` w [`apps/api/run-verify.mjs:9`](apps/api/run-verify.mjs).
@@ -256,26 +260,140 @@ Po każdej części: `pnpm run verify:offline` + odpowiednia suita. Pełny przeb
 
 ---
 
-## Do decyzji (wyszło w trakcie prac)
+## Część 10 — zamknięcie sesji przy anonimizacji i resecie hasła
 
-### Anonimizacja nie zamyka trwającej sesji
+> Osobny plan, dopisany po zamknięciu Części 1–9. Zamyka jedyną lukę, którą tamten przebieg
+> zostawił świadomie otwartą (patrz „Do decyzji" niżej — sekcja rozstrzygnięta).
 
-Odkryte przy Części 4. `anonymize()` zeruje hasło i dane osobowe, ale **nie usuwa wiersza
-pracownika** — i słusznie, bo trzyma integralność wpisów nieobecności. Strażnik znajduje więc
-takie konto i wpuszcza je dalej: zalogować się ponownie nie da (brak hasła), ale token wydany
-przed anonimizacją działa jeszcze do 12 godzin.
+### Kontekst
 
-Nie naprawiłem tego samodzielnie, bo każde wyjście łamie jedno z wcześniejszych ustaleń:
+Po Części 4 token niesie wyłącznie tożsamość, a rolę, uprawnienia i `endDate` strażnik czyta
+z bazy przy każdym żądaniu — odebranie uprawnienia, degradacja roli, zakończenie współpracy
+i usunięcie konta działają natychmiast. Jedno zdarzenie przez tę siatkę przechodzi:
 
-| Wariant | Koszt |
+**anonimizacja (FR-J2) nie zamyka trwającej sesji.** [`anonymize()`](apps/api/src/employees.service.ts)
+zeruje dane osobowe, hasło i `feedToken`, ale **nie usuwa wiersza pracownika** — i słusznie, bo
+trzyma integralność wpisów nieobecności. Strażnik taki wiersz znajduje i wpuszcza dalej. Ponowne
+zalogowanie jest niemożliwe (brak hasła), ale token wydany **przed** anonimizacją działa do
+wygaśnięcia, czyli do 12 godzin. Na ścieżce RODO to znaczy, że przez pół doby po realizacji
+prawa do bycia zapomnianym ktoś może nadal czytać dane w aplikacji.
+
+Ta sama luka dotyczy resetu hasła przez administratora: `PUT /employees/:id/password` odbiera
+możliwość zalogowania, ale nie kończy sesji już trwających — czyli mija się z celem, gdy powodem
+resetu jest podejrzenie przejęcia konta.
+
+**Rozstrzygnięcie:** dedykowana kolumna znacznika sesji (migracja schematu, świadomie
+dopuszczona teraz), obejmująca oba zdarzenia. Odrzucone warianty i ich koszty — w sekcji
+„Do decyzji" niżej, zostawionej jako zapis rozumowania.
+
+### Projekt
+
+Kolumna `sessionsValidFrom DateTime?` na `Employee`. Znaczenie dosłowne: **tokeny wydane przed
+tą chwilą są nieważne**. `null` (domyślnie) = nigdy nie unieważniano, czyli zachowanie dzisiejsze.
+
+Porównanie idzie po `iat`, które JWT już niesie (sprawdzone: payload realnego tokenu to
+`{"sub":…,"iat":…,"exp":…}`) — nie trzeba więc niczego dokładać do tokenu ani zmieniać jego formatu.
+
+- [x] **10.1 — migracja.** `prisma/migrations/20260811120000_sessions_valid_from/migration.sql`,
+  pisana ręcznie, z komentarzem prozą wyjaśniającym decyzję — jak
+  [`20260811000000_audit_subject`](prisma/migrations/20260811000000_audit_subject/migration.sql).
+  ```sql
+  ALTER TABLE "Employee" ADD COLUMN "sessionsValidFrom" TIMESTAMP(3);
+  -- Konta zanonimizowane wcześniej dostają znacznik z chwili anonimizacji — dziennik audytu
+  -- ją zna, więc nie ma powodu zostawiać ich z sesjami ważnymi „od zawsze".
+  UPDATE "Employee" e SET "sessionsValidFrom" = a.ts
+  FROM (SELECT "subjectId", max("timestamp") AS ts FROM "AuditLog"
+        WHERE action = 'ANONYMIZE' AND "subjectId" IS NOT NULL GROUP BY "subjectId") a
+  WHERE e.id = a."subjectId";
+  ```
+  Kolumna, nie tabela — **`scripts/db-appuser.sql` nie wymaga ponownego uruchomienia** (uprawnienia
+  nadawane są na tabele, nie na kolumny).
+
+- [x] **10.2 — schemat.** Pole w [`prisma/schema.prisma`](prisma/schema.prisma), model `Employee`,
+  z jednozdaniowym komentarzem po polsku w konwencji pozostałych pól (`feedToken`, `isKeyRole`).
+
+- [x] **10.3 — `verify()` oddaje moment wydania.** [`auth.service.ts:47`](apps/api/src/auth/auth.service.ts)
+  — typ zwracany `{ sub: string; iat: number }`. Przy okazji: linia 5 importuje `AuthUser`, którego
+  ten plik już nie używa (pozostałość po Części 4) — do usunięcia.
+
+- [x] **10.4 — strażnik.** [`auth.guard.ts:35`](apps/api/src/auth/auth.guard.ts) — dołóż
+  `sessionsValidFrom` do `select` i warunek tuż za sprawdzeniem `endDate`:
+  ```ts
+  // `iat` jest w pełnych sekundach, więc token wydany w tej samej sekundzie, w której
+  // unieważniono sesje, wypadałby po jednej albo drugiej stronie granicy zależnie od
+  // milisekund. Granicę zaokrąglamy w górę: sesja z tej samej sekundy zawsze przepada.
+  if (emp.sessionsValidFrom && iat < Math.ceil(emp.sessionsValidFrom.getTime() / 1000)) {
+    throw new UnauthorizedException('Sesja została zakończona. Zaloguj się ponownie.');
+  }
+  ```
+  Front i tak pokazuje własny komunikat przy 401 ([`api.ts:57`](apps/web/src/api.ts)), więc treść
+  służy logom, nie użytkownikowi.
+
+- [x] **10.5 — ustawianie znacznika.** [`employees.service.ts`](apps/api/src/employees.service.ts):
+  `sessionsValidFrom: new Date()` w `anonymize()` (obok istniejącego `passwordHash: null`,
+  `feedToken: null`) **oraz** w `setPassword()`. Wczesny zwrot dla konta już zanonimizowanego
+  (`login.startsWith('anon-')`) zostaje bez zmian — powtórna anonimizacja nie ma czego kończyć.
+  Retencja korzysta z tej samej metody, więc obejmuje ją automatycznie.
+
+### Testy
+
+- [x] **10.6 — rozszerzenie istniejącej suity.** [`verify-sesja-uniewaznienie.mjs`](apps/api/verify-sesja-uniewaznienie.mjs)
+  (prefiks `su`) — temat jest dokładnie ten sam, więc nie zakładamy nowego pliku i liczba suit
+  zostaje 35. Dopisz sekcje po wzorze pozostałych, **tym samym tokenem wydanym przed zdarzeniem**:
+  - `suanon`: token działa → administrator anonimizuje → ten sam token `401`
+  - `suhaslo`: token działa → administrator ustawia nowe hasło → ten sam token `401`;
+    logowanie nowym hasłem daje token, który działa (naprawa nie może zablokować konta na stałe)
+  - kontrola pozytywna: anonimizacja jednej osoby nie rusza sesji innej
+  - kontrola granicy: konto z `sessionsValidFrom` w przeszłości nie unieważnia świeżego logowania
+
+### Dokumentacja
+
+- [x] **10.7** [`README.md`](README.md), sekcja „Bezpieczeństwo (NFR-5)" — akapit opisujący dziś
+  ten wyjątek („token wydany przed anonimizacją działa do wygaśnięcia") **jest już nieaktualny**
+  i musi zniknąć; w jego miejsce jedno zdanie o tym, że anonimizacja i reset hasła kończą sesje.
+  Odsyłacz do sekcji „Do decyzji" tego pliku traci sens — do usunięcia.
+
+### Weryfikacja
+
+```bash
+pnpm exec prisma migrate dev          # lokalnie; na wdrożeniu migrate deploy przy starcie
+pnpm run verify:offline               # build + typecheck + 86 testów silnika
+pnpm -F @nieobecnosci/web lint
+```
+Potem API na porcie 3100 i `API=… pnpm run verify:suites` → oczekiwane `✅ Wszystkie 35 suit OK`.
+
+**Kontrola odwrotna obowiązkowa** (jak przy Częściach 1–8): rozszerzona suita musi paść na kodzie
+sprzed zmiany. Sposób: `git stash` na `auth.guard.ts` + `employees.service.ts`, przebudowa,
+przebieg — asercje anonimizacji i resetu hasła mają wtedy pokazać `200` zamiast `401`. Suita,
+która przechodzi w obie strony, nie testuje niczego.
+
+Sprawdzenie w przeglądarce nie jest potrzebne: unieważniona sesja idzie tą samą ścieżką 401 co
+token wygasły, a ta jest obsłużona i niezmieniona ([`api.ts:57`](apps/web/src/api.ts) czyści token
+i wraca na ekran logowania).
+
+### Świadomie poza zakresem
+
+| Rzecz | Powód |
 |---|---|
-| Kolumna `tokenVersion` albo `active` na `Employee` | Migracja schematu — odrzucona wprost przy wyborze podejścia do Części 4 |
-| Strażnik odrzuca konta z `passwordHash = null` | Wiąże autoryzację z lokalnym providerem haseł i zabiłby przyszłe SSO/OIDC, pod które [`auth-provider.ts`](apps/api/src/auth/auth-provider.ts) zostawia szew (FR-H5) |
-| `anonymize()` ustawia `endDate` na dziś | Bez migracji i działa od ręki, ale `endDate` wchodzi do proraty puli ([`proratePool`](packages/core/src/balance.ts)), więc zmieniałby historyczne saldo tej osoby — anonimizacja przestałaby być operacją wyłącznie na danych osobowych |
+| Akcja „wyloguj mnie wszędzie" dla użytkownika | Nowa funkcja, nie naprawa. Mechanizm jest gotowy — to jedno wywołanie i endpoint, gdy będzie potrzebne. |
+| Unieważnianie przy zmianie roli i uprawnień | Niepotrzebne: strażnik czyta jedno i drugie z bazy przy każdym żądaniu (Część 4), więc działa natychmiast bez kończenia sesji. |
+| Ukrycie nieobecności osoby zanonimizowanej w kalendarzu i capacity | Osobne pytanie produktowe — anonimizacja celowo zostawia wpisy, bo planowanie zespołu potrzebuje historii obłożenia. Nie dotyczy sesji. |
 
-Praktyczna skala ryzyka jest niewielka (okno ≤12 h, wymaga aktywnej sesji w momencie
-anonimizacji), ale to ścieżka RODO, więc decyzja należy do właściciela produktu, nie do
-implementacji. Domyślnie zostaje jak jest.
+---
+
+## Do decyzji (rozstrzygnięte)
+
+### ~~Anonimizacja nie zamyka trwającej sesji~~ → Część 10
+
+Odkryte przy Części 4. Zapis rozumowania i odrzucone warianty zostawiam, bo tłumaczą, dlaczego
+Część 10 wygląda tak, a nie inaczej:
+
+| Wariant | Koszt | Rozstrzygnięcie |
+|---|---|---|
+| Kolumna znacznika sesji na `Employee` | Migracja schematu — odrzucona wprost przy wyborze podejścia do Części 4, bo tam dało się bez niej | **Wybrany.** Tutaj nie da się bez migracji, a to jedyny wariant, który mówi wprost, o co chodzi |
+| Strażnik odrzuca konta z `passwordHash = null` | Wiąże autoryzację z lokalnym providerem haseł i zabiłby przyszłe SSO/OIDC, pod które [`auth-provider.ts`](apps/api/src/auth/auth-provider.ts) zostawia szew (FR-H5) | Odrzucony |
+| `anonymize()` ustawia `endDate` na dziś | Bez migracji i działa od ręki, ale anonimizacja zaczyna twierdzić, że współpraca się zakończyła — nieprawda dla osoby nadal zatrudnionej. Osoba znika z „mojego zespołu", nie da się jej dopisać nieobecności, a pula za bieżący okres liczy się proporcjonalnie ([`proratePool`](packages/core/src/balance.ts); okresy wcześniejsze zostają bez zmian) | Odrzucony |
+| Porównanie `iat` z `Employee.updatedAt` | Zero nowych kolumn, ale wylogowuje przy każdej zmianie wiersza — łącznie z regeneracją własnego `feedToken`, czyli akcją samoobsługową | Odrzucony |
 
 ---
 
@@ -286,6 +404,7 @@ implementacji. Domyślnie zostaje jak jest.
 | Data | Część | Status | Notatki |
 |---|---|---|---|
 | 2026-08-11 | — | — | plan utworzony, gałąź `naprawy-po-review`, kopia planu w repo jako `NAPRAWY-PO-REVIEW.md` |
+| 2026-08-11 | 10 | ✅ ukończone | Kolumna `sessionsValidFrom` + migracja z backfillem z dziennika audytu; `anonymize()` i `setPassword()` ustawiają znacznik; strażnik odrzuca starsze tokeny. Suita `verify-sesja-uniewaznienie.mjs` rozszerzona do 18 asercji. **Kontrola odwrotna:** dwie nowe asercje padają na kodzie sprzed zmiany, reszta przechodzi w obie strony. **Backfill sprawdzony osobno:** 7 kont zanonimizowanych bez znacznika → po migracji zero. **Niespodzianka, która zmieniła projekt:** standardowe `iat` w JWT ma rozdzielczość SEKUNDOWĄ, więc reset hasła i logowanie zaraz po nim wypadają w tej samej sekundzie. Każde rozstrzygnięcie remisu było złe — zaokrąglenie w górę blokowało konto tuż po ustawieniu nowego hasła, w dół przepuszczało sesję sprzed anonimizacji; oba warianty najpierw zaimplementowałem i oba wywróciły suitę. Rozwiązanie: własny znacznik milisekundowy `iatMs` w tokenie, z zejściem do `iat * 1000` dla tokenów sprzed zmiany. |
 | 2026-08-11 | 9 | ✅ ukończone | `AnalyticsService` wydzielony z kontrolera, `app.module` uporządkowany, README (macierz bezpieczeństwa, krok wdrożeniowy roli DB, luka anonimizacji) i HANDOFF (86 testów, 35 suit) zaktualizowane. **Weryfikacja końcowa — wszystkie cztery bramki CI lokalnie:** `verify:offline` 86/86 testów + build + typecheck ✅ · lint `jsx-a11y` ✅ · `pnpm audit --audit-level high` exit 0 (1 low, 9 moderate, zero high/critical) ✅ · `verify:suites` 35/35 ✅. |
 | 2026-08-11 | 8 | ✅ ukończone | CSP + `X-Frame-Options` + `Referrer-Policy` + `Permissions-Policy` w `Caddyfile`; `scripts/db-appuser.sql` (rola bez UPDATE/DELETE na `AuditLog`, `MIGRATE_DATABASE_URL` w Dockerfile i `.env.prod.example`); `.dockerignore` rozszerzony; `backup.sh` pisze przez plik tymczasowy. **Sprawdzone naprawdę, nie założone:** CSP na produkcyjnym buildzie podanym z tymi nagłówkami — aplikacja renderuje się w całości, konsola czysta, wstrzyknięty skrypt inline i skrypt z obcej domeny zablokowane; rola DB na żywej bazie — INSERT/SELECT dziennika przechodzą, UPDATE/DELETE odbijają się o uprawnienia, a API na tej roli przechodzi 35/35 suit; `.dockerignore` na zbudowanym obrazie. **Niespodzianka:** wpis wykluczający katalog „Analiza dokumentów…" nie działał od początku — macOS zapisuje nazwy w NFD, więc wzorzec z polskimi znakami nie trafiał w nic; zastąpiony `Analiza*`. |
 | 2026-08-11 | 7 | ✅ ukończone | Strażnik nieaktualnej odpowiedzi w podglądzie (`Wpis.tsx`), `updateAbsence` przyjmuje godziny, UI edycji wymiaru dnia i godzin w `Historia.tsx` i `Zespol.tsx`, lista wymiarów wyniesiona do `admin/ui` zamiast trzeciej kopii. **Sprawdzone w przeglądarce:** edycja 09:00–13:00 → 09:00–17:00 zmienia wymiar z 0,5 na 1 dzień; przed zmianą to samo żądanie wracało jako sukces, nie robiąc nic. Lint `jsx-a11y` czysty. |

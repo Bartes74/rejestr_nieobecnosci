@@ -26,6 +26,9 @@ const cel = await mk('sucel', 'EMPLOYEE');
 const degradowany = await mk('sudegr', 'ADMIN');
 const konczacy = await mk('sukoniec', 'EMPLOYEE');
 const znikajacy = await mk('suznika', 'EMPLOYEE');
+const anonimizowany = await mk('suanon', 'EMPLOYEE');
+const resetowany = await mk('suhaslo', 'EMPLOYEE');
+const postronny = await mk('supostronny', 'EMPLOYEE');
 const urlop = await prisma.absenceType.create({ data: { name: 'Urlop SU' } });
 await prisma.adminSetting.upsert({ where: { key: 'leavePool.default' }, create: { key: 'leavePool.default', value: '26' }, update: { value: '26' } });
 await prisma.permission.create({ data: { employeeId: mod.id, scope: 'MODIFY_ABSENCE' } });
@@ -64,6 +67,36 @@ const tokZnika = await login('suznika', 'haslo123');
 ok((await as(tokZnika)('/auth/me')).status === 200, 'przed usunięciem konta token działa');
 await prisma.employee.delete({ where: { id: znikajacy.id } });
 ok((await as(tokZnika)('/auth/me')).status === 401, 'po usunięciu konta token przestaje działać');
+
+// --- ANONIMIZACJA (FR-J2) -------------------------------------------------------------------
+// Wiersz pracownika po anonimizacji ZOSTAJE, bo wiszą na nim wpisy nieobecności — więc strażnik
+// go znajduje i bez znacznika sesji wpuszczałby dalej. Zalogować się ponownie nie sposób (brak
+// hasła), ale token wydany wcześniej działał do wygaśnięcia: pół doby czytania danych po
+// realizacji prawa do bycia zapomnianym.
+const tokAnon = await login('suanon', 'haslo123');
+const tokPostronny = await login('supostronny', 'haslo123');
+ok((await as(tokAnon)('/auth/me')).status === 200, 'przed anonimizacją token działa');
+
+await j(await aAdmin(`/employees/${anonimizowany.id}/anonymize`, { method: 'POST' }));
+ok((await as(tokAnon)('/auth/me')).status === 401, 'po anonimizacji TEN SAM token przestaje działać');
+ok((await as(tokPostronny)('/auth/me')).status === 200, 'anonimizacja jednej osoby nie rusza sesji innej');
+
+// --- RESET HASŁA PRZEZ ADMINISTRATORA -------------------------------------------------------
+// Reset ma sens głównie wtedy, gdy konto mogło zostać przejęte — zostawienie działających sesji
+// mijałoby się wtedy z jego celem.
+const tokReset = await login('suhaslo', 'haslo123');
+ok((await as(tokReset)('/auth/me')).status === 200, 'przed resetem hasła token działa');
+
+await j(await aAdmin(`/employees/${resetowany.id}/password`, { method: 'PUT', body: JSON.stringify({ password: 'nowe-haslo-456' }) }));
+ok((await as(tokReset)('/auth/me')).status === 401, 'po resecie hasła TEN SAM token przestaje działać');
+
+// Konto nie może zostać zablokowane na stałe: nowe hasło daje sesję, która normalnie działa.
+// Logowanie idzie NATYCHMIAST po resecie, czyli zwykle w tej samej sekundzie — a `iat` ma
+// rozdzielczość sekundową. Zbyt ostrożne porównanie unieważniłoby tu świeży token i zamknęło
+// osobę poza kontem, któremu administrator dopiero co ustawił hasło.
+const tokPoResecie = await login('suhaslo', 'nowe-haslo-456');
+ok((await as(tokPoResecie)('/auth/me')).status === 200, 'logowanie nowym hasłem daje działającą sesję (nawet w tej samej sekundzie)');
+ok((await as(tokPoResecie)(`/absences?employeeId=${resetowany.id}`)).status === 200, 'świeża sesja obsługuje zwykłe żądania, nie tylko /auth/me');
 
 // --- KONTROLA POZYTYWNA ---------------------------------------------------------------------
 // Naprawa nie może zamienić się w wylogowywanie wszystkich przy każdej zmianie w bazie.

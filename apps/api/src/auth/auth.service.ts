@@ -2,7 +2,6 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import jwt from 'jsonwebtoken';
 import { PrismaService } from '../prisma.service';
 import { AuthProvider } from './auth-provider';
-import type { AuthUser } from './current-user.decorator';
 
 // Re-eksport dla zgodności (employees.service oraz suity verify-*.mjs importują stąd).
 export { hashPassword, verifyPassword } from './password';
@@ -37,16 +36,30 @@ export class AuthService {
     // nie dawało się unieważnić: odebranie uprawnienia, zmiana roli i anonimizacja zaczynały
     // działać dopiero po wygaśnięciu tokenu, czyli do dwunastu godzin później. Aktualny zestaw
     // uprawnień czyta strażnik z bazy przy każdym żądaniu (AuthGuard).
-    const token = jwt.sign({ sub: emp.id }, secret(), { expiresIn: '12h', algorithm: 'HS256' });
+    // `iatMs` obok standardowego `iat`: ten drugi ma rozdzielczość sekundową, a unieważnianie
+    // sesji (FR-J2) porównuje moment wydania tokenu z momentem anonimizacji albo resetu hasła.
+    // Przy sekundowej ziarnistości te dwa zdarzenia potrafią wypaść w tej samej sekundzie i nie
+    // da się orzec, co było pierwsze — a wybór dowolnej strony jest zły: albo stara sesja
+    // przeżywa anonimizację, albo świeże logowanie tuż po resecie hasła jest odrzucane
+    // i administrator zamyka pracownika poza kontem, któremu właśnie ustawił hasło.
+    const token = jwt.sign({ sub: emp.id, iatMs: Date.now() }, secret(), { expiresIn: '12h', algorithm: 'HS256' });
     // NFR-8 — pomiar zaangażowania (udane logowania).
     await this.prisma.auditLog.create({ data: { entity: 'Auth', action: 'LOGIN_SUCCESS', userId: emp.id, description: `Logowanie: ${login}.` } });
     return { token, user: { id: emp.id, firstName: emp.firstName, lastName: emp.lastName, role: emp.role } };
   }
 
-  /** Sprawdza podpis i zwraca tożsamość. Uprawnienia dokłada strażnik, z bazy. */
-  verify(token: string): { sub: string } {
+  /**
+   * Sprawdza podpis i zwraca tożsamość wraz z momentem wydania. Uprawnienia dokłada strażnik,
+   * z bazy. Moment wydania jest mu potrzebny, by odróżnić sesję sprzed anonimizacji albo resetu
+   * hasła od wydanej po nich — patrz `Employee.sessionsValidFrom`.
+   *
+   * `iatMs` jest opcjonalne, bo tokeny wydane przed jego wprowadzeniem go nie mają. Dla nich
+   * strażnik schodzi do `iat * 1000`, czyli do początku sekundy — w stronę bezpieczną
+   * (taki token prędzej wypadnie jako starszy, niż niesłusznie przeżyje).
+   */
+  verify(token: string): { sub: string; iat: number; iatMs?: number } {
     try {
-      return jwt.verify(token, secret(), { algorithms: ['HS256'] }) as { sub: string };
+      return jwt.verify(token, secret(), { algorithms: ['HS256'] }) as { sub: string; iat: number; iatMs?: number };
     } catch {
       throw new UnauthorizedException('Sesja wygasła lub token nieprawidłowy.');
     }
