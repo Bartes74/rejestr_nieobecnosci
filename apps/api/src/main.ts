@@ -4,17 +4,22 @@ import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
+import { isLocalEnv } from './env';
 
-// NFR-5 — w produkcji wymagane sekrety muszą być ustawione (fail-fast, bez niebezpiecznych domyślnych).
-// W dev/test ustawiamy fallback, by lokalne uruchomienia i suity verify-*.mjs działały bez konfiguracji.
+// NFR-5 — wymagane sekrety muszą być ustawione (fail-fast, bez niebezpiecznych domyślnych).
+// Awaryjny sekret przysługuje wyłącznie uruchomieniu jawnie lokalnemu — dlaczego akurat tak
+// postawione jest pytanie, tłumaczy `isLocalEnv`. Środowisko nieznane traktujemy jak produkcję:
+// brak sekretu zatrzymuje start, zamiast po cichu podpisać tokeny stałą wartością z repozytorium.
+//
+// Lokalnie nic to nie zmienia także bez NODE_ENV: `.env` (z `.env.example`) wczytuje się przy
+// imporcie @prisma/client, czyli zanim ta funkcja się wykona.
 function assertEnv() {
-  const required = ['JWT_SECRET', 'DATABASE_URL'];
-  if (process.env.NODE_ENV === 'production') {
-    const missing = required.filter((k) => !process.env[k]);
-    if (missing.length) throw new Error(`Brak wymaganych zmiennych środowiskowych: ${missing.join(', ')}`);
-  } else {
+  if (isLocalEnv()) {
     process.env.JWT_SECRET ||= 'dev-secret-zmien-na-produkcji';
+    return;
   }
+  const missing = ['JWT_SECRET', 'DATABASE_URL'].filter((k) => !process.env[k]);
+  if (missing.length) throw new Error(`Brak wymaganych zmiennych środowiskowych: ${missing.join(', ')}`);
 }
 
 async function bootstrap() {

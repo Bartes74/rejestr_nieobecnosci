@@ -21,6 +21,10 @@ jobs:
       DATABASE_URL: postgresql://nieobecnosci:nieobecnosci@localhost:5440/nieobecnosci?schema=public
       JWT_SECRET: ci-test-secret
       API: http://localhost:3100/api
+      # Deklaracja lokalności przebiegu. Limity żądań są wyłączane wyłącznie dla dev/test
+      # (patrz apps/api/src/env.ts), a suity logują się 79 razy przy limicie 5/min na
+      # /auth/login — bez tego CI padałby na 429, nie na regresji.
+      NODE_ENV: test
     steps:
       - uses: actions/checkout@v7
       # Wersja pnpm pochodzi wyłącznie z pola `packageManager` w package.json (pnpm@10.33.0).

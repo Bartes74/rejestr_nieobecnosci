@@ -41,6 +41,17 @@ const ff = spawnSync(process.execPath, ['dist/main.js'], {
 });
 ok(ff.status !== 0 && /Brak wymaganych zmiennych/.test(`${ff.stderr}${ff.stdout}`), 'NFR-5/A1: produkcja bez JWT_SECRET nie startuje (fail-fast)');
 
+// Regresja: środowisko INNE niż produkcja i inne niż jawnie lokalne (tu „staging", tak samo
+// zachowuje się nieustawione NODE_ENV) też nie dostaje awaryjnego sekretu. Wcześniej wpadało
+// w gałąź dev i startowało na stałym sekrecie z repozytorium, czyli na tokenach do podrobienia
+// przez każdego, kto zna kod.
+const ffStaging = spawnSync(process.execPath, ['dist/main.js'], {
+  cwd: new URL('.', import.meta.url).pathname,
+  env: { ...process.env, NODE_ENV: 'staging', JWT_SECRET: '', DATABASE_URL: '' },
+  encoding: 'utf8', timeout: 10000,
+});
+ok(ffStaging.status !== 0 && /Brak wymaganych zmiennych/.test(`${ffStaging.stderr}${ffStaging.stdout}`), 'NFR-5/A1: środowisko nieprodukcyjne i nielokalne (staging) bez JWT_SECRET nie startuje');
+
 await prisma.$disconnect();
 console.log(failures === 0 ? '\nFAZA 2 (NFR-2 + NFR-8) OK ✅' : `\n${failures} ASERCJI NIE PRZESZŁO ❌`);
 process.exit(failures === 0 ? 0 : 1);
