@@ -46,7 +46,9 @@ export function Section({ title, children }: { title: string; children: ReactNod
  */
 export function Field({ label, children, hint, width }: { label: string; children: ReactNode; hint?: string; width?: number }) {
   return (
-    <label style={{ display: 'flex', flexDirection: 'column', gap: 5, width }}>
+    // `ds-form-field` mówi wierszowi, że nad kontrolką stoi etykieta — reszta dzieci wiersza
+    // (przyciski, pola wyboru) dostaje jej wysokość jako odstęp. Patrz `.ds-form-row`.
+    <label className="ds-form-field" style={{ display: 'flex', flexDirection: 'column', gap: 5, width }}>
       <span style={{ fontFamily: 'var(--font-sans)', fontSize: 12, fontWeight: 600, color: 'var(--ink-2)' }}>{label}</span>
       {children}
       {hint && <span style={{ fontFamily: 'var(--font-sans)', fontSize: 11.5, color: 'var(--muted)' }}>{hint}</span>}

@@ -192,7 +192,7 @@ export function Zespol() {
           </div>
 
           <Section title="Dodaj nieobecność w imieniu pracownika">
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'flex-end' }}>
+            <div className="ds-form-row" style={{ gap: 10 }}>
               <Field label="Typ">
                 <select style={field} value={add.typeId} onChange={(e) => setAdd((a) => ({ ...a, typeId: e.target.value }))}>
                   {addable.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
@@ -245,7 +245,7 @@ export function Zespol() {
               ))}
             </div>
           </fieldset>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'flex-end' }}>
+          <div className="ds-form-row" style={{ gap: 10 }}>
             <Field label="Typ">
               <select style={field} value={bulk.typeId} onChange={(e) => setBulk((b) => ({ ...b, typeId: e.target.value }))}>
                 {addable.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}

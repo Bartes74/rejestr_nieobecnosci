@@ -59,6 +59,27 @@ body { margin: 0; font-family: var(--font-sans); color: var(--ink); background: 
    zmiana koloru treści przy najechaniu jest czytelna również natychmiastowa. */
 .ds-nav, .ds-primary, .ds-quiet, .ds-danger, .ds-row { transition: background .14s; }
 
+/* ============================================================
+   WIERSZ FORMULARZA — kontrolki na jednej linii
+   Pole (`Field`) to kolumna: etykieta, kontrolka, opcjonalna podpowiedź. Podpowiedź ma tylko
+   część pól, więc przy równaniu wiersza DO DOŁU kontrolka pola z podpowiedzią jechała w górę
+   o jej wysokość. W Konfiguracji dawało to rozjazd od 17 do 75 px — pola „pływały" raz wyżej,
+   raz niżej, choć każde z osobna wyglądało poprawnie.
+   Równamy więc do GÓRY: etykieta ma wszędzie tę samą wysokość, więc kontrolki lądują na jednej
+   linii, a podpowiedź zwisa pod spodem i nie rusza niczego — także wtedy, gdy zawija się
+   na kilka wierszy.
+   ============================================================ */
+:root {
+  /* Wysokość wiersza etykiety w `Field`: sama etykieta (14 px) + odstęp do kontrolki (5 px).
+     Zmiana stopnia pisma etykiety albo `gap` w `Field` wymaga poprawienia tej liczby — inaczej
+     przyciski rozjadą się z polami o różnicę. */
+  --form-label-h: 19px;
+}
+.ds-form-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; }
+/* Elementy bez etykiety nad sobą — przyciski i pola wyboru — dostają jej wysokość jako odstęp,
+   żeby stanęły równo z kontrolkami sąsiadów, a nie nad nimi. */
+.ds-form-row > :not(.ds-form-field) { margin-top: var(--form-label-h); }
+
 /* Treść wyłącznie dla czytnika ekranu. */
 .ds-sr { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
