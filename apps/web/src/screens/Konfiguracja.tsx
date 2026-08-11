@@ -15,34 +15,38 @@ const sprintColDefaults = Object.fromEntries(SPRINT_COLS.map((c) => [c.key, c.la
 function Typy() {
   const [types, setTypes] = useState<AbsenceType[]>([]);
   const [f, setF] = useState({ name: '', affectsPool: true, affectsCapacity: true, specialCategory: false });
-  const { notice, ok, fail, clear } = useNotice();
-  const [busy, setBusy] = useState(false);
+  const { notice, busy, run } = useNotice();
   const load = () => api.types().then(setTypes);
   useEffect(() => { load(); }, []);
-  const add = async () => {
-    if (busy) return;
-    setBusy(true); clear();
-    try { await api.createType(f); setF({ name: '', affectsPool: true, affectsCapacity: true, specialCategory: false }); await load(); ok(`Dodano typ „${f.name}" na końcu listy.`); }
-    catch (e) { fail(e); } finally { setBusy(false); }
-  };
+  const add = () => run(async () => {
+    const name = f.name;
+    await api.createType(f);
+    setF({ name: '', affectsPool: true, affectsCapacity: true, specialCategory: false });
+    await load();
+    return `Dodano typ „${name}" na końcu listy.`;
+  });
 
   /**
    * Przestawienie o jedno miejsce. Optymistycznie, bo administrator zwykle klika kilka razy
    * z rzędu i czekanie na odpowiedź po każdym kroku zamieniłoby układanie listy w szarpaninę;
    * błąd cofa stan do tego, co naprawdę stoi w bazie.
    */
-  const move = async (i: number, dir: -1 | 1) => {
+  const move = (i: number, dir: -1 | 1) => {
     const j = i + dir;
     if (busy || j < 0 || j >= types.length) return;
     const next = [...types];
     [next[i], next[j]] = [next[j] as AbsenceType, next[i] as AbsenceType];
     const moved = types[i];
     setTypes(next);
-    setBusy(true); clear();
-    try {
-      setTypes(await api.reorderTypes(next.map((t) => t.id)));
-      ok(`„${moved?.name}" — pozycja ${j + 1} z ${types.length}.`);
-    } catch (e) { fail(e); await load(); } finally { setBusy(false); }
+    void run(async () => {
+      try {
+        setTypes(await api.reorderTypes(next.map((t) => t.id)));
+      } catch (e) {
+        await load(); // cofnięcie optymistycznego przestawienia do stanu z bazy
+        throw e;
+      }
+      return `„${moved?.name}" — pozycja ${j + 1} z ${types.length}.`;
+    });
   };
 
   const cb = (k: 'affectsPool' | 'affectsCapacity' | 'specialCategory') => (
@@ -103,8 +107,7 @@ function Pula() {
   // „Zaległe" startuje puste, nie zerem: pusta wartość znaczy „licz automatycznie z poprzednich
   // okresów" (FR-B7), a zapisane zero zamrażałoby saldo tej osoby na zerze.
   const [a, setA] = useState({ employeeId: '', periodYear: '2026', baseDays: '26', overrideDays: '', carriedOver: '' });
-  const { notice, ok, fail, clear } = useNotice();
-  const [busy, setBusy] = useState(false);
+  const { notice, clear, busy, run } = useNotice();
   useEffect(() => {
     api.poolDefault().then((d) => {
       setVal(String(d.value ?? ''));
@@ -112,17 +115,12 @@ function Pula() {
     });
     api.employees().then(setEmps);
   }, []);
-  const guard = async (fn: () => Promise<string>) => {
-    if (busy) return;
-    setBusy(true); clear();
-    try { ok(await fn()); } catch (e) { fail(e); } finally { setBusy(false); }
-  };
   const days = (raw: string, what: string) => {
     const n = Number(raw);
     if (!Number.isFinite(n) || n < 0) throw new Error(`${what} musi być liczbą nieujemną (np. 26).`);
     return n;
   };
-  const saveDefault = () => guard(async () => {
+  const saveDefault = () => run(async () => {
     // Najpierw sprawdzamy komplet wartości, dopiero potem zapisujemy którąkolwiek. Walidacja
     // wpleciona między zapisy zostawiała pulę wspólną już zmienioną, a na ekranie czerwony
     // komunikat o błędzie — z takiej sprzeczności nie da się odczytać, co właściwie zapisano.
@@ -137,7 +135,7 @@ function Pula() {
       ? `Pula wspólna zapisana: ${n} dni.`
       : `Zapisano: wspólna ${n} dni, własna dla ${own.map((f) => `${f.label} — ${f.days}`).join(', ')}.`;
   });
-  const saveAllow = () => guard(async () => {
+  const saveAllow = () => run(async () => {
     await api.setAllowance({ employeeId: a.employeeId, periodYear: Number(a.periodYear), baseDays: Number(a.baseDays), overrideDays: a.overrideDays ? Number(a.overrideDays) : undefined, carriedOver: a.carriedOver === '' ? undefined : days(a.carriedOver, 'Zaległe') });
     return a.carriedOver === ''
       ? 'Korekta indywidualna zapisana. Zaległe liczone automatycznie z poprzednich okresów.'
@@ -188,23 +186,17 @@ function Struktura() {
   const [emps, setEmps] = useState<Employee[]>([]);
   const [u, setU] = useState({ name: '', type: 'TRIBE', parentId: '' });
   const [m, setM] = useState({ employeeId: '', orgUnitId: '' });
-  const { notice, ok, fail, clear } = useNotice();
-  const [busy, setBusy] = useState(false);
+  const { notice, busy, run } = useNotice();
   const load = () => api.orgUnits().then(setUnits);
   useEffect(() => { load(); api.employees().then(setEmps); }, []);
-  const guard = async (fn: () => Promise<string>) => {
-    if (busy) return;
-    setBusy(true); clear();
-    try { ok(await fn()); } catch (e) { fail(e); } finally { setBusy(false); }
-  };
-  const addUnit = () => guard(async () => {
+  const addUnit = () => run(async () => {
     await api.createUnit({ name: u.name, type: u.type, parentId: u.parentId || undefined });
     const name = u.name;
     setU({ name: '', type: 'TRIBE', parentId: '' });
     await load();
     return `Dodano jednostkę „${name}".`;
   });
-  const addMember = () => guard(async () => {
+  const addMember = () => run(async () => {
     await api.addMembership(m);
     const who = emps.find((e) => e.id === m.employeeId);
     const where = units.find((x) => x.id === m.orgUnitId);
@@ -256,31 +248,25 @@ function Swieta() {
   const [h, setH] = useState({ date: '', name: '' });
   // Rok w strefie organizacji, nie z zegara przeglądarki — jak wszędzie indziej w aplikacji.
   const [year, setYear] = useState(todayIso().slice(0, 4));
-  const { notice, ok, fail, clear } = useNotice();
-  const [busy, setBusy] = useState(false);
+  const { notice, clear, busy, run } = useNotice();
   const loadCals = () => api.calendars().then((c) => { setCals(c); setCalId((p) => p || c[0]?.id || ''); });
   useEffect(() => { loadCals(); }, []);
   useEffect(() => { if (calId) api.holidays(calId).then(setHols); }, [calId]);
-  const guard = async (fn: () => Promise<string>) => {
-    if (busy) return;
-    setBusy(true); clear();
-    try { ok(await fn()); } catch (e) { fail(e); } finally { setBusy(false); }
-  };
-  const addCal = () => guard(async () => {
+  const addCal = () => run(async () => {
     const name = newCal;
     await api.createCalendar({ name, isDefault: cals.length === 0 });
     setNewCal('');
     await loadCals();
     return `Dodano kalendarz „${name}".`;
   });
-  const addHol = () => guard(async () => {
+  const addHol = () => run(async () => {
     const { date, name } = h;
     await api.createHoliday({ calendarId: calId, date, name });
     setH({ date: '', name: '' });
     setHols(await api.holidays(calId));
     return `Dodano dzień wolny: ${date} — ${name}.`;
   });
-  const importPl = () => guard(async () => {
+  const importPl = () => run(async () => {
     const r = await api.importPolishHolidays(calId, Number(year));
     setHols(await api.holidays(calId));
     return r.added === 0
@@ -326,20 +312,14 @@ function Sprinty() {
   const [sprints, setSprints] = useState<Sprint[]>([]);
   const [squads, setSquads] = useState<OrgUnit[]>([]);
   const [f, setF] = useState({ name: '', dateFrom: '', dateTo: '', squadId: '' });
-  const { notice, ok, fail, clear } = useNotice();
-  const [busy, setBusy] = useState(false);
+  const { notice, busy, run } = useNotice();
   const [colMap, setColMap] = useState<Record<string, string>>(sprintColDefaults);
   const fileRef = useRef<HTMLInputElement>(null);
   const load = () => api.sprints().then(setSprints);
   useEffect(() => { load(); api.orgUnits().then((u) => setSquads(u.filter((x) => x.type === 'SQUAD'))); }, []);
-  const guard = async (fn: () => Promise<string>) => {
-    if (busy) return;
-    setBusy(true); clear();
-    try { ok(await fn()); } catch (e) { fail(e); } finally { setBusy(false); }
-  };
   // Odwrócony zakres dat przechodziłby do bazy i psuł capacity — łapiemy go przed zapisem.
   const badRange = !!f.dateFrom && !!f.dateTo && f.dateTo < f.dateFrom;
-  const add = () => guard(async () => {
+  const add = () => run(async () => {
     const name = f.name;
     await api.createSprint({ ...f, squadId: f.squadId || undefined });
     setF({ name: '', dateFrom: '', dateTo: '', squadId: '' });
@@ -348,7 +328,7 @@ function Sprinty() {
   });
   const imp = (file?: File) => {
     if (!file) return;
-    void guard(async () => {
+    void run(async () => {
       const r = await api.importSprints(file, colMap);
       await load();
       return `Import: utworzono ${r.created}, błędy: ${r.errors.length}`;
@@ -386,15 +366,12 @@ function Sprinty() {
 }
 
 function Przypomnienia() {
-  const { notice, ok, info, fail } = useNotice();
-  const [busy, setBusy] = useState(false);
-  const send = async () => {
-    if (busy) return;
-    setBusy(true);
+  const { notice, info, busy, run } = useNotice();
+  const send = () => run(async () => {
     info('Wysyłanie…');
-    try { const r = await api.sendReminders(); ok(`Wysłano przypomnienia: ${r.sent} ${plural(r.sent, ['wiadomość', 'wiadomości', 'wiadomości'])}.`); }
-    catch (e) { fail(e); } finally { setBusy(false); }
-  };
+    const r = await api.sendReminders();
+    return `Wysłano przypomnienia: ${r.sent} ${plural(r.sent, ['wiadomość', 'wiadomości', 'wiadomości'])}.`;
+  });
   return (
     <Section title="Przypomnienia o zaległym urlopie">
       <p style={{ fontFamily: 'var(--font-sans)', fontSize: 13.5, color: 'var(--ink-2)', marginBottom: 10 }}>
@@ -455,19 +432,15 @@ function Reguly() {
 }
 
 function Retencja() {
-  const { notice, ok, fail, clear } = useNotice();
+  const { notice, busy, run } = useNotice();
   const [confirming, setConfirming] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const run = async () => {
-    setBusy(true); clear();
-    try {
-      const r = await api.runRetention();
-      setConfirming(false);
-      ok(r.anonymized === 0
-        ? `Brak osób do anonimizacji (okres przechowywania: ${r.months} mies.).`
-        : `Zanonimizowano ${r.anonymized} ${plural(r.anonymized, ['osobę', 'osoby', 'osób'])} (okres ${r.months} mies.).`);
-    } catch (e) { fail(e); } finally { setBusy(false); }
-  };
+  const start = () => run(async () => {
+    const r = await api.runRetention();
+    setConfirming(false);
+    return r.anonymized === 0
+      ? `Brak osób do anonimizacji (okres przechowywania: ${r.months} mies.).`
+      : `Zanonimizowano ${r.anonymized} ${plural(r.anonymized, ['osobę', 'osoby', 'osób'])} (okres ${r.months} mies.).`;
+  });
   return (
     <Section title="Retencja danych (RODO)">
       <p style={{ fontFamily: 'var(--font-sans)', fontSize: 13.5, color: 'var(--ink-2)', marginBottom: 10 }}>
@@ -476,7 +449,7 @@ function Retencja() {
       <Button variant="secondary" onClick={() => setConfirming(true)}>Uruchom retencję</Button>
       <Notice {...notice} />
       <ConfirmDialog open={confirming} title="Uruchomić retencję danych?" confirmLabel="Uruchom retencję"
-        confirmPhrase="RETENCJA" danger busy={busy} onConfirm={run} onCancel={() => setConfirming(false)}>
+        confirmPhrase="RETENCJA" danger busy={busy} onConfirm={start} onCancel={() => setConfirming(false)}>
         <p style={{ margin: 0 }}>
           Dane osobowe wszystkich byłych pracowników, u których minął okres przechowywania, zostaną trwale
           zastąpione wartościami anonimowymi. Operacja obejmuje wiele osób naraz.

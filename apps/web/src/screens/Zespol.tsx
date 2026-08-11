@@ -20,8 +20,7 @@ export function Zespol() {
   const [types, setTypes] = useState<AbsenceType[]>([]);
   const [memberId, setMemberId] = useState('');
   const [rows, setRows] = useState<Absence[]>([]);
-  const { notice, ok, fail, clear } = useNotice();
-  const [busy, setBusy] = useState(false);
+  const { notice, fail, clear, busy, run } = useNotice();
   const [edit, setEdit] = useState<{ id: string; from: string; to: string; dayPart: string; hourFrom: string; hourTo: string } | null>(null);
   const [add, setAdd] = useState({ typeId: '', dayPart: 'FULL', from: todayIso(), to: todayIso() });
   const [confirmDel, setConfirmDel] = useState<Absence | null>(null);
@@ -64,16 +63,9 @@ export function Zespol() {
   const addTo = partial ? add.from : add.to;
   const badRange = !partial && add.to < add.from;
 
-  // Każdy zapis blokuje przyciski na czas trwania — dwuklik tworzyłby dwa wpisy w cudzym imieniu.
-  const guard = async (fn: () => Promise<string>) => {
-    if (busy) return;
-    setBusy(true); clear();
-    try { ok(await fn()); } catch (e) { fail(e); } finally { setBusy(false); }
-  };
-
   const saveAdd = () => {
     if (!memberId || !add.typeId) return;
-    void guard(async () => {
+    void run(async () => {
       await api.createAbsence({ employeeId: memberId, typeId: add.typeId, dateFrom: add.from, dateTo: addTo, dayPart: add.dayPart });
       await load(memberId);
       return `Dodano nieobecność w imieniu: ${nameOf(memberId)}. Zmiana jest odnotowana w audycie.`;
@@ -87,7 +79,7 @@ export function Zespol() {
 
   const saveEdit = () => {
     if (!edit || editBlocked) return;
-    void guard(async () => {
+    void run(async () => {
       await api.updateAbsence(edit.id, {
         dateFrom: edit.from, dateTo: editTo, dayPart: edit.dayPart,
         ...(edit.dayPart === 'HOURS' ? { hourFrom: edit.hourFrom, hourTo: edit.hourTo } : {}),
@@ -100,7 +92,7 @@ export function Zespol() {
   const del = () => {
     const a = confirmDel;
     if (!a) return;
-    void guard(async () => {
+    void run(async () => {
       await api.deleteAbsence(a.id);
       setConfirmDel(null);
       await load(memberId);
@@ -113,20 +105,24 @@ export function Zespol() {
   const bulkTo = bulkPartial ? bulk.from : bulk.to;
   const toggleBulk = (id: string) => setBulkSel((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const allSel = team.length > 0 && bulkSel.size === team.length;
-  const saveBulk = async () => {
-    if (bulkSel.size === 0 || !bulk.typeId || busy) return;
-    setBusy(true);
-    bulkNotice.clear();
-    try {
-      const r = await api.bulkCreateAbsences({ employeeIds: [...bulkSel], typeId: bulk.typeId, dateFrom: bulk.from, dateTo: bulkTo, dayPart: bulk.dayPart });
-      const errTxt = r.errors.length ? ` Pominięto: ${r.errors.map((e) => `${nameOf(e.employeeId)} (${e.message})`).join('; ')}` : '';
-      const head = `Dodano dla ${r.created} ${plural(r.created, ['osoby', 'osób', 'osób'])}.`;
-      // Częściowe niepowodzenie nie jest sukcesem — inaczej pominięte osoby giną w zielonym komunikacie.
-      if (r.errors.length) bulkNotice.fail(new Error(`${head}${errTxt}`));
-      else bulkNotice.ok(head);
-      setBulkSel(new Set());
-      if (memberId) await load(memberId);
-    } catch (e) { bulkNotice.fail(e); } finally { setBusy(false); }
+  // Zapis masowy dzieli zamek z operacjami pojedynczymi (to samo `run`), bo obie zmieniają wpisy
+  // tego samego zespołu. Wynik opisuje własny komunikat sekcji, nie główny, więc `run` nie
+  // dostaje zdania do pokazania — sukces i błąd rozstrzyga `bulkNotice`.
+  const saveBulk = () => {
+    if (bulkSel.size === 0 || !bulk.typeId) return;
+    void run(async () => {
+      bulkNotice.clear();
+      try {
+        const r = await api.bulkCreateAbsences({ employeeIds: [...bulkSel], typeId: bulk.typeId, dateFrom: bulk.from, dateTo: bulkTo, dayPart: bulk.dayPart });
+        const errTxt = r.errors.length ? ` Pominięto: ${r.errors.map((e) => `${nameOf(e.employeeId)} (${e.message})`).join('; ')}` : '';
+        const head = `Dodano dla ${r.created} ${plural(r.created, ['osoby', 'osób', 'osób'])}.`;
+        // Częściowe niepowodzenie nie jest sukcesem — inaczej pominięte osoby giną w zielonym komunikacie.
+        if (r.errors.length) bulkNotice.fail(new Error(`${head}${errTxt}`));
+        else bulkNotice.ok(head);
+        setBulkSel(new Set());
+        if (memberId) await load(memberId);
+      } catch (e) { bulkNotice.fail(e); }
+    });
   };
 
   // Minimum 24 px wysokości celu wskaźnika (WCAG 2.5.8) — te przyciski usuwają cudze wpisy.

@@ -17,6 +17,8 @@ const SUITES = [
   // Regresje po przeglądzie kodu — każda odtwarza konkretną lukę, nie funkcję.
   'verify-godziny-walidacja.mjs', 'verify-rodo-feedtoken.mjs', 'verify-sesja-uniewaznienie.mjs',
   'verify-przypomnienia-zalegle.mjs', 'verify-wyscig-puli.mjs',
+  // Bez bazy i bez API — czysta funkcja wspólna dla obu importów .xlsx.
+  'verify-xlsx-naglowki.mjs',
 ];
 
 if (run('db-wipe.mjs') !== 0) { console.error('Czyszczenie bazy nie powiodło się.'); process.exit(1); }

@@ -24,8 +24,7 @@ export function Historia() {
   // się poprawić — trzeba było usunąć wpis i utworzyć go od nowa.
   const [edit, setEdit] = useState<{ id: string; typeId: string; dateFrom: string; dateTo: string; dayPart: string; hourFrom: string; hourTo: string } | null>(null);
   const [confirmDel, setConfirmDel] = useState<Absence | null>(null);
-  const [busy, setBusy] = useState(false);
-  const { notice, fail, clear } = useNotice();
+  const { notice, fail, busy, run } = useNotice();
   const [filter, setFilter] = useState<'all' | 'upcoming' | 'done'>('all');
   // Bez tego stanu pusta tabela w trakcie wczytywania ogłaszała „Nie masz jeszcze żadnych wpisów"
   // — zdanie fałszywe dla każdego, kto jakieś ma.
@@ -35,21 +34,15 @@ export function Historia() {
   useEffect(load, [current?.id]);
   useEffect(() => { api.types().then(setTypes).catch(() => {}); }, []);
 
-  const guard = async (fn: () => Promise<void>) => {
-    if (busy) return;
-    setBusy(true); clear();
-    try { await fn(); } catch (e) { fail(e); } finally { setBusy(false); }
-  };
-
   const remove = () => {
     const a = confirmDel;
     if (!a) return;
-    void guard(async () => { await api.deleteAbsence(a.id); setConfirmDel(null); setUndo(a); load(); });
+    void run(async () => { await api.deleteAbsence(a.id); setConfirmDel(null); setUndo(a); load(); });
   };
   const doUndo = () => {
     if (!undo || !current) return;
     const a = undo;
-    void guard(async () => {
+    void run(async () => {
       await api.createAbsence({ employeeId: current.id, typeId: a.type.id, dateFrom: a.dateFrom, dateTo: a.dateTo, dayPart: a.dayPart, hourFrom: a.hourFrom ?? undefined, hourTo: a.hourTo ?? undefined });
       setUndo(null); load();
     });
@@ -63,7 +56,7 @@ export function Historia() {
 
   const saveEdit = () => {
     if (!edit || editBadHours || editBadRange) return;
-    void guard(async () => {
+    void run(async () => {
       await api.updateAbsence(edit.id, {
         typeId: edit.typeId, dateFrom: edit.dateFrom, dateTo: editTo, dayPart: edit.dayPart,
         ...(edit.dayPart === 'HOURS' ? { hourFrom: edit.hourFrom, hourTo: edit.hourTo } : {}),
