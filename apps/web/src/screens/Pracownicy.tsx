@@ -168,7 +168,7 @@ export function Pracownicy() {
 
           {isAdmin && showAdd && (
             <form onSubmit={(ev) => { ev.preventDefault(); add(); }} style={{ ...card, padding: 16, marginBottom: 14 }}>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'flex-end' }}>
+              <div className="ds-form-row" style={{ gap: 10 }}>
                 {ADD_FIELDS.map((f) => (
                   <Field key={f.key} label={`${f.label}${f.key !== 'email' ? ' *' : ''}`}>
                     <input style={field} type={f.type ?? 'text'} autoComplete={f.autoComplete} required={f.key !== 'email'}

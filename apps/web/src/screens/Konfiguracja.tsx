@@ -6,8 +6,7 @@ import { useAuth } from '../current-employee';
 import { Button } from '../design-system/components/core/Button';
 import { AdminOnly, Section, Notice, ColumnMap, ConfirmDialog, Field, field, useNotice } from '../admin/ui';
 
-const row = { display: 'flex', flexWrap: 'wrap' as const, gap: 8, alignItems: 'center' };
-const list = { fontFamily: 'var(--font-sans)', fontSize: 13.5, color: 'var(--ink-2)', padding: '4px 0' };
+const list ={ fontFamily: 'var(--font-sans)', fontSize: 13.5, color: 'var(--ink-2)', padding: '4px 0' };
 // FR-D4 — domyślne nagłówki kolumn .xlsx dla sprintów (nadpisywalne przed importem).
 const SPRINT_COLS = [{ key: 'name', label: 'Sprint' }, { key: 'from', label: 'Od' }, { key: 'to', label: 'Do' }, { key: 'squad', label: 'Squad' }];
 const sprintColDefaults = Object.fromEntries(SPRINT_COLS.map((c) => [c.key, c.label]));
@@ -84,7 +83,7 @@ function Typy() {
             ))}
           </ol>
         )}
-      <div style={{ ...row, marginTop: 12, alignItems: 'flex-end' }}>
+      <div className="ds-form-row" style={{ marginTop: 12 }}>
         <Field label="Nazwa typu"><input style={field} value={f.name} onChange={(e) => setF((s) => ({ ...s, name: e.target.value }))} /></Field>
         {cb('affectsPool')}{cb('affectsCapacity')}{cb('specialCategory')}
         <Button onClick={add} disabled={!f.name.trim() || busy}>{busy ? 'Dodawanie…' : 'Dodaj'}</Button>
@@ -147,7 +146,7 @@ function Pula() {
   const num = (k: 'periodYear' | 'baseDays' | 'overrideDays' | 'carriedOver') => (e: { target: { value: string } }) => { clear(); setA((s) => ({ ...s, [k]: e.target.value })); };
   return (
     <Section title="Pula nieobecności">
-      <div style={{ ...row, alignItems: 'flex-end' }}>
+      <div className="ds-form-row">
         <Field label="Pula wspólna — dni" hint="Obowiązuje formę zatrudnienia, dla której nie ustawiono własnej puli." width={230}>
           <input style={field} type="number" min={0} inputMode="numeric" value={val} onChange={(e) => { clear(); setVal(e.target.value); }} />
         </Field>
@@ -159,7 +158,7 @@ function Pula() {
         ))}
         <Button onClick={saveDefault} disabled={busy}>{busy ? 'Zapisywanie…' : 'Zapisz'}</Button>
       </div>
-      <div style={{ ...row, marginTop: 18, alignItems: 'flex-end' }}>
+      <div className="ds-form-row" style={{ marginTop: 18 }}>
         <Field label="Korekta indywidualna — pracownik">
           <select style={field} value={a.employeeId} onChange={(e) => { clear(); setA((s) => ({ ...s, employeeId: e.target.value })); }}>
             <option value="">— wybierz —</option>
@@ -207,7 +206,7 @@ function Struktura() {
       {units.length === 0
         ? <div style={{ ...list, color: 'var(--muted)' }}>Brak jednostek. Zacznij od pionu lub departamentu, potem dodaj jednostki podrzędne.</div>
         : units.map((x) => <div key={x.id} style={list}><span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--muted)', marginRight: 6 }}>{x.type}</span>{x.name}</div>)}
-      <div style={{ ...row, marginTop: 12, alignItems: 'flex-end' }}>
+      <div className="ds-form-row" style={{ marginTop: 12 }}>
         <Field label="Nazwa jednostki"><input style={field} value={u.name} onChange={(e) => setU((s) => ({ ...s, name: e.target.value }))} /></Field>
         <Field label="Typ">
           <select style={field} value={u.type} onChange={(e) => setU((s) => ({ ...s, type: e.target.value }))}>
@@ -222,7 +221,7 @@ function Struktura() {
         </Field>
         <Button onClick={addUnit} disabled={!u.name.trim() || busy}>{busy ? 'Dodawanie…' : 'Dodaj jednostkę'}</Button>
       </div>
-      <div style={{ ...row, marginTop: 14, alignItems: 'flex-end' }}>
+      <div className="ds-form-row" style={{ marginTop: 14 }}>
         <Field label="Przypisz pracownika">
           <select style={field} value={m.employeeId} onChange={(e) => setM((s) => ({ ...s, employeeId: e.target.value }))}>
             <option value="">— wybierz —</option>{emps.map((e) => <option key={e.id} value={e.id}>{e.firstName} {e.lastName}</option>)}
@@ -275,7 +274,7 @@ function Swieta() {
   });
   return (
     <Section title="Święta i dni wolne">
-      <div style={{ ...row, alignItems: 'flex-end' }}>
+      <div className="ds-form-row">
         <Field label="Kalendarz" hint="Dni z tego kalendarza nie są naliczane przy wpisach.">
           <select style={field} value={calId} onChange={(e) => { clear(); setCalId(e.target.value); }} disabled={cals.length === 0}>
             {cals.length === 0 && <option value="">— brak kalendarzy —</option>}
@@ -290,12 +289,12 @@ function Swieta() {
           : hols.length === 0 ? 'Ten kalendarz nie ma jeszcze dni wolnych — weekendy i tak są pomijane.'
             : hols.map((x) => <span key={x.id} style={{ fontFamily: 'var(--font-mono)', fontSize: 12, marginRight: 10, color: 'var(--ink-2)' }}>{fullDate(x.date)} {x.name}</span>)}
       </div>
-      <div style={{ ...row, marginTop: 12, alignItems: 'flex-end' }}>
+      <div className="ds-form-row" style={{ marginTop: 12 }}>
         <Field label="Data" width={170}><input style={field} type="date" value={h.date} onChange={(e) => setH((s) => ({ ...s, date: e.target.value }))} /></Field>
         <Field label="Nazwa dnia wolnego"><input style={field} value={h.name} onChange={(e) => setH((s) => ({ ...s, name: e.target.value }))} /></Field>
         <Button onClick={addHol} disabled={!h.date || !h.name.trim() || !calId || busy}>Dodaj dzień wolny</Button>
       </div>
-      <div style={{ ...row, marginTop: 12, alignItems: 'flex-end' }}>
+      <div className="ds-form-row" style={{ marginTop: 12 }}>
         <Field label="Rok" width={100} hint="Święta ustawowe wylicza aplikacja — bez połączenia z internetem. Powtórny import nie duplikuje dni.">
           <input style={field} type="number" inputMode="numeric" value={year} onChange={(e) => { clear(); setYear(e.target.value); }} />
         </Field>
@@ -339,10 +338,10 @@ function Sprinty() {
       {sprints.length === 0
         ? <div style={{ ...list, color: 'var(--muted)' }}>Brak sprintów. Bez nich capacity i heatmapa nie mają na czym się oprzeć.</div>
         : sprints.map((s) => <div key={s.id} style={list}>{s.name} <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--muted)' }}>{dateRange(s.dateFrom, s.dateTo, { long: true })}</span></div>)}
-      <div style={{ ...row, marginTop: 12, alignItems: 'flex-end' }}>
+      <div className="ds-form-row" style={{ marginTop: 12 }}>
         <Field label="Nazwa"><input style={field} value={f.name} onChange={(e) => setF((s) => ({ ...s, name: e.target.value }))} /></Field>
         <Field label="Od" width={170}><input style={field} type="date" value={f.dateFrom} onChange={(e) => setF((s) => ({ ...s, dateFrom: e.target.value }))} /></Field>
-        <Field label="Do" width={170} hint={badRange ? undefined : ' '}>
+        <Field label="Do" width={170}>
           <input style={field} type="date" min={f.dateFrom || undefined} value={f.dateTo} aria-invalid={badRange || undefined}
             onChange={(e) => setF((s) => ({ ...s, dateTo: e.target.value }))} />
         </Field>
