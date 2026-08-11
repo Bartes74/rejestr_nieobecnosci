@@ -270,6 +270,10 @@ Hierarchia spoczynkowa jest **tonalna**, nie cieniowana: `canvas` pod spodem, `s
 - **Uniesiony** (`box-shadow: 0 8px 28px rgba(16,40,32,.10)`): wyłącznie elementy nakładające się na treść — popover powiadomień, dialog, toast, rozwinięta lista wyboru.
 - W motywie ciemnym oba pogłębiają się do `0 1px 2px rgba(0,0,0,.35)` i `0 12px 34px rgba(0,0,0,.45)`, bo ciemne tło pochłania rozproszenie.
 
+### Przyciemnienie (scrim)
+
+Okno modalne kładzie pod sobą `--scrim` (`rgba(10,20,16,.45)`) — zieleń wpadającą w czerń, nie neutralną czerń, tak samo jak cienie biorą odcień z `--ink`, a nie z zera. Jedna wartość dla obu motywów, bo scrim nie pracuje na tle, tylko na **treści**: w motywie ciemnym przygasza tekst o 100/255, choć samo płótno zmienia zaledwie o 2/255. Dopóki pod spodem stoją karty i tekst, a nie gołe płótno, ciemny motyw nie potrzebuje własnej wartości.
+
 ### Named Rules
 
 **Reguła cienia jako odpowiedzi.** W spoczynku powierzchnia jest płaska. Cień „uniesiony" należy się wyłącznie temu, co naprawdę nakłada się na treść pod spodem. Nowa karta z mocnym cieniem to błąd, nie akcent.

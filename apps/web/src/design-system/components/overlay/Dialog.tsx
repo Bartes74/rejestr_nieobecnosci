@@ -58,7 +58,7 @@ export function Dialog({ open, onClose, title, children, footer, width = 460, in
   if (!open) return null;
   return (
     <div role="presentation" onMouseDown={(e) => e.target === e.currentTarget && onClose && onClose()}
-      style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(10,20,16,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'var(--scrim)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       <div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby={title ? titleId : undefined} tabIndex={-1}
         style={{ width, maxWidth: '100%', maxHeight: 'calc(100vh - 48px)', overflowY: 'auto', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '18px 20px', borderBottom: '1px solid var(--border)' }}>
