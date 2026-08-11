@@ -1,16 +1,9 @@
 // Faza 2: FR-F6 — stabilny, wersjonowany eksport dla płac/PMO (RODO-safe).
-import { PrismaClient } from '@prisma/client';
-import { hashPassword } from './dist/auth/auth.service.js';
+import { API, failures, hashPassword, j, login, ok, prisma, waitForApi } from './verify-harness.mjs';
 
-const API = process.env.API ?? 'http://localhost:3100/api';
-const prisma = new PrismaClient();
-let failures = 0;
-const ok = (c, m) => { console.log(`${c ? '✓' : '✗'} ${m}`); if (!c) failures++; };
-const j = async (r) => { if (!r.ok) throw new Error(`${r.status} ${await r.text()}`); return r.json(); };
-const login = async (l, p) => (await j(await fetch(`${API}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ login: l, password: p }) }))).token;
 const as = (t) => (p, o = {}) => fetch(API + p, { ...o, headers: { authorization: `Bearer ${t}`, ...(o.headers || {}) } });
 
-for (let i = 0; i < 30; i++) { try { if ((await fetch(`${API}/health`)).ok) break; } catch {} await new Promise((r) => setTimeout(r, 500)); }
+await waitForApi();
 
 const tribe = await prisma.orgUnit.create({ data: { name: 'Tribe F6', type: 'TRIBE' } });
 const squad = await prisma.orgUnit.create({ data: { name: 'Squad F6', type: 'SQUAD', parentId: tribe.id } });

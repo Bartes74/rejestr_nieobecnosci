@@ -1,16 +1,7 @@
 // Faza 2: FR-B10 konwersja nieobecności na L4 (zwrot dnia do puli) + FR-B4 minimum do pozostawienia.
-import { PrismaClient } from '@prisma/client';
-import { hashPassword } from './dist/auth/auth.service.js';
+import { as, failures, hashPassword, j, login, ok, prisma, waitForApi } from './verify-harness.mjs';
 
-const API = process.env.API ?? 'http://localhost:3100/api';
-const prisma = new PrismaClient();
-let failures = 0;
-const ok = (c, m) => { console.log(`${c ? '✓' : '✗'} ${m}`); if (!c) failures++; };
-const j = async (r) => { if (!r.ok) throw new Error(`${r.status} ${await r.text()}`); return r.json(); };
-const login = async (l, p) => (await j(await fetch(`${API}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ login: l, password: p }) }))).token;
-const as = (t) => (p, o = {}) => fetch(API + p, { ...o, headers: { 'content-type': 'application/json', authorization: `Bearer ${t}`, ...(o.headers || {}) } });
-
-for (let i = 0; i < 30; i++) { try { if ((await fetch(`${API}/health`)).ok) break; } catch {} await new Promise((r) => setTimeout(r, 500)); }
+await waitForApi();
 
 const admin = await prisma.employee.create({ data: { firstName: 'Adm', lastName: 'B10', email: 'b10admin@x.pl', login: 'b10admin', role: 'ADMIN', employmentType: 'UOP', startDate: new Date('2026-01-01'), passwordHash: hashPassword('haslo123') } });
 const bob = await prisma.employee.create({ data: { firstName: 'Bob', lastName: 'B10', email: 'b10bob@x.pl', login: 'b10bob', role: 'EMPLOYEE', employmentType: 'UOP', minimumToLeave: 4, startDate: new Date('2026-01-01'), passwordHash: hashPassword('haslo123') } });

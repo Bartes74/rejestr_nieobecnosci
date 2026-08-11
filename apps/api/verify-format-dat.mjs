@@ -2,21 +2,12 @@
 // Rozjazd `/absences` (pełne znaczniki czasu) kontra `/calendar` (sama data) kosztował
 // kilkanaście obejść `slice(0, 10)` we froncie i wywrócił mini-kalendarz wpisu, bo
 // doklejenie `T00:00:00Z` do wartości zakończonej strefą daje `Invalid Date` po cichu.
-import { PrismaClient } from '@prisma/client';
-import { hashPassword } from './dist/auth/auth.service.js';
-
-const API = process.env.API ?? 'http://localhost:3100/api';
-const prisma = new PrismaClient();
-let failures = 0;
-const ok = (c, m) => { console.log(`${c ? '✓' : '✗'} ${m}`); if (!c) failures++; };
-const j = async (r) => { if (!r.ok) throw new Error(`${r.status} ${await r.text()}`); return r.json(); };
-const login = async (l, p) => (await j(await fetch(`${API}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ login: l, password: p }) }))).token;
-const as = (t) => (p, o = {}) => fetch(API + p, { ...o, headers: { 'content-type': 'application/json', authorization: `Bearer ${t}`, ...(o.headers || {}) } });
+import { API, as, failures, hashPassword, j, login, ok, prisma, waitForApi } from './verify-harness.mjs';
 
 // Data kalendarzowa: dokładnie dziesięć znaków, bez litery „T" i bez strefy.
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
-for (let i = 0; i < 30; i++) { try { if ((await fetch(`${API}/health`)).ok) break; } catch {} await new Promise((r) => setTimeout(r, 500)); }
+await waitForApi();
 
 const mk = (login, role) => prisma.employee.create({ data: { firstName: login, lastName: 'FD', email: `${login}@x.pl`, login, role, employmentType: 'UOP', startDate: new Date('2020-01-01'), passwordHash: hashPassword('haslo123') } });
 const admin = await mk('fdadmin', 'ADMIN');

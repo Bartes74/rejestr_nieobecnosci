@@ -2,19 +2,11 @@
 // Poza UoP (B2B/OUT) dzień choroby zjada ten sam budżet dni co urlop, więc nic nie wraca do puli.
 // Zapis L4 przechodzi przy każdej formie — różni się wyłącznie to, co dzieje się z pulą.
 // Daty stałe w 2026 — jak w pozostałych suitach; muszą leżeć w bieżącym okresie obu form.
-import { PrismaClient } from '@prisma/client';
-import { hashPassword } from './dist/auth/auth.service.js';
+import { as, failures, hashPassword, j, login, ok, prisma, waitForApi } from './verify-harness.mjs';
 
-const API = process.env.API ?? 'http://localhost:3100/api';
-const prisma = new PrismaClient();
-let failures = 0;
-const ok = (c, m) => { console.log(`${c ? '✓' : '✗'} ${m}`); if (!c) failures++; };
-const j = async (r) => { if (!r.ok) throw new Error(`${r.status} ${await r.text()}`); return r.json(); };
-const login = async (l, p) => (await j(await fetch(`${API}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ login: l, password: p }) }))).token;
-const as = (t) => (p, o = {}) => fetch(API + p, { ...o, headers: { 'content-type': 'application/json', authorization: `Bearer ${t}`, ...(o.headers || {}) } });
 const iso = (d) => d.toISOString().slice(0, 10);
 
-for (let i = 0; i < 30; i++) { try { if ((await fetch(`${API}/health`)).ok) break; } catch {} await new Promise((r) => setTimeout(r, 500)); }
+await waitForApi();
 
 const mk = (lg, role, emp) => prisma.employee.create({ data: { firstName: lg, lastName: 'FZ', email: `${lg}@fz.pl`, login: lg, role, employmentType: emp, startDate: new Date('2026-01-01'), passwordHash: hashPassword('haslo123') } });
 await prisma.adminSetting.upsert({ where: { key: 'leavePool.default' }, create: { key: 'leavePool.default', value: '26' }, update: { value: '26' } });

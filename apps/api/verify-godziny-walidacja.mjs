@@ -8,17 +8,9 @@
 //
 // Suita pilnuje trzech warstw naraz: formatu w DTO, warunku w AbsencesService.validate
 // (jednego dla zapisu i edycji) oraz zacisku 0–1 w dayFraction.
-import { PrismaClient } from '@prisma/client';
-import { hashPassword } from './dist/auth/auth.service.js';
+import { API, failures, hashPassword, j, login, ok, prisma, waitForApi } from './verify-harness.mjs';
 
-const API = process.env.API ?? 'http://localhost:3100/api';
-const prisma = new PrismaClient();
-let failures = 0;
-const ok = (c, m) => { console.log(`${c ? '✓' : '✗'} ${m}`); if (!c) failures++; };
-const j = async (r) => { if (!r.ok) throw new Error(`${r.status} ${await r.text()}`); return r.json(); };
-const login = async (l, p) => (await j(await fetch(`${API}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ login: l, password: p }) }))).token;
-
-for (let i = 0; i < 30; i++) { try { if ((await fetch(`${API}/health`)).ok) break; } catch {} await new Promise((r) => setTimeout(r, 500)); }
+await waitForApi();
 
 const emp = await prisma.employee.create({ data: { firstName: 'GW', lastName: 'Anna', email: 'gwanna@x.pl', login: 'gwanna', role: 'EMPLOYEE', employmentType: 'UOP', startDate: new Date('2026-01-01'), passwordHash: hashPassword('haslo123') } });
 const urlop = await prisma.absenceType.create({ data: { name: 'Urlop GW' } });

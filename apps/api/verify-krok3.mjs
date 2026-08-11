@@ -1,16 +1,7 @@
 // Smoke test Kroku 3: auth + RBAC + ochrona L4 + widoczność Tribe + jednolity kalendarz.
-import { PrismaClient } from '@prisma/client';
-import { hashPassword } from './dist/auth/auth.service.js';
+import { API, as, failures, hashPassword, j, login, ok, prisma, waitForApi } from './verify-harness.mjs';
 
-const API = process.env.API ?? 'http://localhost:3100/api';
-const prisma = new PrismaClient();
-let failures = 0;
-const ok = (c, m) => { console.log(`${c ? '✓' : '✗'} ${m}`); if (!c) failures++; };
-const j = async (r) => { if (!r.ok) throw new Error(`${r.status} ${await r.text()}`); return r.json(); };
-const login = async (l, p) => j(await fetch(`${API}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ login: l, password: p }) })).then((x) => x.token);
-const as = (token) => (p, opts = {}) => fetch(API + p, { ...opts, headers: { 'content-type': 'application/json', authorization: `Bearer ${token}`, ...(opts.headers || {}) } });
-
-for (let i = 0; i < 30; i++) { try { if ((await fetch(`${API}/health`)).ok) break; } catch {} await new Promise((r) => setTimeout(r, 500)); }
+await waitForApi();
 
 // --- struktura org + użytkownicy (bootstrap przez Prisma) ---
 const tribeX = await prisma.orgUnit.create({ data: { name: 'Tribe X', type: 'TRIBE' } });
