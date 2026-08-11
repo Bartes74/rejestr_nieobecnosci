@@ -132,6 +132,10 @@ powtórz go na docelowym sprzęcie i przez sieć organizacji.
 
 ## Wdrożenie produkcyjne (on-prem)
 
+Poniżej skrót dla osoby znającej ten stack. **Wdrożenie krok po kroku, od pustego serwera,
+opisuje [WDROZENIE.md](WDROZENIE.md)** — razem z kontem administratora (osobny krok, bez niego
+nikt się nie zaloguje), kopiami zapasowymi i diagnostyką.
+
 ```bash
 cp .env.prod.example .env.prod      # uzupełnij hasła, JWT_SECRET, domenę, SMTP
 docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build
