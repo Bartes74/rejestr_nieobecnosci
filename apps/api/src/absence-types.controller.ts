@@ -1,7 +1,8 @@
-import { BadRequestException, Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, NotFoundException, Param, Patch, Post } from '@nestjs/common';
 import { PrismaService } from './prisma.service';
 import { CreateAbsenceTypeDto, ReorderAbsenceTypesDto, UpdateAbsenceTypeDto } from './dto';
 import { Roles } from './auth/decorators';
+import { CurrentUser, type AuthUser } from './auth/current-user.decorator';
 
 // Jedna kolejność dla całej aplikacji: najpierw to, co ustawił administrator, potem alfabet
 // jako rozstrzygnięcie remisów (dwa typy dodane tego samego dnia mają sortOrder 0).
@@ -27,10 +28,33 @@ export class AbsenceTypesController {
     return this.prisma.absenceType.create({ data: { ...dto, sortOrder: (last?.sortOrder ?? 0) + 1 } });
   }
 
+  /**
+   * Zmiana flag typu przelicza historię WSZYSTKICH wpisów tego typu, wstecz.
+   *
+   * `affectsPool`, `affectsCapacity` i `specialCategory` sterują algorytmem (D1), nie wyglądem:
+   * przestawienie `affectsPool` na `false` zamienia każdy dotychczasowy urlop tego typu we wpis
+   * przejmujący dzień, więc salda i raporty pokazują od tej chwili inne liczby dla tych samych
+   * danych. To decyzja o skutkach dla całej organizacji i dziennik ma o niej wiedzieć — sama
+   * zmiana nazwy czy dezaktywacja typu takich skutków nie ma i wpisu nie potrzebuje.
+   */
   @Roles('ADMIN')
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateAbsenceTypeDto) {
-    return this.prisma.absenceType.update({ where: { id }, data: dto });
+  async update(@Param('id') id: string, @Body() dto: UpdateAbsenceTypeDto, @CurrentUser() user: AuthUser) {
+    const before = await this.prisma.absenceType.findUnique({ where: { id } });
+    if (!before) throw new NotFoundException('Typ nieobecności nie istnieje.');
+    const updated = await this.prisma.absenceType.update({ where: { id }, data: dto });
+
+    const ALGORYTM = ['affectsPool', 'affectsCapacity', 'specialCategory'] as const;
+    const zmiany = ALGORYTM.filter((k) => dto[k] !== undefined && dto[k] !== before[k])
+      .map((k) => `${k}: ${before[k]} → ${updated[k]}`);
+    if (zmiany.length) {
+      const ile = await this.prisma.absence.count({ where: { typeId: id } });
+      await this.prisma.auditLog.create({
+        data: { entity: 'AbsenceType', entityId: id, action: 'TYPE_RULES_CHANGE', userId: user.sub,
+          description: `Zmiana reguł typu „${before.name}" (${zmiany.join(', ')}). Dotyczy ${ile} istniejących wpisów — salda i raporty przeliczą się wstecz.` },
+      });
+    }
+    return updated;
   }
 
   /**

@@ -274,10 +274,24 @@ export class AbsencesService {
   // FR-B10 — konwersja zaplanowanej nieobecności na L4 (osoba uprawniona, FR-H4).
   // Na UoP dzień wraca do puli; poza UoP zmienia się sam rodzaj nieobecności, saldo zostaje.
   async convertToL4(id: string, user: AuthUser) {
-    if (!canModifyOthers(user)) throw new ForbiddenException('Tylko osoba uprawniona może oznaczyć wpis jako L4.');
     const existing = await this.prisma.absence.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Wpis nie istnieje.');
-    const l4 = await this.prisma.absenceType.findFirst({ where: { specialCategory: true, affectsPool: false, active: true } });
+    // Oznaczenie L4 stwierdza fakt o zdrowiu, więc nie robi tego sam zainteresowany — nawet
+    // jeśli wpis jest jego własny i normalnie może go edytować.
+    if (existing.employeeId === user.sub) {
+      throw new ForbiddenException('Oznaczenie L4 należy do osoby uprawnionej, nie do samego zainteresowanego.');
+    }
+    // Poza tym obowiązuje zwykły zasięg działania. Wcześniej warunkiem było samo
+    // `canModifyOthers`, przez co lider nie mógł skonwertować wpisu w swoim Tribe, choć wolno
+    // mu go edytować i usunąć, a posiadacz MODIFY_ABSENCE konwertował wpis dowolnej osoby
+    // w firmie — także spoza swojego zasięgu.
+    await this.assertCanActFor(existing.employeeId, user);
+    // Kolejność jak wszędzie indziej: to, co administrator ustawił, potem alfabet. Bez tego
+    // przy dwóch typach spełniających warunek wynik zależał od kolejności wierszy w bazie.
+    const l4 = await this.prisma.absenceType.findFirst({
+      where: { specialCategory: true, affectsPool: false, active: true },
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+    });
     if (!l4) throw new BadRequestException('Brak zdefiniowanego typu L4.');
     const updated = await this.prisma.absence.update({ where: { id }, data: { typeId: l4.id } });
     await this.prisma.auditLog.create({

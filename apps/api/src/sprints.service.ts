@@ -61,9 +61,18 @@ export class SprintsService {
         continue;
       }
       const squadName = cell(row, cols.squad).toLowerCase();
-      await this.prisma.sprint.create({
-        data: { name, dateFrom: from, dateTo: to, squadId: squadName ? squadByName.get(squadName) ?? null : null },
-      });
+      const squadId = squadName ? squadByName.get(squadName) ?? null : null;
+      // Harmonogram QBR wgrywa się zwykle kilka razy — po każdej korekcie planu. Bez sprawdzenia
+      // powtórny import mnożył sprinty, a że capacity szuka sprintu po dacie (`findFirst`),
+      // duplikaty nie wywoływały błędu, tylko cicho zmieniały to, który sprint uznaje się
+      // za bieżący. Kryterium jak przy świętach (`skipDuplicates`): ten sam sprint to ten sam
+      // nazwa + początek + jednostka.
+      const istnieje = await this.prisma.sprint.findFirst({ where: { name, dateFrom: from, squadId } });
+      if (istnieje) {
+        result.errors.push({ row: r, message: `Sprint „${name}" o tym terminie już istnieje — pominięty.` });
+        continue;
+      }
+      await this.prisma.sprint.create({ data: { name, dateFrom: from, dateTo: to, squadId } });
       result.created++;
     }
     return result;

@@ -179,13 +179,25 @@ export class EmployeesService {
         startDate,
       };
 
-      const existing = await this.prisma.employee.findUnique({ where: { email } });
-      if (existing) {
-        await this.prisma.employee.update({ where: { email }, data });
-        result.updated++;
-      } else {
-        await this.prisma.employee.create({ data });
-        result.created++;
+      // Zapis w try/catch, bo plik zamawiającego bywa niespójny w sposób, którego walidacja
+      // wiersza nie wychwyci: dwa wiersze z tym samym loginem łamią unikalność dopiero w bazie.
+      // Bez tego pierwszy taki wiersz kończył cały import błędem 500 — z częścią osób już
+      // zapisaną i bez informacji, na czym się przerwało. Struktura `errors` istniała, ale
+      // obejmowała wyłącznie walidację, więc raport milczał o jedynym realnym problemie.
+      try {
+        const existing = await this.prisma.employee.findUnique({ where: { email } });
+        if (existing) {
+          await this.prisma.employee.update({ where: { email }, data });
+          result.updated++;
+        } else {
+          await this.prisma.employee.create({ data });
+          result.created++;
+        }
+      } catch (e) {
+        const msg = (e as { code?: string }).code === 'P2002'
+          ? `Login lub e-mail już zajęty: "${data.login}" / "${email}"`
+          : `Nie udało się zapisać wiersza: ${(e as Error).message}`;
+        result.errors.push({ row: r, message: msg });
       }
     }
     return result;

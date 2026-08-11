@@ -54,18 +54,30 @@ export class CapacityController {
     }
     for (const unitId of new Set(units)) await this.org.assertUnitInScope(user, unitId);
 
-    const cells = await Promise.all(
-      units.flatMap((unitId) => sprints.map(async (sprintId) => {
-        // Brakujący sprint lub jednostka to dziura w siatce, nie awaria całości — heatmapa
-        // odróżnia brak pomiaru od zera i ma czym tę różnicę pokazać.
-        try {
-          const c = await this.capacity.forSprint(sprintId, unitId);
-          return { sprintId, unitId, totalPersonDays: c.totalPersonDays, absentPersonDays: c.absentPersonDays, available: c.available, memberCount: c.memberCount, keyRoleCollisions: c.keyRoleCollisions };
-        } catch {
-          return { sprintId, unitId, totalPersonDays: null, absentPersonDays: null, available: null, memberCount: null, keyRoleCollisions: [] };
-        }
-      })),
-    );
+    const pary = units.flatMap((unitId) => sprints.map((sprintId) => ({ sprintId, unitId })));
+    const komorka = async ({ sprintId, unitId }: { sprintId: string; unitId: string }) => {
+      // Brakujący sprint lub jednostka to dziura w siatce, nie awaria całości — heatmapa
+      // odróżnia brak pomiaru od zera i ma czym tę różnicę pokazać.
+      try {
+        const c = await this.capacity.forSprint(sprintId, unitId);
+        return { sprintId, unitId, totalPersonDays: c.totalPersonDays, absentPersonDays: c.absentPersonDays, available: c.available, memberCount: c.memberCount, keyRoleCollisions: c.keyRoleCollisions };
+      } catch {
+        return { sprintId, unitId, totalPersonDays: null, absentPersonDays: null, available: null, memberCount: null, keyRoleCollisions: [] };
+      }
+    };
+
+    // Partiami, nie wszystko naraz. Górny limit 240 par ogranicza ROZMIAR żądania, ale nie
+    // współbieżność: każda komórka to kilka zapytań, więc `Promise.all` po całości wypuszczał
+    // do tysiąca zapytań jednocześnie przy puli połączeń Prismy rzędu kilkunastu. Nadmiar
+    // i tak czekał w kolejce — tyle że w kolejce, w której nie działo się nic innego, łącznie
+    // z sondą /health i żądaniami pozostałych użytkowników.
+    // ponytail: stały rozmiar partii wystarcza przy 240 komórkach. Gdyby siatka miała rosnąć,
+    // właściwym krokiem jest pobranie danych raz na jednostkę i policzenie sprintów w pamięci.
+    const PARTIA = 8;
+    const cells: Awaited<ReturnType<typeof komorka>>[] = [];
+    for (let i = 0; i < pary.length; i += PARTIA) {
+      cells.push(...await Promise.all(pary.slice(i, i + PARTIA).map(komorka)));
+    }
     return { cells };
   }
 }
