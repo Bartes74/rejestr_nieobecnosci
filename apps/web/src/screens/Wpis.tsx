@@ -6,7 +6,7 @@ import { dateRange, mergeIsoRanges, todayIso } from '../format';
 import { api, type Absence, type AbsenceType, type Preview } from '../api';
 import { useAuth } from '../current-employee';
 import { useIsNarrow } from '../viewport';
-import { Notice, useNotice } from '../admin/ui';
+import { DAY_PARTS, Notice, useNotice } from '../admin/ui';
 import { card } from '../design-system/surfaces';
 
 
@@ -20,7 +20,6 @@ const inputEl = { flex: 1, border: 'none', outline: 'none', background: 'transpa
 // w całej aplikacji. 32 px mieści się w minimum celu wskaźnika (24 px) z audytu dostępności.
 const navBtn = { width: 32, height: 32, flex: 'none', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-2)', background: 'var(--surface)', color: 'var(--ink-2)', display: 'grid', placeItems: 'center', cursor: 'pointer' } as const;
 
-const PARTS: [string, string][] = [['FULL', 'Cały dzień'], ['AM', 'Przed poł. (AM)'], ['PM', 'Po poł. (PM)'], ['HOURS', 'Godziny']];
 const WD = ['P', 'W', 'Ś', 'C', 'P', 'S', 'N'];
 // Mianownik, bo to nagłówek miesiąca, a nie data — „SIERPNIA 2026" czyta się jak urwane zdanie.
 const MONTHS = ['styczeń', 'luty', 'marzec', 'kwiecień', 'maj', 'czerwiec', 'lipiec', 'sierpień', 'wrzesień', 'październik', 'listopad', 'grudzień'];
@@ -193,8 +192,16 @@ export function Wpis() {
   }, []);
   // `saved` w zależnościach: po zapisie podgląd musi policzyć się od nowa. Bez tego karta
   // „Balans po zapisie" pokazywała nieaktualne „26 → 25" obok komunikatu, że zapis już nastąpił.
+  // `live` jak w Kalendarzu: pola dat i godzin zmieniają się szybciej, niż wracają odpowiedzi,
+  // a spóźniona potrafiła nadpisać świeższą. Przycisk zapisu jest blokowany przez
+  // `preview?.collision`, więc znaczyło to podgląd jednego terminu obok decyzji o innym.
   useEffect(() => {
-    if (current && from && effTo) api.preview(current.id, from, effTo, dayPart, hf, ht, typeId).then(setPreview).catch(() => setPreview(null));
+    if (!current || !from || !effTo) return;
+    let live = true;
+    api.preview(current.id, from, effTo, dayPart, hf, ht, typeId)
+      .then((p) => { if (live) setPreview(p); })
+      .catch(() => { if (live) setPreview(null); });
+    return () => { live = false; };
   }, [current?.id, from, effTo, dayPart, hf, ht, typeId, saved]);
   // Własne wpisy do mini-kalendarza. Istniejący `GET /absences?employeeId=` wystarcza — to lista
   // jednej osoby, więc filtrowanie do widocznego miesiąca robi się po stronie ekranu.
@@ -217,8 +224,8 @@ export function Wpis() {
     const step = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 0;
     if (!step) return;
     e.preventDefault();
-    const i = PARTS.findIndex(([k]) => k === dayPart);
-    const next = PARTS[(i + step + PARTS.length) % PARTS.length]?.[0];
+    const i = DAY_PARTS.findIndex(([k]) => k === dayPart);
+    const next = DAY_PARTS[(i + step + DAY_PARTS.length) % DAY_PARTS.length]?.[0];
     if (!next) return;
     editPart(next);
     (e.currentTarget.parentElement?.querySelector(`[data-part="${next}"]`) as HTMLElement | null)?.focus();
@@ -279,7 +286,7 @@ export function Wpis() {
           <div role="radiogroup" aria-label="Wymiar dnia">
             <div style={labelStyle}>Wymiar dnia</div>
             <div style={{ display: 'flex', gap: 8, marginBottom: dayPart === 'HOURS' ? 14 : 24 }}>
-              {PARTS.map(([k, lbl]) => {
+              {DAY_PARTS.map(([k, lbl]) => {
                 const active = dayPart === k;
                 return <button key={k} type="button" role="radio" data-part={k} aria-checked={active} tabIndex={active ? 0 : -1}
                   className={active ? undefined : 'ds-quiet'} onClick={() => editPart(k)} onKeyDown={movePart} style={{

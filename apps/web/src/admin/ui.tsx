@@ -23,6 +23,13 @@ export const td: CSSProperties = {
 /** Komórka liczbowa: mono z cyframi tabelarycznymi, wyrównana do prawej (Reguła mono dla danych). */
 export const num: CSSProperties = { ...td, fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', textAlign: 'right' };
 
+// FR-A3 — wymiar dnia. Jedna lista dla wszystkich trzech ekranów, które go wybierają
+// (nowy wpis, moja historia, zespół): ten sam wybór ma się wszędzie nazywać tak samo,
+// a rozjazd etykiet między ekranami czyta się jak różnica znaczenia.
+export const DAY_PARTS: readonly [string, string][] = [
+  ['FULL', 'Cały dzień'], ['AM', 'Przed poł. (AM)'], ['PM', 'Po poł. (PM)'], ['HOURS', 'Godziny'],
+];
+
 export function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div style={{ ...card, padding: 20, marginBottom: 18 }}>
