@@ -2,6 +2,7 @@ import {
   CanActivate, ExecutionContext, ForbiddenException, Injectable, UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { todayUtc } from '@nieobecnosci/core';
 import type { Role } from '@prisma/client';
 import { AuthService } from './auth.service';
 import { PrismaService } from '../prisma.service';
@@ -24,7 +25,22 @@ export class AuthGuard implements CanActivate {
     const header: string = req.headers.authorization ?? '';
     const token = header.startsWith('Bearer ') ? header.slice(7) : '';
     if (!token) throw new UnauthorizedException('Wymagane logowanie.');
-    req.user = this.auth.verify(token);
+
+    // Token dowodzi tożsamości; kim ta osoba JEST DZIŚ, mówi baza. Uprawnienia wpisane do tokenu
+    // były kopią sprzed nawet dwunastu godzin, więc odebranie roli albo uprawnienia rozszerzonego
+    // nie odbierało dostępu, a konto zanonimizowane działało dalej na wydanym wcześniej tokenie.
+    // ponytail: jedno zapytanie na żądanie — przy 300 użytkownikach z NFR-1 poniżej progu
+    // zauważalności. Przy większej skali: cache z krótkim TTL, czyszczony przy zmianie uprawnień.
+    const { sub } = this.auth.verify(token);
+    const emp = await this.prisma.employee.findUnique({
+      where: { id: sub },
+      select: { id: true, role: true, endDate: true, permissions: { select: { scope: true } } },
+    });
+    if (!emp) throw new UnauthorizedException('Konto nie istnieje.');
+    // `todayUtc()`, nie `new Date()` — data zakończenia to etykieta kalendarzowa w strefie
+    // organizacji, więc porównanie musi trafiać co do dnia (patrz komentarz w BalanceService).
+    if (emp.endDate && emp.endDate < todayUtc()) throw new UnauthorizedException('Współpraca zakończona.');
+    req.user = { sub: emp.id, role: emp.role, permissions: emp.permissions.map((p) => p.scope) };
 
     const roles = this.reflector.getAllAndOverride<Role[]>(ROLES, [ctx.getHandler(), ctx.getClass()]);
     if (roles?.length && !roles.includes(req.user.role)) {
