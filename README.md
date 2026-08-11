@@ -178,7 +178,20 @@ Ostatni przebieg (10.08.2026, baza demo): `Employee=23, Absence=49`, wynik OK.
 Hasła hashowane `scrypt`; dostęp przez JWT + RBAC. Zdarzenia bezpieczeństwa (nieudane logowania
 `LOGIN_FAILED`, odmowy dostępu `ACCESS_DENIED`, odczyt znacznika L4 `VIEW_TYPES`) trafiają do
 tabeli `AuditLog`. Szyfrowanie w tranzycie zapewnia Caddy (TLS); w spoczynku — dysk/Postgres
-na poziomie wdrożenia.
+na poziomie wdrożenia. Nagłówki bezpieczeństwa: API przez `helmet()`, dokument SPA przez Caddy
+(CSP, `X-Frame-Options`, `Referrer-Policy` — patrz `Caddyfile`).
+
+**Token niesie wyłącznie tożsamość.** Rolę, uprawnienia rozszerzone i status zatrudnienia strażnik
+czyta z bazy przy każdym żądaniu, więc odebranie uprawnienia, degradacja roli, zakończenie
+współpracy i usunięcie konta działają natychmiast. Wcześniej uprawnienia jechały w tokenie, czyli
+były kopią sprzed nawet dwunastu godzin — administrator reagujący na incydent nie miał czym
+zareagować. Koszt: jedno zapytanie na żądanie, przy 300 użytkownikach z NFR-1 poniżej progu
+zauważalności.
+
+Wyjątek, o którym warto wiedzieć: anonimizacja (FR-J2) usuwa dane osobowe i hasło, ale wiersz
+pracownika zostaje (integralność wpisów), więc token wydany **przed** anonimizacją działa do
+wygaśnięcia. Ponowne zalogowanie jest niemożliwe. Domknięcie tego okna wymaga kolumny znacznika
+sesji na `Employee` — patrz `NAPRAWY-PO-REVIEW.md`, sekcja „Do decyzji".
 
 `VIEW_TYPES` obejmuje **obie** drogi, którymi znacznik kategorii szczególnej wychodzi z systemu:
 listę wpisów (`GET /absences`) i eksport płacowy (`GET /reports/export/payroll`). Dodając trzecią,

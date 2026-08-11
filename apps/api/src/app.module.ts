@@ -34,7 +34,8 @@ import { RetentionService } from './retention.service';
 import { SettingsService } from './settings.service';
 import { SettingsController } from './settings.controller';
 import { ProcessingRegisterController } from './processing-register.controller';
-import { AnalyticsController, AnalyticsService } from './analytics.controller';
+import { AnalyticsController } from './analytics.controller';
+import { AnalyticsService } from './analytics.service';
 import { AuthController } from './auth/auth.controller';
 import { AuthService } from './auth/auth.service';
 import { AuthProvider, LocalAuthProvider } from './auth/auth-provider';
@@ -65,7 +66,8 @@ import { AuthGuard } from './auth/auth.guard';
     AuditController,
     NotificationsController,
     NotificationsFeedController,
-    RetentionController, SettingsController,
+    RetentionController,
+    SettingsController,
     ProcessingRegisterController,
     AnalyticsController,
   ],
@@ -82,7 +84,8 @@ import { AuthGuard } from './auth/auth.guard';
     ReportsService,
     MailService,
     NotificationsService,
-    RetentionService, SettingsService,
+    RetentionService,
+    SettingsService,
     AnalyticsService,
     SchedulerService,
     { provide: APP_GUARD, useClass: ThrottlerGuard }, // M1 — rate-limiting (prod-only przez skipIf)
