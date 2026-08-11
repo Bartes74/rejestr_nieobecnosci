@@ -16,6 +16,7 @@ const SUITES = [
   'verify-b7-rolowanie.mjs',
   // Regresje po przeglądzie kodu — każda odtwarza konkretną lukę, nie funkcję.
   'verify-godziny-walidacja.mjs', 'verify-rodo-feedtoken.mjs', 'verify-sesja-uniewaznienie.mjs',
+  'verify-przypomnienia-zalegle.mjs', 'verify-wyscig-puli.mjs',
 ];
 
 if (run('db-wipe.mjs') !== 0) { console.error('Czyszczenie bazy nie powiodło się.'); process.exit(1); }

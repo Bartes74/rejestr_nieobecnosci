@@ -104,7 +104,39 @@ export class AbsencesService {
     }));
   }
 
-  async create(dto: CreateAbsenceDto, user: AuthUser) {
+  /**
+   * Szereguje operacje dotyczące jednej osoby.
+   *
+   * Między sprawdzeniem puli a zapisem nie było niczego, co powstrzymałoby drugie żądanie:
+   * dwa równoległe zapisy czytały ten sam stan, oba przechodziły walidację i oba lądowały
+   * w bazie — pula wychodziła przekroczona, a kolizja terminów podwójna. Wystarczyły dwie
+   * karty przeglądarki albo operacja masowa.
+   *
+   * Kolejkujemy wyłącznie per osoba, więc zapisy różnych osób dalej idą równolegle.
+   *
+   * ponytail: kolejka w procesie — API działa w jednej instancji (docker-compose.prod.yml).
+   * Przy skalowaniu poziomym zastąpić blokadą wiersza: $transaction + SELECT … FOR UPDATE.
+   */
+  private readonly queues = new Map<string, Promise<unknown>>();
+
+  private serialize<T>(employeeId: string, fn: () => Promise<T>): Promise<T> {
+    // Poprzednik przez `.then` bez `catch` w łańcuchu zwracanym na zewnątrz: błąd jednego
+    // żądania nie może przewrócić następnego w kolejce ani zostawić odrzuconej obietnicy
+    // bez odbiorcy (w Node kończy się to zabiciem procesu).
+    const prev = this.queues.get(employeeId) ?? Promise.resolve();
+    const next = prev.then(fn, fn);
+    const settled = next.then(() => {}, () => {});
+    this.queues.set(employeeId, settled);
+    // Sprzątanie, żeby mapa nie rosła z każdą osobą, która kiedykolwiek coś zapisała.
+    void settled.then(() => { if (this.queues.get(employeeId) === settled) this.queues.delete(employeeId); });
+    return next;
+  }
+
+  create(dto: CreateAbsenceDto, user: AuthUser) {
+    return this.serialize(dto.employeeId, () => this.createNow(dto, user));
+  }
+
+  private async createNow(dto: CreateAbsenceDto, user: AuthUser) {
     await this.assertCanActFor(dto.employeeId, user);
     const from = new Date(dto.dateFrom);
     const to = new Date(dto.dateTo);
@@ -150,6 +182,12 @@ export class AbsencesService {
   async update(id: string, dto: UpdateAbsenceDto, user: AuthUser) {
     const existing = await this.prisma.absence.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Wpis nie istnieje.');
+    // Kolejkujemy po WŁAŚCICIELU wpisu, nie po działającym — pulę przekracza się osobie,
+    // której wpis dotyczy, a edytować może ją ktoś inny (lider, uprawnienie rozszerzone).
+    return this.serialize(existing.employeeId, () => this.updateNow(id, dto, user, existing));
+  }
+
+  private async updateNow(id: string, dto: UpdateAbsenceDto, user: AuthUser, existing: { employeeId: string; dateFrom: Date; dateTo: Date; typeId: string; dayPart: DayPart; hourFrom: string | null; hourTo: string | null }) {
     await this.assertCanActFor(existing.employeeId, user);
     const from = dto.dateFrom ? new Date(dto.dateFrom) : existing.dateFrom;
     const to = dto.dateTo ? new Date(dto.dateTo) : existing.dateTo;
