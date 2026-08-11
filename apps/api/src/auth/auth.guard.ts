@@ -31,15 +31,28 @@ export class AuthGuard implements CanActivate {
     // nie odbierało dostępu, a konto zanonimizowane działało dalej na wydanym wcześniej tokenie.
     // ponytail: jedno zapytanie na żądanie — przy 300 użytkownikach z NFR-1 poniżej progu
     // zauważalności. Przy większej skali: cache z krótkim TTL, czyszczony przy zmianie uprawnień.
-    const { sub } = this.auth.verify(token);
+    const { sub, iat, iatMs } = this.auth.verify(token);
     const emp = await this.prisma.employee.findUnique({
       where: { id: sub },
-      select: { id: true, role: true, endDate: true, permissions: { select: { scope: true } } },
+      select: { id: true, role: true, endDate: true, sessionsValidFrom: true, permissions: { select: { scope: true } } },
     });
     if (!emp) throw new UnauthorizedException('Konto nie istnieje.');
     // `todayUtc()`, nie `new Date()` — data zakończenia to etykieta kalendarzowa w strefie
     // organizacji, więc porównanie musi trafiać co do dnia (patrz komentarz w BalanceService).
     if (emp.endDate && emp.endDate < todayUtc()) throw new UnauthorizedException('Współpraca zakończona.');
+    // FR-J2 — sesja sprzed anonimizacji albo resetu hasła. Wiersz pracownika po anonimizacji
+    // zostaje (wiszą na nim wpisy nieobecności), więc bez tego znacznika strażnik nie miał po
+    // czym poznać, że token wydany wcześniej nie powinien już działać.
+    //
+    // Porównanie idzie w milisekundach (`iatMs`), bo standardowe `iat` ma rozdzielczość
+    // sekundową: reset hasła i logowanie zaraz po nim wypadają wtedy w tej samej sekundzie,
+    // a każde rozstrzygnięcie remisu jest złe — albo stara sesja przeżywa unieważnienie,
+    // albo świeża ginie i konto zostaje zablokowane tuż po ustawieniu nowego hasła.
+    // `iat * 1000` to zapas dla tokenów sprzed wprowadzenia `iatMs`.
+    const wydanyMs = iatMs ?? iat * 1000;
+    if (emp.sessionsValidFrom && wydanyMs < emp.sessionsValidFrom.getTime()) {
+      throw new UnauthorizedException('Sesja została zakończona. Zaloguj się ponownie.');
+    }
     req.user = { sub: emp.id, role: emp.role, permissions: emp.permissions.map((p) => p.scope) };
 
     const roles = this.reflector.getAllAndOverride<Role[]>(ROLES, [ctx.getHandler(), ctx.getClass()]);

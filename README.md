@@ -188,10 +188,13 @@ były kopią sprzed nawet dwunastu godzin — administrator reagujący na incyde
 zareagować. Koszt: jedno zapytanie na żądanie, przy 300 użytkownikach z NFR-1 poniżej progu
 zauważalności.
 
-Wyjątek, o którym warto wiedzieć: anonimizacja (FR-J2) usuwa dane osobowe i hasło, ale wiersz
-pracownika zostaje (integralność wpisów), więc token wydany **przed** anonimizacją działa do
-wygaśnięcia. Ponowne zalogowanie jest niemożliwe. Domknięcie tego okna wymaga kolumny znacznika
-sesji na `Employee` — patrz `NAPRAWY-PO-REVIEW.md`, sekcja „Do decyzji".
+**Anonimizacja i reset hasła kończą sesje już trwające.** Wiersz pracownika po anonimizacji
+(FR-J2) zostaje — wiszą na nim wpisy nieobecności — więc samo usunięcie danych nie wystarczyło:
+token wydany wcześniej działałby do wygaśnięcia. `Employee.sessionsValidFrom` zapisuje moment,
+od którego sesje są ważne, a strażnik odrzuca tokeny starsze. Ten sam mechanizm obejmuje
+`PUT /employees/:id/password`, bo reset hasła robi się najczęściej wtedy, gdy konto mogło zostać
+przejęte. Porównanie idzie po znaczniku milisekundowym w tokenie, nie po standardowym `iat`
+(rozdzielczość sekundowa gubi kolejność, gdy reset i logowanie po nim trafiają w tę samą sekundę).
 
 `VIEW_TYPES` obejmuje **obie** drogi, którymi znacznik kategorii szczególnej wychodzi z systemu:
 listę wpisów (`GET /absences`) i eksport płacowy (`GET /reports/export/payroll`). Dodając trzecią,
