@@ -1,15 +1,10 @@
 // Smoke test Kroku 6 (NFR-5): rejestrowanie zdarzeń bezpieczeństwa w AuditLog.
-import { PrismaClient } from '@prisma/client';
-import { hashPassword } from './dist/auth/auth.service.js';
+import { API, failures, hashPassword, ok, prisma, waitForApi } from './verify-harness.mjs';
 
-const API = process.env.API ?? 'http://localhost:3100/api';
-const prisma = new PrismaClient();
-let failures = 0;
-const ok = (c, m) => { console.log(`${c ? '✓' : '✗'} ${m}`); if (!c) failures++; };
 const post = (p, b, t) => fetch(API + p, { method: 'POST', headers: { 'content-type': 'application/json', ...(t ? { authorization: `Bearer ${t}` } : {}) }, body: JSON.stringify(b) });
 const login = async (l, p) => { const r = await post('/auth/login', { login: l, password: p }); return r.ok ? (await r.json()).token : null; };
 
-for (let i = 0; i < 30; i++) { try { if ((await fetch(`${API}/health`)).ok) break; } catch {} await new Promise((r) => setTimeout(r, 500)); }
+await waitForApi();
 
 const worker = await prisma.employee.create({ data: { firstName: 'K6', lastName: 'Worker', email: 'k6worker@x.pl', login: 'k6worker', role: 'EMPLOYEE', employmentType: 'UOP', startDate: new Date('2026-01-01'), passwordHash: hashPassword('haslo123') } });
 

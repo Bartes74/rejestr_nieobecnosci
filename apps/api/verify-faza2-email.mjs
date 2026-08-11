@@ -1,18 +1,10 @@
 // Faza 2: powiadomienia e-mail (FR-E1 lider o B2B/OUT, FR-E3 przypomnienia o zaległym urlopie).
 // SMTP_ENABLED=false → jsonTransport; każdą wysyłkę odnotowujemy w audycie (EMAIL_SENT).
-import { PrismaClient } from '@prisma/client';
-import { hashPassword } from './dist/auth/auth.service.js';
+import { as, failures, hashPassword, j, login, ok, prisma, waitForApi } from './verify-harness.mjs';
 
-const API = process.env.API ?? 'http://localhost:3100/api';
-const prisma = new PrismaClient();
-let failures = 0;
-const ok = (c, m) => { console.log(`${c ? '✓' : '✗'} ${m}`); if (!c) failures++; };
-const j = async (r) => { if (!r.ok) throw new Error(`${r.status} ${await r.text()}`); return r.json(); };
-const login = async (l, p) => (await j(await fetch(`${API}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ login: l, password: p }) }))).token;
-const as = (t) => (p, o = {}) => fetch(API + p, { ...o, headers: { 'content-type': 'application/json', authorization: `Bearer ${t}`, ...(o.headers || {}) } });
 const emailCount = () => prisma.auditLog.count({ where: { entity: 'Email' } });
 
-for (let i = 0; i < 30; i++) { try { if ((await fetch(`${API}/health`)).ok) break; } catch {} await new Promise((r) => setTimeout(r, 500)); }
+await waitForApi();
 
 const tribe = await prisma.orgUnit.create({ data: { name: 'TribeE F2', type: 'TRIBE' } });
 const squad = await prisma.orgUnit.create({ data: { name: 'SquadE F2', type: 'SQUAD', parentId: tribe.id } });

@@ -1,22 +1,13 @@
 // Smoke test Kroku 1: config admina + import .xlsx (domyślne mapowanie kolumn) + balans liczony przez core.
 import ExcelJS from 'exceljs';
-import { PrismaClient } from '@prisma/client';
-import { hashPassword } from './dist/auth/auth.service.js';
+import { API, failures, hashPassword, j, ok, prisma, waitForApi } from './verify-harness.mjs';
 
-const API = process.env.API ?? 'http://localhost:3100/api';
-const prisma = new PrismaClient();
-let failures = 0;
 let token = '';
-const ok = (cond, msg) => { console.log(`${cond ? '✓' : '✗'} ${msg}`); if (!cond) failures++; };
-const j = async (res) => { if (!res.ok) throw new Error(`${res.status} ${await res.text()}`); return res.json(); };
 const H = () => ({ 'content-type': 'application/json', authorization: `Bearer ${token}` });
 const HF = () => ({ authorization: `Bearer ${token}` }); // multipart — bez content-type
 
 // czekaj na API
-for (let i = 0; i < 30; i++) {
-  try { const r = await fetch(`${API}/health`); if (r.ok) break; } catch {}
-  await new Promise((r) => setTimeout(r, 500));
-}
+await waitForApi();
 ok((await fetch(`${API}/health`)).ok, 'GET /health → ok');
 
 // API jest zabezpieczone RBAC (od Kroku 3) — bootstrap admina + token.

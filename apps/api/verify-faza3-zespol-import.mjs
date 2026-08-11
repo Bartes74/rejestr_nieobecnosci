@@ -1,18 +1,9 @@
 // Faza 3 (pkt 1–2): FR-A5 ekran „Zespół" (my-team + L4-safe lista wpisów lidera)
 // oraz import .xlsx z konfigurowalnym mapowaniem kolumn (FR-G5/D4).
-import { PrismaClient } from '@prisma/client';
+import { API, as, failures, hashPassword, j, login, ok, prisma, waitForApi } from './verify-harness.mjs';
 import ExcelJS from 'exceljs';
-import { hashPassword } from './dist/auth/auth.service.js';
 
-const API = process.env.API ?? 'http://localhost:3100/api';
-const prisma = new PrismaClient();
-let failures = 0;
-const ok = (c, m) => { console.log(`${c ? '✓' : '✗'} ${m}`); if (!c) failures++; };
-const j = async (r) => { if (!r.ok) throw new Error(`${r.status} ${await r.text()}`); return r.json(); };
-const login = async (l, p) => (await j(await fetch(`${API}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ login: l, password: p }) }))).token;
-const as = (t) => (p, o = {}) => fetch(API + p, { ...o, headers: { 'content-type': 'application/json', authorization: `Bearer ${t}`, ...(o.headers || {}) } });
-
-for (let i = 0; i < 30; i++) { try { if ((await fetch(`${API}/health`)).ok) break; } catch {} await new Promise((r) => setTimeout(r, 500)); }
+await waitForApi();
 
 // struktura: dwa Tribe; lider i Anna w TribeA, Obcy w TribeB
 const tribeA = await prisma.orgUnit.create({ data: { name: 'TribeA F3', type: 'TRIBE' } });

@@ -1,19 +1,13 @@
 // Smoke test Kroku 2: wpis nieobecności + walidacja (kolizja, pula, zakres) + licznik + usuwanie.
-import { PrismaClient } from '@prisma/client';
-import { hashPassword } from './dist/auth/auth.service.js';
+import { API, failures, hashPassword, j, ok, prisma, waitForApi } from './verify-harness.mjs';
 
-const API = process.env.API ?? 'http://localhost:3100/api';
-const prisma = new PrismaClient();
-let failures = 0;
 let token = '';
-const ok = (c, m) => { console.log(`${c ? '✓' : '✗'} ${m}`); if (!c) failures++; };
 const H = () => ({ 'content-type': 'application/json', authorization: `Bearer ${token}` });
 const post = (p, b) => fetch(API + p, { method: 'POST', headers: H(), body: JSON.stringify(b) });
 const put = (p, b) => fetch(API + p, { method: 'PUT', headers: H(), body: JSON.stringify(b) });
 const getj = async (p) => { const r = await fetch(API + p, { headers: H() }); if (!r.ok) throw new Error(`${r.status} ${await r.text()}`); return r.json(); };
-const j = async (r) => { if (!r.ok) throw new Error(`${r.status} ${await r.text()}`); return r.json(); };
 
-for (let i = 0; i < 30; i++) { try { if ((await fetch(`${API}/health`)).ok) break; } catch {} await new Promise((r) => setTimeout(r, 500)); }
+await waitForApi();
 
 // API zabezpieczone RBAC — bootstrap admina + token.
 await prisma.employee.create({ data: { firstName: 'Adm', lastName: 'K2', email: 'admin@k2.pl', login: 'k2admin', role: 'ADMIN', employmentType: 'UOP', startDate: new Date('2026-01-01'), passwordHash: hashPassword('haslo123') } });
