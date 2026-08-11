@@ -3,12 +3,13 @@ import { plural } from '@nieobecnosci/core/plural';
 import { dateRange, todayIso } from '../format';
 import { api, type Absence, type AbsenceType } from '../api';
 import { useAuth } from '../current-employee';
-import { ConfirmDialog, Notice, field, useNotice } from '../admin/ui';
+import { ConfirmDialog, DAY_PARTS, Notice, field, useNotice } from '../admin/ui';
 import { cardClipped } from '../design-system/surfaces';
 import { SegmentedControl } from '../design-system/components/forms/SegmentedControl';
 
 
 const COLS = '1.6fr .6fr 1.6fr 1.1fr 1fr .9fr';
+
 
 // Dni robocze liczy serwer (z kalendarzem świąt osoby) — ta sama liczba, którą widzi balans.
 const workdays = (n: number) => String(n).replace('.', ','); // ułamki po polsku (0,5)
@@ -19,7 +20,9 @@ export function Historia() {
   const [rows, setRows] = useState<Absence[]>([]);
   const [types, setTypes] = useState<AbsenceType[]>([]);
   const [undo, setUndo] = useState<Absence | null>(null);
-  const [edit, setEdit] = useState<{ id: string; typeId: string; dateFrom: string; dateTo: string } | null>(null);
+  // Wymiar dnia i godziny w edycji, bo bez nich błędnie wpisanego zakresu godzinowego nie dało
+  // się poprawić — trzeba było usunąć wpis i utworzyć go od nowa.
+  const [edit, setEdit] = useState<{ id: string; typeId: string; dateFrom: string; dateTo: string; dayPart: string; hourFrom: string; hourTo: string } | null>(null);
   const [confirmDel, setConfirmDel] = useState<Absence | null>(null);
   const [busy, setBusy] = useState(false);
   const { notice, fail, clear } = useNotice();
@@ -51,10 +54,20 @@ export function Historia() {
       setUndo(null); load();
     });
   };
+  // Niepełny dzień dotyczy pojedynczej daty (FR-A3), a zakres godzin musi być rosnący —
+  // te same reguły co w formularzu nowego wpisu. Serwer sprawdza je niezależnie.
+  const editPartial = !!edit && edit.dayPart !== 'FULL';
+  const editTo = editPartial ? edit!.dateFrom : edit?.dateTo ?? '';
+  const editBadHours = !!edit && edit.dayPart === 'HOURS' && edit.hourTo <= edit.hourFrom;
+  const editBadRange = !!edit && !editPartial && editTo < edit.dateFrom;
+
   const saveEdit = () => {
-    if (!edit) return;
+    if (!edit || editBadHours || editBadRange) return;
     void guard(async () => {
-      await api.updateAbsence(edit.id, { typeId: edit.typeId, dateFrom: edit.dateFrom, dateTo: edit.dateTo });
+      await api.updateAbsence(edit.id, {
+        typeId: edit.typeId, dateFrom: edit.dateFrom, dateTo: editTo, dayPart: edit.dayPart,
+        ...(edit.dayPart === 'HOURS' ? { hourFrom: edit.hourFrom, hourTo: edit.hourTo } : {}),
+      });
       setEdit(null); load();
     });
   };
@@ -110,8 +123,18 @@ export function Historia() {
               <div key={a.id} role="row" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 20px', borderTop: '1px solid var(--border)', flexWrap: 'wrap' }}>
                 <select style={field} aria-label="Typ nieobecności" value={edit.typeId} onChange={(e) => setEdit({ ...edit, typeId: e.target.value })}>{types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select>
                 <input type="date" style={field} aria-label="Data od" value={edit.dateFrom} onChange={(e) => setEdit({ ...edit, dateFrom: e.target.value })} />
-                <input type="date" style={field} aria-label="Data do" value={edit.dateTo} min={edit.dateFrom} onChange={(e) => setEdit({ ...edit, dateTo: e.target.value })} />
-                <button type="button" className="ds-quiet" onClick={saveEdit} disabled={busy || edit.dateTo < edit.dateFrom} style={{ ...field, cursor: 'pointer', color: 'var(--brand)', borderColor: 'var(--brand)', fontWeight: 600 }}>{busy ? 'Zapisywanie…' : 'Zapisz'}</button>
+                {/* Przy niepełnym dniu data „do" znika zamiast być wyszarzona: pole, które i tak
+                    nic nie zmienia, tylko każe się zastanawiać, dlaczego nie działa. */}
+                {!editPartial && <input type="date" style={field} aria-label="Data do" value={edit.dateTo} min={edit.dateFrom} onChange={(e) => setEdit({ ...edit, dateTo: e.target.value })} />}
+                <select style={field} aria-label="Wymiar dnia" value={edit.dayPart} onChange={(e) => setEdit({ ...edit, dayPart: e.target.value })}>
+                  {DAY_PARTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+                {edit.dayPart === 'HOURS' && <>
+                  <input type="time" style={field} aria-label="Od godziny" value={edit.hourFrom} onChange={(e) => setEdit({ ...edit, hourFrom: e.target.value })} />
+                  <input type="time" style={field} aria-label="Do godziny" aria-invalid={editBadHours || undefined} value={edit.hourTo} onChange={(e) => setEdit({ ...edit, hourTo: e.target.value })} />
+                </>}
+                {editBadHours && <span style={{ fontFamily: 'var(--font-sans)', fontSize: 12.5, color: 'var(--danger)' }}>Godzina „do" musi być późniejsza niż „od".</span>}
+                <button type="button" className="ds-quiet" onClick={saveEdit} disabled={busy || editBadRange || editBadHours} style={{ ...field, cursor: 'pointer', color: 'var(--brand)', borderColor: 'var(--brand)', fontWeight: 600 }}>{busy ? 'Zapisywanie…' : 'Zapisz'}</button>
                 <button type="button" className="ds-quiet" onClick={() => setEdit(null)} style={{ ...field, cursor: 'pointer' }}>Anuluj</button>
               </div>
             );
@@ -130,7 +153,7 @@ export function Historia() {
               </div>
               <div role="cell" style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
                 {isUpcoming && <>
-                  <button type="button" className="ds-quiet" disabled={busy} aria-label={`Edytuj nieobecność ${rangeLabel(a)}`} onClick={() => setEdit({ id: a.id, typeId: a.type.id, dateFrom: a.dateFrom, dateTo: a.dateTo })} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)', fontSize: 12.5, fontWeight: 600, color: 'var(--ink-2)', padding: '5px 7px', minHeight: 24, boxSizing: 'border-box', margin: '-5px -3px', borderRadius: 'var(--radius-sm)' }}>Edytuj</button>
+                  <button type="button" className="ds-quiet" disabled={busy} aria-label={`Edytuj nieobecność ${rangeLabel(a)}`} onClick={() => setEdit({ id: a.id, typeId: a.type.id, dateFrom: a.dateFrom, dateTo: a.dateTo, dayPart: a.dayPart, hourFrom: a.hourFrom ?? '09:00', hourTo: a.hourTo ?? '13:00' })} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)', fontSize: 12.5, fontWeight: 600, color: 'var(--ink-2)', padding: '5px 7px', minHeight: 24, boxSizing: 'border-box', margin: '-5px -3px', borderRadius: 'var(--radius-sm)' }}>Edytuj</button>
                   <button type="button" className="ds-danger" disabled={busy} aria-label={`Wycofaj nieobecność ${rangeLabel(a)}`} onClick={() => setConfirmDel(a)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)', fontSize: 12.5, fontWeight: 600, color: 'var(--danger)', padding: '5px 7px', minHeight: 24, boxSizing: 'border-box', margin: '-5px -7px', borderRadius: 'var(--radius-sm)' }}>Wycofaj</button>
                 </>}
               </div>

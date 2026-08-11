@@ -21,7 +21,10 @@ const leaver = await mk('b9leaver', 'EMPLOYEE', { endDate: new Date('2026-06-30'
 
 const aAdmin = as(await login('b9admin', 'haslo123'));
 const aMid = as(await login('b9mid', 'haslo123'));
-const aLeaver = as(await login('b9leaver', 'haslo123'));
+// Osoba po dacie zakończenia współpracy nie zaloguje się (patrz verify-sesja-uniewaznienie),
+// więc wpisy w jej sprawie robi administrator. Reguła FR-B9 sprawdzana niżej i tak dotyczy
+// osoby, KTÓREJ wpis dotyczy, a nie tej, która go wprowadza — więc badamy dokładnie to samo.
+ok((await fetch(`${API}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ login: 'b9leaver', password: 'haslo123' }) })).status === 401, 'osoba po dacie odejścia nie zaloguje się');
 
 // FR-B9 — proporcjonalna pula dla osoby zatrudnionej od 1 lipca (~połowa z 26)
 let balMid = await j(await aMid(`/employees/${mid.id}/balance`));
@@ -33,8 +36,8 @@ balMid = await j(await aMid(`/employees/${mid.id}/balance`));
 ok(balMid.pool === 20, 'override pomija proratę (pula 20)');
 
 // FR-B9 — nieobecność po dacie odejścia blokowana; przed datą — dozwolona
-ok((await aLeaver('/absences', { method: 'POST', body: JSON.stringify({ employeeId: leaver.id, typeId: urlop.id, dateFrom: '2026-08-01', dateTo: '2026-08-01' }) })).status === 400, 'nieobecność po dacie odejścia → 400');
-ok((await aLeaver('/absences', { method: 'POST', body: JSON.stringify({ employeeId: leaver.id, typeId: urlop.id, dateFrom: '2026-06-10', dateTo: '2026-06-10' }) })).ok, 'nieobecność przed datą odejścia → ok');
+ok((await aAdmin('/absences', { method: 'POST', body: JSON.stringify({ employeeId: leaver.id, typeId: urlop.id, dateFrom: '2026-08-01', dateTo: '2026-08-01' }) })).status === 400, 'nieobecność po dacie odejścia → 400');
+ok((await aAdmin('/absences', { method: 'POST', body: JSON.stringify({ employeeId: leaver.id, typeId: urlop.id, dateFrom: '2026-06-10', dateTo: '2026-06-10' }) })).ok, 'nieobecność przed datą odejścia → ok');
 
 await prisma.$disconnect();
 console.log(failures === 0 ? '\nFAZA 2 (proration) OK ✅' : `\n${failures} ASERCJI NIE PRZESZŁO ❌`);

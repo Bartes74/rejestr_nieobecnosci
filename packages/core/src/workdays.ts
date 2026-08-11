@@ -19,7 +19,18 @@ export function countWorkingDays(from: Date, to: Date, holidays: ReadonlySet<str
 
 export type DayPart = 'FULL' | 'AM' | 'PM' | 'HOURS';
 
-/** Ułamek dnia dla wpisu. HOURS: (koniec − początek) / 8h. */
+/**
+ * Ułamek dnia dla wpisu. HOURS: (koniec − początek) / 8h.
+ *
+ * Wynik z definicji mieści się w przedziale 0–1: jednego dnia nie da się być nieobecnym
+ * półtora raza. Zacisk jest tutaj, a nie u wywołujących, bo ta liczba wchodzi do sumowania
+ * w `countOverlaidDays` i stamtąd wprost do salda urlopu — a `NaN` w sumie zamienia saldo
+ * całej osoby w `NaN` (w JSON: `null`) i przepuszcza kontrolę przekroczenia puli, bo
+ * `NaN > cokolwiek` jest fałszem. Godziny w złym formacie mają dać zero, nie truciznę.
+ *
+ * Zero dla braku godzin zostaje: sam ułamek nie ma jak orzec, czy to błąd wywołania, czy wpis
+ * bez godzin. Odrzuceniem takiego wpisu zajmuje się walidacja przy zapisie (AbsencesService).
+ */
 export function dayFraction(part: DayPart, hourFrom?: string, hourTo?: string, workdayHours = 8): number {
   if (part === 'FULL') return 1;
   if (part === 'AM' || part === 'PM') return 0.5;
@@ -28,5 +39,6 @@ export function dayFraction(part: DayPart, hourFrom?: string, hourTo?: string, w
     const [h, m] = s.split(':').map(Number);
     return (h ?? 0) * 60 + (m ?? 0);
   };
-  return Math.max(0, toMin(hourTo) - toMin(hourFrom)) / (workdayHours * 60);
+  const raw = (toMin(hourTo) - toMin(hourFrom)) / (workdayHours * 60);
+  return Number.isFinite(raw) ? Math.min(1, Math.max(0, raw)) : 0;
 }

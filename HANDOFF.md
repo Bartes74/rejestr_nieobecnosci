@@ -20,7 +20,7 @@ STAN: MVP + Faza 2 (16 pozycji) + część Fazy 3 — zbudowane i zweryfikowane.
 stan każdej odnotowuje kolumna „Stan wdrożenia" w Backlog - aplikacja nieobecnosci.xlsx (wersja śledzona;
 .docx to pierwotne wydanie bez tej kolumny). Wg przeglądu kodu z 10.08.2026 backlog NIE zawyża stanu:
 realnie otwarta jest jedna historyjka (US-N9, interfejs EN) i jedna częściowa (US-N2, progi/alerty).
-Ostatni pełny przebieg (10.08.2026): silnik 83/83 testy, 30 suit integracyjnych, build+typecheck+lint
+Ostatni pełny przebieg (11.08.2026, po przeglądzie kodu): silnik 86/86 testów, 35 suit integracyjnych, build+typecheck+lint
 czysto, audyt zależności bez podatności „high", test obciążeniowy 300 użytkowników w budżecie NFR-1,
 audyt axe bez naruszeń, test odtworzenia backupu OK.
 Działa m.in.: wpis/edycja/undo (≤3 kliknięcia), kalendarz Tribe (jednolity, bez typów), RBAC 6 ról,
@@ -35,8 +35,8 @@ URUCHOMIENIE I WERYFIKACJA (szczegóły w README.md):
 - pnpm install && pnpm db:up && pnpm db:migrate
 - pnpm -F @nieobecnosci/api build && PORT=3100 node apps/api/dist/main.js
 - pnpm -F @nieobecnosci/web dev            → http://localhost:5188
-- pnpm run verify:offline                  → build + typecheck (3 pakiety) + 83 testy silnika
-- API=http://localhost:3100/api pnpm run verify:suites   → 30 suit (UWAGA: czyszczą bazę)
+- pnpm run verify:offline                  → build + typecheck (3 pakiety) + 86 testów silnika
+- API=http://localhost:3100/api pnpm run verify:suites   → 35 suit (UWAGA: czyszczą bazę)
 - pnpm -F @nieobecnosci/web lint            → bramka dostępności (jsx-a11y), ta sama co w CI
 - pnpm audit --prod --audit-level high      → bramka podatności, ta sama co w CI
 - scripts/restore-test.sh KATALOG_BACKUPÓW  → test odtworzenia backupu (kwartalnie, NFR-4)

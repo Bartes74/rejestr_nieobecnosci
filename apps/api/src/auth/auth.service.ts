@@ -31,18 +31,22 @@ export class AuthService {
       });
       throw new UnauthorizedException('Błędny login lub hasło.');
     }
-    const emp = await this.prisma.employee.findUnique({ where: { id: result.employeeId }, include: { permissions: true } });
+    const emp = await this.prisma.employee.findUnique({ where: { id: result.employeeId } });
     if (!emp) throw new UnauthorizedException('Błędny login lub hasło.');
-    const payload = { sub: emp.id, role: emp.role, permissions: emp.permissions.map((p) => p.scope) };
-    const token = jwt.sign(payload, secret(), { expiresIn: '12h', algorithm: 'HS256' });
+    // Token niesie WYŁĄCZNIE tożsamość. Rola i uprawnienia wpisane do niego były kopią, której
+    // nie dawało się unieważnić: odebranie uprawnienia, zmiana roli i anonimizacja zaczynały
+    // działać dopiero po wygaśnięciu tokenu, czyli do dwunastu godzin później. Aktualny zestaw
+    // uprawnień czyta strażnik z bazy przy każdym żądaniu (AuthGuard).
+    const token = jwt.sign({ sub: emp.id }, secret(), { expiresIn: '12h', algorithm: 'HS256' });
     // NFR-8 — pomiar zaangażowania (udane logowania).
     await this.prisma.auditLog.create({ data: { entity: 'Auth', action: 'LOGIN_SUCCESS', userId: emp.id, description: `Logowanie: ${login}.` } });
     return { token, user: { id: emp.id, firstName: emp.firstName, lastName: emp.lastName, role: emp.role } };
   }
 
-  verify(token: string): AuthUser {
+  /** Sprawdza podpis i zwraca tożsamość. Uprawnienia dokłada strażnik, z bazy. */
+  verify(token: string): { sub: string } {
     try {
-      return jwt.verify(token, secret(), { algorithms: ['HS256'] }) as AuthUser;
+      return jwt.verify(token, secret(), { algorithms: ['HS256'] }) as { sub: string };
     } catch {
       throw new UnauthorizedException('Sesja wygasła lub token nieprawidłowy.');
     }

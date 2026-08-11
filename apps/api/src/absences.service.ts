@@ -104,7 +104,39 @@ export class AbsencesService {
     }));
   }
 
-  async create(dto: CreateAbsenceDto, user: AuthUser) {
+  /**
+   * Szereguje operacje dotyczące jednej osoby.
+   *
+   * Między sprawdzeniem puli a zapisem nie było niczego, co powstrzymałoby drugie żądanie:
+   * dwa równoległe zapisy czytały ten sam stan, oba przechodziły walidację i oba lądowały
+   * w bazie — pula wychodziła przekroczona, a kolizja terminów podwójna. Wystarczyły dwie
+   * karty przeglądarki albo operacja masowa.
+   *
+   * Kolejkujemy wyłącznie per osoba, więc zapisy różnych osób dalej idą równolegle.
+   *
+   * ponytail: kolejka w procesie — API działa w jednej instancji (docker-compose.prod.yml).
+   * Przy skalowaniu poziomym zastąpić blokadą wiersza: $transaction + SELECT … FOR UPDATE.
+   */
+  private readonly queues = new Map<string, Promise<unknown>>();
+
+  private serialize<T>(employeeId: string, fn: () => Promise<T>): Promise<T> {
+    // Poprzednik przez `.then` bez `catch` w łańcuchu zwracanym na zewnątrz: błąd jednego
+    // żądania nie może przewrócić następnego w kolejce ani zostawić odrzuconej obietnicy
+    // bez odbiorcy (w Node kończy się to zabiciem procesu).
+    const prev = this.queues.get(employeeId) ?? Promise.resolve();
+    const next = prev.then(fn, fn);
+    const settled = next.then(() => {}, () => {});
+    this.queues.set(employeeId, settled);
+    // Sprzątanie, żeby mapa nie rosła z każdą osobą, która kiedykolwiek coś zapisała.
+    void settled.then(() => { if (this.queues.get(employeeId) === settled) this.queues.delete(employeeId); });
+    return next;
+  }
+
+  create(dto: CreateAbsenceDto, user: AuthUser) {
+    return this.serialize(dto.employeeId, () => this.createNow(dto, user));
+  }
+
+  private async createNow(dto: CreateAbsenceDto, user: AuthUser) {
     await this.assertCanActFor(dto.employeeId, user);
     const from = new Date(dto.dateFrom);
     const to = new Date(dto.dateTo);
@@ -150,13 +182,28 @@ export class AbsencesService {
   async update(id: string, dto: UpdateAbsenceDto, user: AuthUser) {
     const existing = await this.prisma.absence.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Wpis nie istnieje.');
+    // Kolejkujemy po WŁAŚCICIELU wpisu, nie po działającym — pulę przekracza się osobie,
+    // której wpis dotyczy, a edytować może ją ktoś inny (lider, uprawnienie rozszerzone).
+    return this.serialize(existing.employeeId, () => this.updateNow(id, dto, user, existing));
+  }
+
+  private async updateNow(id: string, dto: UpdateAbsenceDto, user: AuthUser, existing: { employeeId: string; dateFrom: Date; dateTo: Date; typeId: string; dayPart: DayPart; hourFrom: string | null; hourTo: string | null }) {
     await this.assertCanActFor(existing.employeeId, user);
     const from = dto.dateFrom ? new Date(dto.dateFrom) : existing.dateFrom;
     const to = dto.dateTo ? new Date(dto.dateTo) : existing.dateTo;
     const typeId = dto.typeId ?? existing.typeId;
     const dayPart = dto.dayPart ?? existing.dayPart;
-    await this.validate(existing.employeeId, typeId, from, to, dayPart, existing.hourFrom, existing.hourTo, id);
-    const updated = await this.prisma.absence.update({ where: { id }, data: { typeId, dateFrom: from, dateTo: to, dayPart } });
+    // Jedna reguła: godziny istnieją wyłącznie dla wpisu godzinowego. Wcześniej walidacja
+    // dostawała godziny z rekordu, a zapis nie brał ich w ogóle — więc przestawienie wpisu
+    // całodniowego na HOURS zostawiało godziny puste (wpis o zerowym koszcie puli), a poprawka
+    // samych godzin nie robiła nic i wracała jako sukces.
+    const hourFrom = dayPart === 'HOURS' ? (dto.hourFrom ?? existing.hourFrom) : null;
+    const hourTo = dayPart === 'HOURS' ? (dto.hourTo ?? existing.hourTo) : null;
+    await this.validate(existing.employeeId, typeId, from, to, dayPart, hourFrom, hourTo, id);
+    const updated = await this.prisma.absence.update({
+      where: { id },
+      data: { typeId, dateFrom: from, dateTo: to, dayPart, hourFrom, hourTo },
+    });
     await this.audit('ABSENCE_UPDATE', updated.id, existing.employeeId, user, `Zmieniono na ${isoDate(updated.dateFrom)}–${isoDate(updated.dateTo)}.`);
     return isoRange(updated);
   }
@@ -227,10 +274,24 @@ export class AbsencesService {
   // FR-B10 — konwersja zaplanowanej nieobecności na L4 (osoba uprawniona, FR-H4).
   // Na UoP dzień wraca do puli; poza UoP zmienia się sam rodzaj nieobecności, saldo zostaje.
   async convertToL4(id: string, user: AuthUser) {
-    if (!canModifyOthers(user)) throw new ForbiddenException('Tylko osoba uprawniona może oznaczyć wpis jako L4.');
     const existing = await this.prisma.absence.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Wpis nie istnieje.');
-    const l4 = await this.prisma.absenceType.findFirst({ where: { specialCategory: true, affectsPool: false, active: true } });
+    // Oznaczenie L4 stwierdza fakt o zdrowiu, więc nie robi tego sam zainteresowany — nawet
+    // jeśli wpis jest jego własny i normalnie może go edytować.
+    if (existing.employeeId === user.sub) {
+      throw new ForbiddenException('Oznaczenie L4 należy do osoby uprawnionej, nie do samego zainteresowanego.');
+    }
+    // Poza tym obowiązuje zwykły zasięg działania. Wcześniej warunkiem było samo
+    // `canModifyOthers`, przez co lider nie mógł skonwertować wpisu w swoim Tribe, choć wolno
+    // mu go edytować i usunąć, a posiadacz MODIFY_ABSENCE konwertował wpis dowolnej osoby
+    // w firmie — także spoza swojego zasięgu.
+    await this.assertCanActFor(existing.employeeId, user);
+    // Kolejność jak wszędzie indziej: to, co administrator ustawił, potem alfabet. Bez tego
+    // przy dwóch typach spełniających warunek wynik zależał od kolejności wierszy w bazie.
+    const l4 = await this.prisma.absenceType.findFirst({
+      where: { specialCategory: true, affectsPool: false, active: true },
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+    });
     if (!l4) throw new BadRequestException('Brak zdefiniowanego typu L4.');
     const updated = await this.prisma.absence.update({ where: { id }, data: { typeId: l4.id } });
     await this.prisma.auditLog.create({
@@ -293,6 +354,13 @@ export class AbsencesService {
     if (to < from) throw new BadRequestException('Data „do" jest wcześniejsza niż „od".');
     if (dayPart !== 'FULL' && from.getTime() !== to.getTime()) {
       throw new BadRequestException('Niepełny dzień (AM/PM/godziny) dotyczy pojedynczej daty.');
+    }
+    // Wpis godzinowy bez sensownego zakresu godzin daje ułamek dnia równy zeru — czyli
+    // nieobecność widoczną w kalendarzu, która nie zabiera nic z puli. Formularz pilnował tego
+    // po swojej stronie (`badHours` w Wpis.tsx), ale walidacja klienta chroni tylko klienta.
+    // Warunek stoi tutaj, bo przez `validate` przechodzi i zapis, i edycja.
+    if (dayPart === 'HOURS' && !(hourFrom && hourTo && hourTo > hourFrom)) {
+      throw new BadRequestException('Wpis godzinowy wymaga zakresu godzin, w którym koniec jest późniejszy niż początek.');
     }
 
     const emp = await this.prisma.employee.findUnique({ where: { id: employeeId } });

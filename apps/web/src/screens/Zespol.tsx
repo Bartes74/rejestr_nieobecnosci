@@ -3,7 +3,7 @@ import { count, plural } from '@nieobecnosci/core/plural';
 import { dateRange, todayIso } from '../format';
 import { api, type Absence, type AbsenceType, type Employee } from '../api';
 import { Button } from '../design-system/components/core/Button';
-import { ConfirmDialog, Field, Section, Notice, field, th, td, useNotice } from '../admin/ui';
+import { ConfirmDialog, DAY_PARTS, Field, Section, Notice, field, th, td, useNotice } from '../admin/ui';
 import { cardClipped } from '../design-system/surfaces';
 import { useIsNarrow } from '../viewport';
 
@@ -22,7 +22,7 @@ export function Zespol() {
   const [rows, setRows] = useState<Absence[]>([]);
   const { notice, ok, fail, clear } = useNotice();
   const [busy, setBusy] = useState(false);
-  const [edit, setEdit] = useState<{ id: string; from: string; to: string } | null>(null);
+  const [edit, setEdit] = useState<{ id: string; from: string; to: string; dayPart: string; hourFrom: string; hourTo: string } | null>(null);
   const [add, setAdd] = useState({ typeId: '', dayPart: 'FULL', from: todayIso(), to: todayIso() });
   const [confirmDel, setConfirmDel] = useState<Absence | null>(null);
   // FR-A10 — operacje masowe
@@ -79,13 +79,22 @@ export function Zespol() {
       return `Dodano nieobecność w imieniu: ${nameOf(memberId)}. Zmiana jest odnotowana w audycie.`;
     });
   };
+  // Te same reguły co w formularzu wpisu: niepełny dzień dotyczy jednej daty, zakres godzin rośnie.
+  const editPartial = !!edit && edit.dayPart !== 'FULL';
+  const editTo = editPartial ? edit!.from : edit?.to ?? '';
+  const editBadHours = !!edit && edit.dayPart === 'HOURS' && edit.hourTo <= edit.hourFrom;
+  const editBlocked = !edit || busy || editBadHours || (!editPartial && editTo < edit.from);
+
   const saveEdit = () => {
-    if (!edit) return;
+    if (!edit || editBlocked) return;
     void guard(async () => {
-      await api.updateAbsence(edit.id, { dateFrom: edit.from, dateTo: edit.to });
+      await api.updateAbsence(edit.id, {
+        dateFrom: edit.from, dateTo: editTo, dayPart: edit.dayPart,
+        ...(edit.dayPart === 'HOURS' ? { hourFrom: edit.hourFrom, hourTo: edit.hourTo } : {}),
+      });
       setEdit(null);
       await load(memberId);
-      return 'Skorygowano termin.';
+      return 'Skorygowano wpis.';
     });
   };
   const del = () => {
@@ -148,9 +157,19 @@ export function Zespol() {
                   <tr key={a.id}>
                     <td style={td}>
                       {edit?.id === a.id ? (
-                        <span style={{ display: 'inline-flex', gap: 6 }}>
+                        <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                           <input type="date" aria-label="Od" style={{ ...field, fontSize: 12, padding: '4px 8px' }} value={edit.from} onChange={(e) => setEdit({ ...edit, from: e.target.value })} />
-                          <input type="date" aria-label="Do" style={{ ...field, fontSize: 12, padding: '4px 8px' }} value={edit.to} min={edit.from} onChange={(e) => setEdit({ ...edit, to: e.target.value })} />
+                          {/* Przy niepełnym dniu data „do" znika, zamiast zostawać nieaktywna:
+                              wpis obejmuje wtedy jedną datę, więc drugie pole nie ma czego opisywać. */}
+                          {!editPartial && <input type="date" aria-label="Do" style={{ ...field, fontSize: 12, padding: '4px 8px' }} value={edit.to} min={edit.from} onChange={(e) => setEdit({ ...edit, to: e.target.value })} />}
+                          <select aria-label="Wymiar dnia" style={{ ...field, fontSize: 12, padding: '4px 8px' }} value={edit.dayPart} onChange={(e) => setEdit({ ...edit, dayPart: e.target.value })}>
+                            {DAY_PARTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                          </select>
+                          {edit.dayPart === 'HOURS' && <>
+                            <input type="time" aria-label="Od godziny" style={{ ...field, fontSize: 12, padding: '4px 8px' }} value={edit.hourFrom} onChange={(e) => setEdit({ ...edit, hourFrom: e.target.value })} />
+                            <input type="time" aria-label="Do godziny" aria-invalid={editBadHours || undefined} style={{ ...field, fontSize: 12, padding: '4px 8px' }} value={edit.hourTo} onChange={(e) => setEdit({ ...edit, hourTo: e.target.value })} />
+                          </>}
+                          {editBadHours && <span style={{ fontFamily: 'var(--font-sans)', fontSize: 12, color: 'var(--danger)' }}>Godzina „do" musi być późniejsza.</span>}
                         </span>
                       ) : <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12.5 }}>{range(a)}</span>}
                     </td>
@@ -158,12 +177,12 @@ export function Zespol() {
                     <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>
                       {edit?.id === a.id ? (
                         <>
-                          <button type="button" onClick={saveEdit} disabled={busy || edit.to < edit.from} style={{ ...btn, marginRight: 6, color: 'var(--brand)' }}>{busy ? 'Zapisywanie…' : 'Zapisz'}</button>
+                          <button type="button" onClick={saveEdit} disabled={editBlocked} style={{ ...btn, marginRight: 6, color: 'var(--brand)' }}>{busy ? 'Zapisywanie…' : 'Zapisz'}</button>
                           <button type="button" onClick={() => setEdit(null)} style={btn}>Anuluj</button>
                         </>
                       ) : (
                         <>
-                          <button type="button" disabled={busy} aria-label={`Edytuj termin ${range(a)}`} onClick={() => setEdit({ id: a.id, from: a.dateFrom, to: a.dateTo })} style={{ ...btn, marginRight: 6 }}>Edytuj termin</button>
+                          <button type="button" disabled={busy} aria-label={`Edytuj wpis ${range(a)}`} onClick={() => setEdit({ id: a.id, from: a.dateFrom, to: a.dateTo, dayPart: a.dayPart, hourFrom: a.hourFrom ?? '09:00', hourTo: a.hourTo ?? '13:00' })} style={{ ...btn, marginRight: 6 }}>Edytuj</button>
                           <button type="button" disabled={busy} aria-label={`Usuń nieobecność ${range(a)}`} onClick={() => setConfirmDel(a)} style={{ ...btn, color: 'var(--danger)' }}>Usuń</button>
                         </>
                       )}

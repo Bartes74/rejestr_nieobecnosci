@@ -135,11 +135,26 @@ powtórz go na docelowym sprzęcie i przez sieć organizacji.
 ```bash
 cp .env.prod.example .env.prod      # uzupełnij hasła, JWT_SECRET, domenę, SMTP
 docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build
+
+# JEDNORAZOWO, po pierwszym starcie (migracje muszą już być wykonane):
+docker compose -f docker-compose.prod.yml exec -T db \
+  psql -U nieobecnosci -d nieobecnosci -v haslo="'HASLO_Z_DATABASE_URL'" < scripts/db-appuser.sql
+docker compose -f docker-compose.prod.yml restart api
 ```
 
 Jedna maszyna: `api` + `web` (Caddy z automatycznym TLS) + `postgres` z wolumenem.
 Bez `JWT_SECRET` API **celowo nie wstanie** w produkcji (fail-fast). `SCHEDULER_ENABLED=true`
 włącza nocne przypomnienia o zaległym urlopie i retencję danych.
+
+**Rozdzielenie ról bazodanowych.** Aplikacja pracuje na roli `nieobecnosci_app`, która nie może
+modyfikować ani kasować wpisów dziennika audytu; migracje idą osobnym poświadczeniem właściciela
+(`MIGRATE_DATABASE_URL`). Dzięki temu niemodyfikowalność dziennika (FR-I1) jest właściwością bazy,
+a nie obietnicą kodu — aplikacja nie może sama sobie przywrócić tego prawa, bo nie jest
+właścicielem tabeli. Krok jest opcjonalny: bez `MIGRATE_DATABASE_URL` całość działa na jednym
+poświadczeniu, tyle że dziennik da się wtedy wyczyścić.
+
+Skrypt uruchamia się na istniejących tabelach, więc **po każdej migracji dodającej tabelę**
+trzeba go powtórzyć (jest idempotentny — odświeża hasło i uprawnienia, niczego nie psuje).
 
 ## Backup i odtwarzanie (NFR-4)
 
@@ -163,7 +178,20 @@ Ostatni przebieg (10.08.2026, baza demo): `Employee=23, Absence=49`, wynik OK.
 Hasła hashowane `scrypt`; dostęp przez JWT + RBAC. Zdarzenia bezpieczeństwa (nieudane logowania
 `LOGIN_FAILED`, odmowy dostępu `ACCESS_DENIED`, odczyt znacznika L4 `VIEW_TYPES`) trafiają do
 tabeli `AuditLog`. Szyfrowanie w tranzycie zapewnia Caddy (TLS); w spoczynku — dysk/Postgres
-na poziomie wdrożenia.
+na poziomie wdrożenia. Nagłówki bezpieczeństwa: API przez `helmet()`, dokument SPA przez Caddy
+(CSP, `X-Frame-Options`, `Referrer-Policy` — patrz `Caddyfile`).
+
+**Token niesie wyłącznie tożsamość.** Rolę, uprawnienia rozszerzone i status zatrudnienia strażnik
+czyta z bazy przy każdym żądaniu, więc odebranie uprawnienia, degradacja roli, zakończenie
+współpracy i usunięcie konta działają natychmiast. Wcześniej uprawnienia jechały w tokenie, czyli
+były kopią sprzed nawet dwunastu godzin — administrator reagujący na incydent nie miał czym
+zareagować. Koszt: jedno zapytanie na żądanie, przy 300 użytkownikach z NFR-1 poniżej progu
+zauważalności.
+
+Wyjątek, o którym warto wiedzieć: anonimizacja (FR-J2) usuwa dane osobowe i hasło, ale wiersz
+pracownika zostaje (integralność wpisów), więc token wydany **przed** anonimizacją działa do
+wygaśnięcia. Ponowne zalogowanie jest niemożliwe. Domknięcie tego okna wymaga kolumny znacznika
+sesji na `Employee` — patrz `NAPRAWY-PO-REVIEW.md`, sekcja „Do decyzji".
 
 `VIEW_TYPES` obejmuje **obie** drogi, którymi znacznik kategorii szczególnej wychodzi z systemu:
 listę wpisów (`GET /absences`) i eksport płacowy (`GET /reports/export/payroll`). Dodając trzecią,

@@ -10,7 +10,15 @@ export class OrgService {
   constructor(private readonly prisma: PrismaService) {}
 
   // Jednostki w zasięgu osoby = poddrzewa wszystkich jej Tribe (puste, jeśli poza Tribe).
+  //
+  // Zwraca też wczytane członkostwa: `tribePeers` potrzebuje ich zaraz po wywołaniu i czytał
+  // tę samą tabelę drugi raz. Przy kilku wywołaniach na żądanie (nieobecności + saldo) to
+  // kilka pełnych odczytów `OrgUnitMembership` na jedno kliknięcie, bez żadnego zysku.
   async scopeUnitIds(employeeId: string): Promise<Set<string>> {
+    return (await this.scopeWithMemberships(employeeId)).inScope;
+  }
+
+  private async scopeWithMemberships(employeeId: string): Promise<{ inScope: Set<string>; memberships: { employeeId: string; orgUnitId: string }[] }> {
     const [units, memberships] = await Promise.all([
       this.prisma.orgUnit.findMany(),
       this.prisma.orgUnitMembership.findMany(),
@@ -32,7 +40,7 @@ export class OrgService {
     const inScope = new Set<string>();
     const collect = (id: string) => { inScope.add(id); for (const c of childrenOf.get(id) ?? []) collect(c); };
     for (const t of myTribes) collect(t);
-    return inScope;
+    return { inScope, memberships };
   }
 
   // `tribePeers` odpowiada na pytanie o PRZYNALEŻNOŚĆ („kto stoi w Tribie tej osoby") i dlatego
@@ -47,9 +55,8 @@ export class OrgService {
   }
 
   async tribePeers(employeeId: string): Promise<string[]> {
-    const inScope = await this.scopeUnitIds(employeeId);
+    const { inScope, memberships } = await this.scopeWithMemberships(employeeId);
     if (inScope.size === 0) return [employeeId]; // poza Tribe — widzi tylko siebie
-    const memberships = await this.prisma.orgUnitMembership.findMany();
     const peers = new Set(memberships.filter((m) => inScope.has(m.orgUnitId)).map((m) => m.employeeId));
     peers.add(employeeId);
     return [...peers];

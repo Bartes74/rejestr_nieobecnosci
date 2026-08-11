@@ -142,7 +142,8 @@ export const api = {
     req<Absence>('/absences', { method: 'POST', body: JSON.stringify(body) }),
   bulkCreateAbsences: (body: { employeeIds: string[]; typeId: string; dateFrom: string; dateTo: string; dayPart?: string }) =>
     req<{ created: number; errors: { employeeId: string; message: string }[] }>('/absences/bulk', { method: 'POST', body: JSON.stringify(body) }),
-  updateAbsence: (id: string, body: { typeId?: string; dateFrom?: string; dateTo?: string; dayPart?: string }) =>
+  // Godziny wysyłamy przy `dayPart: 'HOURS'`; serwer zeruje je sam przy przejściu na inny wymiar.
+  updateAbsence: (id: string, body: { typeId?: string; dateFrom?: string; dateTo?: string; dayPart?: string; hourFrom?: string; hourTo?: string }) =>
     req<Absence>(`/absences/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   deleteAbsence: (id: string) => req<void>(`/absences/${id}`, { method: 'DELETE' }),
   calendar: (from: string, to: string) => req<CalEntry[]>(`/calendar?from=${from}&to=${to}`),
