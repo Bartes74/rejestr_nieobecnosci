@@ -22,4 +22,24 @@ describe('toICS (FR-F4)', () => {
     const ics = toICS([{ uid: 'c', summary: 'Nieobecność; test, x', dateFrom: new Date(Date.UTC(2026, 0, 1)), dateTo: new Date(Date.UTC(2026, 0, 1)) }]);
     expect(ics).toContain('SUMMARY:Nieobecność\\; test\\, x');
   });
+
+  // Regresja: escapowanie brało pod uwagę sam LF, więc nazwa z windowsowym złamaniem linii
+  // zostawiała surowy CR w środku wiersza — a CR jest częścią separatora właściwości.
+  it('nie wypuszcza surowego CR z SUMMARY (CRLF, samotny CR, samotny LF)', () => {
+    const dzien = { dateFrom: new Date(Date.UTC(2026, 0, 1)), dateTo: new Date(Date.UTC(2026, 0, 1)) };
+    const ics = toICS([
+      { uid: 'd1', summary: 'A\r\nB', ...dzien },
+      { uid: 'd2', summary: 'C\rD', ...dzien },
+      { uid: 'd3', summary: 'E\nF', ...dzien },
+    ]);
+    expect(ics).toContain('SUMMARY:A\\nB');
+    expect(ics).toContain('SUMMARY:C\\nD');
+    expect(ics).toContain('SUMMARY:E\\nF');
+    // Jedyne CR w dokumencie to te rozdzielające właściwości — każdy stoi tuż przed LF.
+    for (const [i, ch] of [...ics].entries()) {
+      if (ch === '\r') expect(ics[i + 1]).toBe('\n');
+    }
+    // Liczba wierszy zgadza się z liczbą właściwości: nic się nie rozjechało na dodatkowe linie.
+    expect(ics.split('\r\n').filter(Boolean)).toHaveLength(5 + 3 * 6 + 1);
+  });
 });
