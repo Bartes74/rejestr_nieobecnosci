@@ -7,3 +7,8 @@ dist/
 .DS_Store
 prisma/migrations/dev.db*
 backups/
+
+# Artefakty narzędzi lokalnych — generowane u każdego osobno, więc w repozytorium
+# tylko powodują konflikty. Pliki zostają na dysku, przestają być śledzone.
+.impeccable/
+.thumbnail
