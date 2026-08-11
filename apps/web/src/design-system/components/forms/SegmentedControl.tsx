@@ -1,4 +1,16 @@
-import React from 'react';
+import type { CSSProperties, ReactNode } from 'react';
+
+export interface SegmentOption { value: string; label: string; icon?: ReactNode }
+
+export interface SegmentedControlProps {
+  /** Opcje jako teksty albo {value,label,icon}. Trzymać się 2–4 krótkich pozycji. */
+  options: (string | SegmentOption)[];
+  value: string;
+  onChange?: (value: string) => void;
+  /** Nazwa grupy dla czytnika ekranu — bez niej segmenty brzmią jak luźne przyciski. */
+  label?: string;
+  style?: CSSProperties;
+}
 
 /**
  * Wybór jednej z 2–4 rozłącznych opcji. Jedyny wygląd tej kontrolki w aplikacji:
@@ -9,7 +21,7 @@ import React from 'react';
  * kolorem, a wzorzec radiogroup wymagałby obsługi strzałek, której ten filtr nie potrzebuje —
  * segmenty są równorzędne i dostępne pojedynczym Tabem.
  */
-export function SegmentedControl({ options, value, onChange, label, style }) {
+export function SegmentedControl({ options, value, onChange, label, style }: SegmentedControlProps) {
   return (
     <div role="group" aria-label={label} style={{ display: 'inline-flex', gap: 4, background: 'var(--surface-2)', border: '1px solid var(--border)',
       borderRadius: 'var(--radius-md)', padding: 3, ...style }}>

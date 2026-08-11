@@ -1,3 +1,5 @@
+import type { CSSProperties } from 'react';
+
 /**
  * Receptury powierzchni — obiekty stylu do rozłożenia w `style={{ ...card, padding: 24 }}`.
  *
@@ -7,11 +9,11 @@
  * `const card = {…}` — i do rozjeżdżania się wartości (promień 16 vs 14 vs var(--radius-xl)).
  * Receptura zabija duplikat, nie dotykając struktury JSX.
  *
- * Do stałej struktury służą komponenty (Card, StatCard, AbsencePill) — te zostają.
+ * Do stałej struktury służą komponenty (StatCard, AbsencePill) — te zostają.
  */
 
 /** Karta główna: powierzchnia na płótnie, włoskowata krawędź, cień spoczynkowy. */
-export const card = {
+export const card: CSSProperties = {
   background: 'var(--surface)',
   border: '1px solid var(--border)',
   borderRadius: 'var(--radius-xl)',
@@ -19,10 +21,10 @@ export const card = {
 };
 
 /** Karta z przyciętą zawartością — tabele i listy, które mają się obcinać do promienia. */
-export const cardClipped = { ...card, overflow: 'hidden' };
+export const cardClipped: CSSProperties = { ...card, overflow: 'hidden' };
 
 /** Panel wewnętrzny: mniejszy promień, bez cienia — leży już na karcie. */
-export const panel = {
+export const panel: CSSProperties = {
   background: 'var(--surface-2)',
   border: '1px solid var(--border)',
   borderRadius: 'var(--radius-lg)',
