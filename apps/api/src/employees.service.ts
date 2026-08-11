@@ -20,6 +20,21 @@ export type EmployeeColMap = Partial<Record<keyof typeof COLS, string>>;
 
 const EMPLOYMENT_TYPES: readonly string[] = ['UOP', 'B2B', 'OUT'];
 
+/**
+ * Pola pracownika, które nigdy nie opuszczają API.
+ *
+ * `passwordHash` to oczywistość. `feedToken` jest mniej oczywisty, a równie wrażliwy: kanał
+ * iCal (FR-F4) jest trasą publiczną, bo klienty kalendarza nie wysyłają nagłówka Bearer, więc
+ * token w adresie PEŁNI ROLĘ HASŁA. Katalog pracowników oddawał go razem z resztą wiersza —
+ * `omit` usuwa wyłącznie pola wskazane wprost — a katalog widzi też dyrektor, PMO i każdy
+ * z uprawnieniem MODIFY_ABSENCE. Żadna z tych ról nie ma prawa czytać znacznika L4
+ * (patrz `canViewL4`), a przez cudzy token kanału czytała nazwy typów wprost i bez śladu
+ * w dzienniku — czyli obchodziła naraz kontrolę FR-J1 i obowiązek audytu.
+ *
+ * Stała jest jedna, żeby nowy endpoint zwracający pracownika nie musiał sobie o tym przypominać.
+ */
+export const HIDDEN_EMPLOYEE_FIELDS = { passwordHash: true, feedToken: true } as const;
+
 export interface ImportResult {
   created: number;
   updated: number;
@@ -45,12 +60,14 @@ export class EmployeesService {
         endDate: dto.endDate ? new Date(dto.endDate) : null,
         passwordHash: dto.password ? hashPassword(dto.password) : null,
       },
-      omit: { passwordHash: true },
+      omit: HIDDEN_EMPLOYEE_FIELDS,
     });
   }
 
   setPassword(id: string, password: string) {
-    return this.prisma.employee.update({ where: { id }, data: { passwordHash: hashPassword(password) } });
+    // Kontroler i tak odrzuca wynik, ale metoda oddawała świeżo policzony hash hasła — to, że
+    // nikt go dziś nie przepuszcza dalej, jest przypadkiem, nie zabezpieczeniem.
+    return this.prisma.employee.update({ where: { id }, data: { passwordHash: hashPassword(password) }, omit: HIDDEN_EMPLOYEE_FIELDS });
   }
 
   // FR-B8 — zmiana formy zatrudnienia w trakcie roku. Od zmiany obowiązują reguły nowej formy
@@ -59,9 +76,9 @@ export class EmployeesService {
     const emp = await this.prisma.employee.findUnique({ where: { id } });
     if (!emp) throw new NotFoundException('Pracownik nie istnieje.');
     if (emp.employmentType === employmentType) {
-      return this.prisma.employee.findUnique({ where: { id }, omit: { passwordHash: true } });
+      return this.prisma.employee.findUnique({ where: { id }, omit: HIDDEN_EMPLOYEE_FIELDS });
     }
-    const updated = await this.prisma.employee.update({ where: { id }, data: { employmentType }, omit: { passwordHash: true } });
+    const updated = await this.prisma.employee.update({ where: { id }, data: { employmentType }, omit: HIDDEN_EMPLOYEE_FIELDS });
     await this.prisma.auditLog.create({
       data: { entity: 'Employee', entityId: id, subjectId: id, action: 'EMPLOYMENT_TYPE_CHANGE', userId: user.sub,
         description: `Zmiana formy zatrudnienia: ${emp.employmentType} → ${employmentType}.` },
@@ -73,7 +90,7 @@ export class EmployeesService {
   async changeRole(id: string, role: Role, user: AuthUser) {
     const emp = await this.prisma.employee.findUnique({ where: { id } });
     if (!emp) throw new NotFoundException('Pracownik nie istnieje.');
-    const updated = await this.prisma.employee.update({ where: { id }, data: { role }, omit: { passwordHash: true } });
+    const updated = await this.prisma.employee.update({ where: { id }, data: { role }, omit: HIDDEN_EMPLOYEE_FIELDS });
     await this.prisma.auditLog.create({ data: { entity: 'Employee', entityId: id, subjectId: id, action: 'ROLE_CHANGE', userId: user.sub, description: `Zmiana roli: ${emp.role} → ${role}.` } });
     return updated;
   }
@@ -106,7 +123,11 @@ export class EmployeesService {
     if (emp.login.startsWith('anon-')) return { anonymized: false };
     await this.prisma.employee.update({
       where: { id },
-      data: { firstName: 'Pracownik', lastName: 'zanonimizowany', email: `anon-${id}@example.invalid`, login: `anon-${id}`, passwordHash: null },
+      // `feedToken` też, i to nie dla porządku: kanał iCal jest trasą publiczną uwierzytelnianą
+      // samym tokenem w adresie, więc token, który przeżywał anonimizację, dalej oddawał pełną
+      // historię nieobecności wraz z typami. Prawo do bycia zapomnianym nie obejmowało wtedy
+      // jedynej drogi, którą te dane wychodziły bez logowania.
+      data: { firstName: 'Pracownik', lastName: 'zanonimizowany', email: `anon-${id}@example.invalid`, login: `anon-${id}`, passwordHash: null, feedToken: null },
     });
     await this.prisma.auditLog.create({ data: { entity: 'Employee', entityId: id, subjectId: id, action: 'ANONYMIZE', userId: user.sub, description: 'Anonimizacja danych osobowych (RODO).' } });
     return { anonymized: true };

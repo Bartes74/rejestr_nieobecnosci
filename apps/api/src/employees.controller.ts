@@ -4,7 +4,7 @@ import {
 import type { PermissionScope } from '@prisma/client';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { PrismaService } from './prisma.service';
-import { EmployeesService } from './employees.service';
+import { EmployeesService, HIDDEN_EMPLOYEE_FIELDS } from './employees.service';
 import { OrgService } from './org.service';
 import { ChangeEmploymentTypeDto, ChangeRoleDto, CreateEmployeeDto, GrantPermissionDto, SetPasswordDto } from './dto';
 import { parseMapping } from './import-mapping';
@@ -30,7 +30,7 @@ export class EmployeesController {
     if (privileged) {
       return this.prisma.employee.findMany({
         orderBy: { lastName: 'asc' },
-        omit: { passwordHash: true },
+        omit: HIDDEN_EMPLOYEE_FIELDS,
         include: { permissions: { select: { scope: true } } },
       });
     }
