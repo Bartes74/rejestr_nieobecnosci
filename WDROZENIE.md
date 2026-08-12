@@ -4,7 +4,15 @@ Poradnik dla osoby, która **nie zna tej aplikacji** i ma ją uruchomić na doce
 Zakłada wyłącznie umiejętność zalogowania się na serwer i wklejania poleceń. Każdy krok kończy się
 sprawdzeniem, po którym wiadomo, czy iść dalej.
 
-Czas: **około 1–2 godzin**, z czego większość to czekanie na budowanie obrazów.
+Obejmuje **dwie sytuacje**, wspólne aż do rozdziału 7, w którym drogi się rozchodzą:
+
+- **instalację od zera** — nowy serwer, pusta baza, dane wprowadzasz sam
+  ([7.1](#71-wariant-a--nowa-instalacja-seed));
+- **przeniesienie działającej aplikacji** w nowe miejsce, razem z jej danymi
+  ([7.3](#73-wariant-b--przeniesienie-danych-z-istniejącej-instalacji)).
+
+Czas: **około 1–2 godzin**, z czego większość to czekanie na budowanie obrazów. Przeniesienie
+danych dokłada kilkanaście minut.
 
 > **Zasada nadrzędna.** Jeśli krok kończy się inaczej, niż opisano — zatrzymaj się i zajrzyj do
 > rozdziału [11. Gdy coś nie działa](#11-gdy-coś-nie-działa). Przejście dalej „na siłę" zwykle
@@ -20,7 +28,10 @@ Czas: **około 1–2 godzin**, z czego większość to czekanie na budowanie obr
 4. [Wgranie aplikacji na serwer](#4-wgranie-aplikacji-na-serwer)
 5. [Plik konfiguracyjny `.env.prod`](#5-plik-konfiguracyjny-envprod)
 6. [Pierwsze uruchomienie](#6-pierwsze-uruchomienie)
-7. [Konto administratora i dane startowe](#7-konto-administratora-i-dane-startowe)
+7. [Napełnienie bazy w nowym miejscu](#7-napełnienie-bazy-w-nowym-miejscu)
+   — [seed](#71-wariant-a--nowa-instalacja-seed) ·
+   [przeniesienie danych](#73-wariant-b--przeniesienie-danych-z-istniejącej-instalacji) ·
+   [dane demo](#74-instancja-testowa--dane-demonstracyjne)
 8. [Pierwsze logowanie](#8-pierwsze-logowanie)
 9. [Kopie zapasowe](#9-kopie-zapasowe)
 10. [Codzienna obsługa](#10-codzienna-obsługa)
@@ -79,6 +90,7 @@ Zbierz to **przed** rozpoczęciem — brak którejkolwiek pozycji zatrzyma Cię 
 | Nazwa adresu | np. `absencje.firma.example`, wskazująca na IP serwera | dział sieci / DNS |
 | Serwer poczty | adres i port SMTP (do przypomnień o urlopie) | dział IT |
 | Kod aplikacji | to repozytorium | dostęp do repozytorium Git |
+| **Tylko przy przenoszeniu:** dostęp do starego serwera | konto z prawem uruchomienia `docker compose` i skopiowania pliku (`scp`) | osoba prowadząca dotychczasową instalację |
 
 **Aplikacja przetwarza dane osobowe pracowników, w tym informację o zwolnieniach lekarskich
 (kategoria szczególna, art. 9 RODO).** Przed produkcyjnym startem upewnij się, że wdrożenie
@@ -318,13 +330,27 @@ restartów.
 
 ---
 
-## 7. Konto administratora i dane startowe
+## 7. Napełnienie bazy w nowym miejscu
 
-> **To najczęściej pomijany krok.** Baza jest w tym momencie pusta: nie ma żadnego użytkownika ani
-> typów nieobecności. Bez tego kroku **nikt się nie zaloguje**, a ekran logowania będzie odrzucał
-> każde hasło.
+Struktura bazy powstała sama przy pierwszym starcie (migracje wykonuje kontener `api`), ale
+**danych w niej nie ma żadnych**. Trzeba je teraz wprowadzić — i tu drogi się rozchodzą.
+
+| Twoja sytuacja | Wybierz |
+| --- | --- |
+| Stawiasz aplikację od zera, nie ma skąd przenosić danych | [7.1 Seed](#71-wariant-a--nowa-instalacja-seed) |
+| Aplikacja już gdzieś działa i chcesz przenieść jej dane | [7.3 Przeniesienie](#73-wariant-b--przeniesienie-danych-z-istniejącej-instalacji) |
+| Stawiasz instancję **testową** i chcesz danych na pokaz | [7.4 Dane demo](#74-instancja-testowa--dane-demonstracyjne) |
+
+> **Nie łącz wariantów A i B.** Jeśli przenosisz dane, seed jest niepotrzebny — przeniesione konta
+> i tak już tam są.
+
+### 7.1. Wariant A — nowa instalacja (seed)
+
+> **To najczęściej pomijany krok.** Bez niego **nikt się nie zaloguje**, a ekran logowania będzie
+> odrzucał każde hasło — i będzie to wyglądać na zepsutą aplikację.
 
 ```bash
+cd /opt/nieobecnosci
 docker compose --env-file .env.prod -f docker-compose.prod.yml exec api node prisma/seed.mjs
 ```
 
@@ -334,14 +360,128 @@ docker compose --env-file .env.prod -f docker-compose.prod.yml exec api node pri
 • Administrator: login "admin", hasło "admin" — ZMIEŃ po pierwszym logowaniu.
 ```
 
-Polecenie zakłada:
+Jeśli polecenie nic nie wypisze, konto administratora **już istnieje** — seed niczego wtedy nie
+zmienia. To normalne przy powtórnym uruchomieniu.
 
-- konto administratora (`admin` / `admin`),
-- dwa typy nieobecności: **Nieobecność** i **L4**,
-- domyślną pulę urlopu: 26 dni.
+### 7.2. Co seed tworzy, a czego nie
 
-Polecenie jest bezpieczne przy powtórzeniu — uruchomione drugi raz niczego nie zdubluje i nie
-nadpisze zmienionego hasła.
+Seed daje **absolutne minimum, żeby móc się zalogować i zacząć pracę**. Nie zna Twojej organizacji,
+więc jej nie wymyśla.
+
+| Tworzy | Nie tworzy |
+| --- | --- |
+| konto administratora `admin` / `admin` | pracowników |
+| typy nieobecności: **Nieobecność** i **L4** | struktury organizacyjnej (piony, Tribe'y, squady) |
+| domyślną pulę urlopu: **26 dni** | kalendarza świąt |
+| | sprintów |
+
+Resztę wprowadzasz sam — patrz [8.4](#84-wprowadź-dane-organizacji). Świąt nie trzeba wpisywać
+ręcznie: aplikacja wylicza je sama, bez połączenia z internetem.
+
+Seed jest **idempotentny** — wolno go uruchomić ponownie kiedykolwiek. Nie zdubluje typów, nie
+skasuje danych i **nie nadpisze zmienionego hasła administratora**. Warto go powtórzyć po
+aktualizacji, która dokłada nowe ustawienia domyślne.
+
+Sprawdzenie, że zadziałał:
+
+```bash
+docker compose --env-file .env.prod -f docker-compose.prod.yml exec -T db \
+  psql -U nieobecnosci -d nieobecnosci -c \
+  'SELECT (SELECT count(*) FROM "Employee") AS konta, (SELECT count(*) FROM "AbsenceType") AS typy;'
+```
+
+**Oczekiwany wynik:** `konta = 1`, `typy = 2`.
+
+### 7.3. Wariant B — przeniesienie danych z istniejącej instalacji
+
+Przenosimy zawartość bazy ze starego serwera na nowy. Aplikacja na nowym serwerze musi już
+działać (rozdziały 1–6).
+
+#### Krok 1 — na STARYM serwerze: zatrzymaj zapisy i zrób zrzut
+
+Zatrzymanie aplikacji gwarantuje, że nikt nie wprowadzi wpisu, który nie zdąży się przenieść.
+
+```bash
+cd /opt/nieobecnosci                       # katalog starej instalacji
+docker compose --env-file .env.prod -f docker-compose.prod.yml stop api web
+scripts/backup.sh /var/backups/nieobecnosci
+ls -1t /var/backups/nieobecnosci/ | head -1     # nazwa świeżego pliku
+```
+
+#### Krok 2 — przenieś plik na nowy serwer
+
+```bash
+scp /var/backups/nieobecnosci/[NAZWA_PLIKU].sql.gz uzytkownik@nowy-serwer:/tmp/
+```
+
+#### Krok 3 — na NOWYM serwerze: wgraj dane
+
+> **Dlaczego baza jest kasowana i zakładana od nowa.** Zrzut niesie własną strukturę tabel,
+> a nowa instalacja ma ją już utworzoną przez migracje. Wgranie zrzutu „na wierzch" kończy się
+> kilkudziesięcioma błędami `already exists` i — co gorsza — **dane w ogóle się nie przenoszą**,
+> mimo że polecenie wygląda na wykonane. Sprawdzone: przy niepustych tabelach wchodzi 0 wierszy.
+
+```bash
+cd /opt/nieobecnosci
+DC="docker compose --env-file .env.prod -f docker-compose.prod.yml"
+
+# a) zatrzymaj aplikację, żeby zwolniła połączenia do bazy
+$DC stop api web
+
+# b) skasuj i załóż bazę od nowa
+$DC exec -T db psql -U nieobecnosci -d postgres -c "DROP DATABASE IF EXISTS nieobecnosci;"
+$DC exec -T db psql -U nieobecnosci -d postgres -c "CREATE DATABASE nieobecnosci;"
+
+# c) wgraj zrzut
+gunzip -c /tmp/[NAZWA_PLIKU].sql.gz | $DC exec -T db psql -U nieobecnosci -q nieobecnosci
+```
+
+W trakcie punktu (c) mogą pojawić się komunikaty `role "nieobecnosci_app" does not exist` — to
+normalne i nieszkodliwe. Zrzut niesie **uprawnienia** dla roli aplikacji, ale nie samą rolę;
+zakłada ją następny krok.
+
+#### Krok 4 — odtwórz rolę aplikacji i jej uprawnienia
+
+**Tego kroku nie wolno pominąć.** Skasowanie bazy usunęło wszystkie nadane w niej uprawnienia, więc
+bez niego `api` będzie się restartować w kółko.
+
+```bash
+$DC exec -T db psql -U nieobecnosci -d nieobecnosci -v haslo="'TU_HASLO_APLIKACJI'" \
+  < scripts/db-appuser.sql
+```
+
+**Oczekiwany wynik:** `NOTICE: Dziennik audytu: zapis i odczyt tak, modyfikacja i kasowanie nie.`
+
+> Pomijasz ten krok, jeśli wybrałeś wariant uproszczony z punktu 5.5 (jedno konto do bazy).
+
+#### Krok 5 — uruchom i policz
+
+```bash
+$DC start api web
+$DC exec -T db psql -U nieobecnosci -d nieobecnosci -c \
+  'SELECT (SELECT count(*) FROM "Employee") AS pracownicy, (SELECT count(*) FROM "Absence") AS nieobecnosci;'
+```
+
+**Porównaj te liczby z tymi samymi ze starego serwera** — muszą się zgadzać co do jednego wiersza.
+Dopiero potem zaloguj się i sprawdź kilka ekranów.
+
+#### Krok 6 — dopiero teraz wyłącz stary serwer
+
+Zostaw go wyłączony, ale **nietknięty** przez co najmniej tydzień. Gdyby coś się nie przeniosło,
+to jedyne miejsce, z którego da się to odzyskać.
+
+### 7.4. Instancja testowa — dane demonstracyjne
+
+Do szkoleń i pokazów jest gotowy scenariusz: 23 osoby, struktura Pion › Departament › Tribe ›
+5 squadów, sprinty i nieobecności liczone **względem dnia uruchomienia**.
+
+> **Nigdy na serwerze produkcyjnym.** `demo-seed.mjs` **kasuje całą zawartość bazy** przed
+> wgraniem danych pokazowych. Dlatego jest celowo wykluczony z obrazu produkcyjnego — z poziomu
+> kontenera go nie uruchomisz. Można go odpalić wyłącznie z katalogu repozytorium, więc uważaj,
+> przeciwko której bazie akurat stoisz.
+
+Loginy w danych demo: `admin`/`admin` oraz `dyrektor`, `pmo`, `lider`, `po`, `pracownik` —
+wszystkie z hasłem `demo123`.
 
 ---
 
@@ -568,29 +708,46 @@ docker compose --env-file .env.prod -f docker-compose.prod.yml logs --tail 100 a
 
 Postępuj tak, gdy dane zostały utracone lub uszkodzone i trzeba wrócić do stanu z kopii.
 
+> **Bazę kasujemy i zakładamy od nowa — to nie jest nadgorliwość.** Zrzut niesie własną strukturę
+> tabel. Wgrany do bazy, w której tabele już są (a są zawsze, bo migracje wykonują się przy każdym
+> starcie), kończy się kilkudziesięcioma błędami `already exists`. Gorsze jest to, co dzieje się
+> przy okazji: jeśli w tabelach są jakiekolwiek dane, **nie wgra się ani jeden wiersz z kopii**,
+> a polecenie i tak dobiegnie do końca. Łatwo wtedy uznać, że odtworzenie się powiodło.
+
 ```bash
 cd /opt/nieobecnosci
+DC="docker compose --env-file .env.prod -f docker-compose.prod.yml"
 
-# 1. Zatrzymaj aplikację, żeby nic nie pisało do bazy w trakcie odtwarzania
-docker compose --env-file .env.prod -f docker-compose.prod.yml stop api web
+# 1. Zatrzymaj aplikację, żeby zwolniła połączenia do bazy
+$DC stop api web
 
 # 2. Wskaż kopię (najnowsza na górze listy)
 ls -1t /var/backups/nieobecnosci/
 
-# 3. Wczytaj wybraną kopię
+# 3. Skasuj i załóż bazę od nowa
+$DC exec -T db psql -U nieobecnosci -d postgres -c "DROP DATABASE IF EXISTS nieobecnosci;"
+$DC exec -T db psql -U nieobecnosci -d postgres -c "CREATE DATABASE nieobecnosci;"
+
+# 4. Wczytaj wybraną kopię
 gunzip -c /var/backups/nieobecnosci/[NAZWA_PLIKU].sql.gz | \
-  docker compose --env-file .env.prod -f docker-compose.prod.yml exec -T db \
-  psql -U nieobecnosci nieobecnosci
+  $DC exec -T db psql -U nieobecnosci -q nieobecnosci
 
-# 4. Uruchom aplikację ponownie
-docker compose --env-file .env.prod -f docker-compose.prod.yml start api web
+# 5. Odtwórz uprawnienia roli aplikacji — zginęły razem z bazą.
+#    (Pomijasz, jeśli używasz wariantu uproszczonego z punktu 5.5.)
+$DC exec -T db psql -U nieobecnosci -d nieobecnosci -v haslo="'TU_HASLO_APLIKACJI'" \
+  < scripts/db-appuser.sql
 
-# 5. Sprawdź (polecenie z punktu 8.1)
-docker compose --env-file .env.prod -f docker-compose.prod.yml exec api \
-  node -e "fetch('http://localhost:3000/api/health').then(r=>r.text()).then(console.log)"
+# 6. Uruchom aplikację ponownie
+$DC start api web
+
+# 7. Sprawdź kondycję (polecenie z punktu 8.1) i policz wiersze
+$DC exec api node -e "fetch('http://localhost:3000/api/health').then(r=>r.text()).then(console.log)"
+$DC exec -T db psql -U nieobecnosci -d nieobecnosci -c \
+  'SELECT (SELECT count(*) FROM "Employee") AS pracownicy, (SELECT count(*) FROM "Absence") AS nieobecnosci;'
 ```
 
-Następnie zaloguj się i potwierdź, że dane są na miejscu.
+Liczby z punktu 7 muszą być niezerowe — zero pracowników znaczy, że kopia się nie wczytała, choć
+polecenia przeszły. Następnie zaloguj się i potwierdź, że dane są na miejscu.
 
 **Ile danych stracisz:** wszystko, co wprowadzono **po** wykonaniu tej kopii. Przy kopii
 codziennej o 02:00 to maksymalnie 24 godziny pracy.
@@ -623,9 +780,20 @@ Przejdź ją przed przekazaniem aplikacji użytkownikom.
 - [ ] Strona otwiera się pod docelowym adresem w przeglądarce
 - [ ] Certyfikat jest zaufany (adres publiczny) **lub** dział IT wie o certyfikacie wewnętrznym
 - [ ] Hasło administratora **zostało zmienione** z `admin`
+- [ ] Testowy wpis nieobecności zapisuje się i widać go w kalendarzu zespołu
+
+**Instalacja od zera (wariant A):**
+
+- [ ] Seed wykonany — sprawdzenie z 7.2 pokazuje `konta = 1`, `typy = 2`
 - [ ] Typy nieobecności, pula urlopu i kalendarz świąt są uzupełnione
 - [ ] Struktura organizacyjna i pracownicy są wprowadzeni
-- [ ] Testowy wpis nieobecności zapisuje się i widać go w kalendarzu zespołu
+
+**Przeniesienie danych (wariant B):**
+
+- [ ] Liczba pracowników i nieobecności na nowym serwerze **zgadza się ze starym**
+- [ ] Skrypt `db-appuser.sql` powtórzony po odtworzeniu bazy (krok 7.3/4)
+- [ ] `api` ma status `Up (healthy)` i nie przybywa mu restartów
+- [ ] Stary serwer wyłączony, ale **zachowany** przez co najmniej tydzień
 - [ ] `scripts/backup.sh` wykonał się i utworzył plik
 - [ ] `systemctl list-timers nieobecnosci-backup.timer` pokazuje najbliższe uruchomienie
 - [ ] Kopia poza serwerem jest skonfigurowana (punkt 9.3)
