@@ -49,7 +49,7 @@ function Typy() {
   };
 
   const cb = (k: 'affectsPool' | 'affectsCapacity' | 'specialCategory') => (
-    <label style={{ fontFamily: 'var(--font-sans)', fontSize: 12.5, color: 'var(--ink-2)', display: 'flex', gap: 5, alignItems: 'center' }}>
+    <label className="ds-form-check" style={{ fontFamily: 'var(--font-sans)', fontSize: 12.5, color: 'var(--ink-2)', display: 'flex', gap: 5, alignItems: 'center' }}>
       <input type="checkbox" checked={f[k]} onChange={(e) => setF((s) => ({ ...s, [k]: e.target.checked }))} />
       {k === 'affectsPool' ? 'obniża pulę' : k === 'affectsCapacity' ? 'obniża capacity' : 'kategoria szczególna (L4)'}
     </label>
@@ -295,8 +295,10 @@ function Swieta() {
         <Button onClick={addHol} disabled={!h.date || !h.name.trim() || !calId || busy}>Dodaj dzień wolny</Button>
       </div>
       <div className="ds-form-row" style={{ marginTop: 12 }}>
-        <Field label="Rok" width={100} hint="Święta ustawowe wylicza aplikacja — bez połączenia z internetem. Powtórny import nie duplikuje dni.">
-          <input style={field} type="number" inputMode="numeric" value={year} onChange={(e) => { clear(); setYear(e.target.value); }} />
+        {/* Szerokość pola niesie podpowiedź, nie kontrolkę: przy 100 px tekst zawijał się na pięć
+            wąskich linii. Sama kontrolka zostaje wąska, bo wpisuje się do niej cztery cyfry. */}
+        <Field label="Rok" width={260} hint="Święta ustawowe wylicza aplikacja — bez połączenia z internetem. Powtórny import nie duplikuje dni.">
+          <input style={{ ...field, width: 90, boxSizing: 'border-box' }} type="number" inputMode="numeric" value={year} onChange={(e) => { clear(); setYear(e.target.value); }} />
         </Field>
         <Button variant="secondary" onClick={importPl} disabled={!calId || !year || busy}>
           {busy ? 'Import w toku…' : 'Wczytaj święta w Polsce'}
