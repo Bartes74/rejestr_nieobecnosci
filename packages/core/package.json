@@ -16,6 +16,10 @@
     "./overlay": {
       "types": "./dist/overlay.d.ts",
       "default": "./dist/overlay.js"
+    },
+    "./balance": {
+      "types": "./dist/balance.d.ts",
+      "default": "./dist/balance.js"
     }
   },
   "files": [

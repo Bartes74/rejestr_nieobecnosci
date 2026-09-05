@@ -1,4 +1,6 @@
-import { Body, Controller, Get, Put } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, NotFoundException, Put } from '@nestjs/common';
+import type { EmploymentType } from '@prisma/client';
+import { minPoolFor } from '@nieobecnosci/core';
 import { PrismaService } from './prisma.service';
 import { SetAllowanceDto, SetDefaultPoolDto } from './dto';
 import { Roles } from './auth/decorators';
@@ -29,7 +31,20 @@ export class PoolsController {
 
   @Roles('ADMIN')
   @Put('default')
-  setDefault(@Body() dto: SetDefaultPoolDto) {
+  async setDefault(@Body() dto: SetDefaultPoolDto) {
+    // Minimum formy (reguła zamawiającego: B2B i OUT co najmniej 20 dni) sprawdzane na puli
+    // EFEKTYWNEJ po zapisie, nie na wpisywanej liczbie: forma bez własnej wartości dziedziczy
+    // wspólną, więc wspólna 10 przy braku klucza B2B też zaniżałaby B2B poniżej 20.
+    const cur = await this.getDefault();
+    const shared = dto.employmentType ? cur.value : dto.value;
+    const byType: Record<EmploymentType, number | null> = { ...cur.byType };
+    if (dto.employmentType) byType[dto.employmentType] = dto.value;
+    for (const t of ['B2B', 'OUT'] as const) {
+      const eff = byType[t] ?? shared;
+      if (eff !== null && eff < minPoolFor(t)) {
+        throw new BadRequestException(`Pula dla ${t} nie może być mniejsza niż ${minPoolFor(t)} dni (po zapisie wyniosłaby ${eff}).`);
+      }
+    }
     const key = dto.employmentType ? POOL_KEY_PREFIX + dto.employmentType : DEFAULT_POOL_KEY;
     const value = String(dto.value);
     return this.prisma.adminSetting.upsert({
@@ -41,7 +56,15 @@ export class PoolsController {
 
   @Roles('ADMIN')
   @Put('allowance')
-  setAllowance(@Body() dto: SetAllowanceDto) {
+  async setAllowance(@Body() dto: SetAllowanceDto) {
+    const emp = await this.prisma.employee.findUnique({ where: { id: dto.employeeId }, select: { employmentType: true } });
+    if (!emp) throw new NotFoundException('Pracownik nie istnieje.');
+    // Korekta indywidualna jest wartością docelową (bez proraty), więc minimum formy dotyczy jej wprost;
+    // inaczej jedno pole omijałoby regułę, którą pilnuje pula domyślna.
+    const min = minPoolFor(emp.employmentType);
+    if ((dto.overrideDays ?? dto.baseDays) < min) {
+      throw new BadRequestException(`Korekta dla ${emp.employmentType} nie może ustawić puli poniżej ${min} dni.`);
+    }
     const data = {
       baseDays: dto.baseDays,
       overrideDays: dto.overrideDays ?? null,

@@ -372,7 +372,7 @@ więc jej nie wymyśla.
 | --- | --- |
 | konto administratora `admin` / `admin` | pracowników |
 | typy nieobecności: **Nieobecność** i **L4** | struktury organizacyjnej (piony, Tribe'y, squady) |
-| domyślną pulę urlopu: **26 dni** | kalendarza świąt |
+| domyślną pulę urlopu: **26 dni** (UoP) i **20 dni** (B2B, OUT) | kalendarza świąt |
 | | sprintów |
 
 Resztę wprowadzasz sam — patrz [8.4](#84-wprowadź-dane-organizacji). Świąt nie trzeba wpisywać

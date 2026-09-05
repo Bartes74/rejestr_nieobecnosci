@@ -23,11 +23,12 @@ async function main() {
     console.log('• Administrator: login "admin", hasło "admin" — ZMIEŃ po pierwszym logowaniu.');
   }
 
-  await prisma.adminSetting.upsert({
-    where: { key: 'leavePool.default' },
-    create: { key: 'leavePool.default', value: '26' },
-    update: {},
-  });
+  // Zamawiający: UoP 26 dni (Kodeks pracy), B2B i OUT co najmniej 20 — z możliwością ustawienia
+  // większej w Konfiguracji. `update: {}` — ponowny seed nie nadpisuje tego, co administrator
+  // już zmienił, ale na instancji, która miała samą pulę wspólną, DODA klucze B2B/OUT = 20.
+  for (const [key, value] of [['leavePool.default', '26'], ['leavePool.B2B', '20'], ['leavePool.OUT', '20']]) {
+    await prisma.adminSetting.upsert({ where: { key }, create: { key, value }, update: {} });
+  }
 
   // Kolejność listy bierze się z `sortOrder`, nie z alfabetu — stąd jawne numery zamiast
   // polegania na pozycji w tablicy. Nieobecność pierwsza, bo to ona jest domyślnym

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { carriedOverInto, consumesPool, usedLeaveDays, balance, proratePool } from './balance.js';
+import { carriedOverInto, consumesPool, minPoolFor, usedLeaveDays, balance, proratePool } from './balance.js';
 
 const d = (y: number, m: number, day: number) => new Date(Date.UTC(y, m, day));
 const period = { from: d(2026, 0, 1), to: d(2026, 11, 31) };
@@ -117,5 +117,13 @@ describe('proratePool — FR-B9', () => {
   });
   it('odejście przed okresem → 0', () => {
     expect(proratePool(26, period2026, d(2025, 0, 1), d(2025, 5, 1))).toBe(0);
+  });
+});
+
+describe('minPoolFor — minimum puli dla form w roku budżetowym', () => {
+  it('B2B i OUT mają 20 dni, UoP nie ma minimum', () => {
+    expect(minPoolFor('B2B')).toBe(20);
+    expect(minPoolFor('OUT')).toBe(20);
+    expect(minPoolFor('UOP')).toBe(0);
   });
 });
