@@ -19,6 +19,16 @@ import { countOverlaidDays } from './overlay.js';
 export const consumesPool = (employmentType: EmploymentType, affectsPool: boolean): boolean =>
   affectsPool || employmentType !== 'UOP';
 
+/**
+ * Minimalna roczna pula dla form rozliczanych w roku budżetowym — reguła zamawiającego
+ * („B2B i OUT: min 20 dni, możliwość wybierania więcej"). Dotyczy wartości, którą ustawia
+ * administrator (wspólnej, per forma i korekty indywidualnej), nie puli po proracie: osoba
+ * zatrudniona w połowie roku ma jej proporcjonalnie mniej i to jest poprawne. UoP bez minimum —
+ * tam wymiar wynika z Kodeksu pracy i administrator sam odpowiada za 20/26.
+ */
+export const MIN_POOL_DAYS: Readonly<Partial<Record<EmploymentType, number>>> = { B2B: 20, OUT: 20 };
+export const minPoolFor = (employmentType: EmploymentType): number => MIN_POOL_DAYS[employmentType] ?? 0;
+
 export interface AbsenceSpan {
   dateFrom: Date;
   dateTo: Date;

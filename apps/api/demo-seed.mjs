@@ -38,7 +38,7 @@ async function main() {
   await prisma.adminSetting.deleteMany();
 
   // konfiguracja
-  await prisma.adminSetting.create({ data: { key: 'leavePool.default', value: '26' } });
+  await prisma.adminSetting.createMany({ data: [{ key: 'leavePool.default', value: '26' }, { key: 'leavePool.B2B', value: '20' }, { key: 'leavePool.OUT', value: '20' }] });
   await prisma.holidayCalendar.create({ data: { name: 'Polska', isDefault: true } });
   const urlop = await prisma.absenceType.create({ data: { name: 'Nieobecność' } });
   const l4 = await prisma.absenceType.create({ data: { name: 'L4', affectsPool: false, specialCategory: true } });

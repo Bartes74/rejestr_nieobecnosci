@@ -1,6 +1,6 @@
 import { DayPart, EmploymentType, OrgUnitType, PermissionScope, Role } from '@prisma/client';
 import {
-  IsArray, IsBoolean, IsDateString, IsEmail, IsEnum, IsInt, IsNumber, IsOptional, IsString, Matches,
+  IsArray, IsBoolean, IsDateString, IsEmail, IsEnum, IsInt, IsNumber, IsOptional, IsString, Matches, Min,
 } from 'class-validator';
 
 // FR-A3 — godzina wpisu niepełnodniowego w zapisie „HH:MM" (doba 24-godzinna).
@@ -52,17 +52,20 @@ export class CreateMembershipDto {
 }
 
 // FR-G2/B3/B6 — pula
+// Ujemną pulę odrzucał dotąd wyłącznie formularz; minimum formy (20 dla B2B/OUT) sprawdza kontroler
+// na wartości efektywnej, bo zależy od dziedziczenia puli wspólnej.
+const POOL_MIN_MSG = { message: 'Pula musi być liczbą nieujemną.' };
 export class SetDefaultPoolDto {
-  @IsNumber() value!: number;
+  @IsNumber() @Min(0, POOL_MIN_MSG) value!: number;
   // Brak → wspólny fallback dla wszystkich form zatrudnienia.
   @IsOptional() @IsEnum(EmploymentType) employmentType?: EmploymentType;
 }
 export class SetAllowanceDto {
   @IsString() employeeId!: string;
   @IsInt() periodYear!: number;
-  @IsNumber() baseDays!: number;
-  @IsOptional() @IsNumber() overrideDays?: number;
-  @IsOptional() @IsNumber() carriedOver?: number;
+  @IsNumber() @Min(0, POOL_MIN_MSG) baseDays!: number;
+  @IsOptional() @IsNumber() @Min(0, POOL_MIN_MSG) overrideDays?: number;
+  @IsOptional() @IsNumber() @Min(0, POOL_MIN_MSG) carriedOver?: number;
 }
 
 // FR-H5 — logowanie

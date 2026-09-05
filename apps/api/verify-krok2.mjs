@@ -15,7 +15,11 @@ token = (await j(await fetch(`${API}/auth/login`, { method: 'POST', headers: { '
 
 const urlop = await j(await post('/absence-types', { name: 'Urlop' }));
 const l4 = await j(await post('/absence-types', { name: 'L4', affectsPool: false, specialCategory: true }));
-await j(await put('/pools/default', { value: 3 })); // mała pula, by przetestować przekroczenie
+// Mała pula wspólna, by przetestować przekroczenie. B2B i OUT dostają własne 20 na czas suity: bez
+// nich dziedziczyłyby wspólną 3, a kontroler pilnuje minimum 20 dni (reguła zamawiającego). Klucze
+// znikają na końcu, żeby kolejne suity, które ustawiają tylko pulę wspólną, zastały bazę jak dotąd.
+for (const t of ['B2B', 'OUT']) await prisma.adminSetting.upsert({ where: { key: `leavePool.${t}` }, create: { key: `leavePool.${t}`, value: '20' }, update: { value: '20' } });
+await j(await put('/pools/default', { value: 3 }));
 const anna = await j(await post('/employees', { firstName: 'Anna', lastName: 'Kowalska', email: 'a@x.pl', login: 'a', employmentType: 'UOP', startDate: '2026-01-01' }));
 
 // poprawny wpis: pon–śr 22–24.06.2026 = 3 dni robocze
@@ -48,6 +52,7 @@ await fetch(`${API}/absences/${first.id}`, { method: 'DELETE', headers: H() });
 bal = await getj(`/employees/${anna.id}/balance`);
 ok(bal.remaining === 3, 'po usunięciu urlopu → pozostało 3');
 
+await prisma.adminSetting.deleteMany({ where: { key: { in: ['leavePool.B2B', 'leavePool.OUT'] } } });
 await prisma.$disconnect();
 console.log(failures === 0 ? '\nKROK 2 OK ✅' : `\n${failures} ASERCJI NIE PRZESZŁO ❌`);
 process.exit(failures === 0 ? 0 : 1);

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { plural } from '@nieobecnosci/core/plural';
+import { minPoolFor } from '@nieobecnosci/core/balance';
 import { dateRange, fullDate, todayIso } from '../format';
 import { api, type AbsenceType, type Adoption, type Calendar, type Employee, type EmploymentType, type OrgUnit, type ProcessingActivity, type Sprint, type AdminSetting } from '../api';
 import { useAuth } from '../current-employee';
@@ -127,6 +128,12 @@ function Pula() {
     // wpisz tę samą liczbę. Kasowanie dorobić, jeśli okaże się potrzebne.
     const n = days(val, 'Pula wspólna');
     const own = FORMY.filter((f) => byType[f.key] !== '').map((f) => ({ ...f, days: days(byType[f.key], `Pula dla ${f.label}`) }));
+    // Minimum formy na wartości efektywnej: forma bez własnej puli dziedziczy wspólną. Serwer
+    // sprawdza to samo — tu tylko po to, żeby nic nie zapisać, zanim wyjdzie sprzeczność.
+    for (const f of FORMY) {
+      const eff = own.find((o) => o.key === f.key)?.days ?? n;
+      if (eff < minPoolFor(f.key)) throw new Error(`Pula dla ${f.label} nie może być mniejsza niż ${minPoolFor(f.key)} dni (wyniosłaby ${eff}).`);
+    }
 
     await api.setDefaultPool(n);
     for (const f of own) await api.setDefaultPool(f.days, f.key);
@@ -144,6 +151,8 @@ function Pula() {
   // już czegoś innego niż to, co widać na ekranie — jak zielone „Zapisano" przy formularzu
   // opisującym inny stan. Kasuje go każda edycja w tej sekcji.
   const num = (k: 'periodYear' | 'baseDays' | 'overrideDays' | 'carriedOver') => (e: { target: { value: string } }) => { clear(); setA((s) => ({ ...s, [k]: e.target.value })); };
+  const allowMin = minPoolFor((emps.find((e) => e.id === a.employeeId)?.employmentType ?? 'UOP') as EmploymentType);
+  const allowHint = allowMin ? `min. ${allowMin} dni` : undefined;
   return (
     <Section title="Pula nieobecności">
       <div className="ds-form-row">
@@ -151,8 +160,8 @@ function Pula() {
           <input style={field} type="number" min={0} inputMode="numeric" value={val} onChange={(e) => { clear(); setVal(e.target.value); }} />
         </Field>
         {FORMY.map((f) => (
-          <Field key={f.key} label={`Pula dla ${f.label}`} width={110}>
-            <input style={field} type="number" min={0} inputMode="numeric" placeholder={val || '—'}
+          <Field key={f.key} label={`Pula dla ${f.label}`} width={110} hint={minPoolFor(f.key) ? `min. ${minPoolFor(f.key)} dni` : undefined}>
+            <input style={field} type="number" min={minPoolFor(f.key)} inputMode="numeric" placeholder={val || '—'}
               value={byType[f.key]} onChange={(e) => { clear(); setByType((s) => ({ ...s, [f.key]: e.target.value })); }} />
           </Field>
         ))}
@@ -166,8 +175,8 @@ function Pula() {
           </select>
         </Field>
         <Field label="Rok" width={90}><input style={field} type="number" inputMode="numeric" value={a.periodYear} onChange={num('periodYear')} /></Field>
-        <Field label="Pula bazowa" width={100}><input style={field} type="number" min={0} inputMode="numeric" value={a.baseDays} onChange={num('baseDays')} /></Field>
-        <Field label="Nadpisanie (opcj.)" width={120}><input style={field} type="number" min={0} inputMode="numeric" value={a.overrideDays} onChange={num('overrideDays')} /></Field>
+        <Field label="Pula bazowa" width={100} hint={allowHint}><input style={field} type="number" min={allowMin} inputMode="numeric" value={a.baseDays} onChange={num('baseDays')} /></Field>
+        <Field label="Nadpisanie (opcj.)" width={120} hint={allowHint}><input style={field} type="number" min={allowMin} inputMode="numeric" value={a.overrideDays} onChange={num('overrideDays')} /></Field>
         {/* Placeholder niesie całą regułę („automatycznie"), więc pole nie potrzebuje podpowiedzi
             pod spodem — ta rozjeżdżała wyrównanie wiersza, bo sąsiednie pola równają się do dołu. */}
         <Field label="Zaległe" width={130}>
