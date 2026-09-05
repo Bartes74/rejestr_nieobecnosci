@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CalendarDays, ChevronLeft, ChevronRight, RotateCcw, TriangleAlert } from 'lucide-react';
 import { count, plural } from '@nieobecnosci/core/plural';
-import { dateRange, mergeIsoRanges, todayIso } from '../format';
+import { addDays, dateRange, mergeIsoRanges, todayIso } from '../format';
 import { api, type Absence, type AbsenceType, type Preview } from '../api';
 import { useAuth } from '../current-employee';
 import { useIsNarrow } from '../viewport';
@@ -238,7 +238,11 @@ export function Wpis() {
   };
 
 
-  const blocked = !typeId || !!preview?.collision || badRange || badHours || (fullDayOnly && dayPart !== 'FULL');
+  // Serwer odrzuca przekroczenie puli dopiero przy zapisie (400). Formularz mówi to samo przed
+  // kliknięciem: saldo „po" ujemne I niższe niż „przed" — wpis bez puli (L4 na UoP) salda nie
+  // zmienia, więc odziedziczone ujemne saldo nie może blokować wpisu, który nic nie kosztuje.
+  const overPool = !!preview && preview.remainingAfter < 0 && preview.remainingAfter < preview.remaining;
+  const blocked = !typeId || !!preview?.collision || badRange || badHours || overPool || (fullDayOnly && dayPart !== 'FULL');
   const save = async () => {
     if (!current || blocked || saving) return;
     setSaving(true); clear();
@@ -247,11 +251,14 @@ export function Wpis() {
       const days = preview ? ` — ${nf(preview.workingDays)} ${plural(preview.workingDays, ['dzień roboczy', 'dni robocze', 'dni roboczych'])}` : '';
       ok(`Zapisano nieobecność${days}. Wpis obowiązuje od razu i jest już widoczny w kalendarzu zespołu.`);
       setSaved((n) => n + 1);
-      // Daty wracają na dziś, bo po zapisie formularz opisywał termin, który sam przed chwilą
-      // zajął: obok „Zapisano nieobecność" stawało „Zapis zablokowany: masz już nieobecność
-      // w tym terminie". Ekran przeczył sam sobie i nie dało się z niego odczytać, czy wpis
-      // powstał. Zakres zostaje widoczny w mini-kalendarzu jako zapisany — informacja nie ginie.
-      setFrom(todayIso()); setTo(todayIso()); setDayPart('FULL');
+      // Daty przeskakują na dzień po zapisanym terminie, bo po zapisie formularz opisywał termin,
+      // który sam przed chwilą zajął: obok „Zapisano nieobecność" stawało „Zapis zablokowany: masz
+      // już nieobecność w tym terminie". Wcześniejszy reset „na dziś" naprawiał to tylko wtedy, gdy
+      // zapisany zakres nie obejmował dzisiaj — a formularz otwiera się właśnie na dziś, więc
+      // zleceniodawca trafił w tę sprzeczność przy pierwszym teście. Dzień po zakończeniu nigdy
+      // nie koliduje z tym, co właśnie powstało; zakres zostaje widoczny w mini-kalendarzu.
+      const next = addDays(effTo, 1);
+      setFrom(next); setTo(next); setDayPart('FULL');
     } catch (e) { fail(e); } finally { setSaving(false); }
   };
 
@@ -326,11 +333,12 @@ export function Wpis() {
           </div>
           {/* Wyłączony przycisk nie da się sfokusować, więc powód blokady musi stać obok niego
               we własnym regionie live — inaczej użytkownik klawiatury nie dowie się, co poprawić. */}
-          <div id="wpis-blokada" role="status" aria-live="polite" style={{ fontFamily: 'var(--font-sans)', fontSize: 12.5, color: 'var(--amber)', marginTop: blocked ? 10 : 0 }}>
+          <div id="wpis-blokada" role="status" aria-live="polite" style={{ fontFamily: 'var(--font-sans)', fontSize: 12.5, color: overPool ? 'var(--danger)' : 'var(--amber)', marginTop: blocked ? 10 : 0 }}>
             {badRange ? 'Zapis zablokowany: data „do" jest wcześniejsza niż „od".'
               : badHours ? 'Zapis zablokowany: godzina zakończenia musi być późniejsza niż rozpoczęcia.'
                 : preview?.collision ? 'Zapis zablokowany: masz już zaplanowaną nieobecność w tym terminie. Zmień daty.'
-                  : !typeId ? 'Zapis zablokowany: wybierz typ nieobecności.' : ''}
+                  : overPool ? `Zapis zablokowany: przekroczenie puli — po zapisie saldo wyniosłoby ${nf(preview!.remainingAfter)} ${plural(Math.abs(preview!.remainingAfter), ['dzień', 'dni', 'dni'])}. Skróć zakres.`
+                    : !typeId ? 'Zapis zablokowany: wybierz typ nieobecności.' : ''}
           </div>
           <Notice {...notice} />
         </div>
@@ -344,7 +352,7 @@ export function Wpis() {
             </div>
             <Row label="Dni robocze w zakresie" value={preview ? nf(preview.workingDays) : '—'} />
             <Row label="Pominięto (weekend / święta)" value={partial ? '—' : String(skipped)} muted />
-            <Row label="Balans po zapisie" value={preview ? `${nf(preview.remaining)} → ${nf(preview.remainingAfter)}` : '—'} accent last />
+            <Row label="Balans po zapisie" value={preview ? `${nf(preview.remaining)} → ${nf(preview.remainingAfter)}` : '—'} accent danger={overPool} last />
             {/* `&&` na liczbie renderuje samo „0", gdy minimum wynosi zero — stąd jawne porównanie. */}
             {!!preview && (preview.minimumToLeave ?? 0) > 0 && preview.remainingAfter >= 0 && preview.remainingAfter < (preview.minimumToLeave ?? 0) && (
               <div style={{ background: 'var(--surface-3)', borderRadius: 'var(--radius-sm)', padding: '10px 12px', marginTop: 10, fontFamily: 'var(--font-sans)', fontSize: 11.5, color: 'var(--amber)', lineHeight: 1.5 }}>Zejdziesz poniżej minimum do pozostawienia ({count(preview.minimumToLeave ?? 0, ['dzień', 'dni', 'dni'])}).</div>
@@ -385,11 +393,11 @@ export function Wpis() {
   );
 }
 
-function Row({ label, value, muted, accent, last }: { label: string; value: string; muted?: boolean; accent?: boolean; last?: boolean }) {
+function Row({ label, value, muted, accent, danger, last }: { label: string; value: string; muted?: boolean; accent?: boolean; danger?: boolean; last?: boolean }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 0', borderBottom: last ? 'none' : '1px solid var(--border)' }}>
       <span style={{ fontFamily: 'var(--font-sans)', fontSize: 13, color: 'var(--ink-2)' }}>{label}</span>
-      <span style={{ fontFamily: 'var(--font-mono)', fontWeight: accent ? 700 : 600, fontSize: 14, color: accent ? 'var(--brand)' : muted ? 'var(--muted)' : 'var(--ink)' }}>{value}</span>
+      <span style={{ fontFamily: 'var(--font-mono)', fontWeight: accent ? 700 : 600, fontSize: 14, color: danger ? 'var(--danger)' : accent ? 'var(--brand)' : muted ? 'var(--muted)' : 'var(--ink)' }}>{value}</span>
     </div>
   );
 }
