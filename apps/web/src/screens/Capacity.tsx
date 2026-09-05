@@ -6,10 +6,15 @@ import { api, type CapacityCell, type OrgUnit, type Sprint } from '../api';
 import { card } from '../design-system/surfaces';
 import { ProgressBar } from '../design-system/components/data/ProgressBar';
 
+const PLOT_H = 144; // wysokość pola wykresu w px
 const select = { padding: '10px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-2)', background: 'var(--surface)', color: 'var(--ink)', fontFamily: 'var(--font-sans)', fontWeight: 600, fontSize: 14 } as const;
 
 // próg dostępności → kolor (jak w prototypie: zielony OK, bursztyn uwaga, czerwony ryzyko)
 const availColor = (pct: number) => (pct >= 80 ? 'var(--brand)' : pct >= 60 ? 'var(--amber)' : 'var(--danger)');
+// Legenda wykresu: kolor koduje próg, więc musi mieć słowo (WCAG 1.4.1). Progi te same co w `availColor`.
+const LEGEND: readonly [string, string][] = [
+  ['var(--brand)', 'dostępne ≥ 80% capacity'], ['var(--amber)', '60–79%'], ['var(--danger)', 'poniżej 60%'], ['var(--surface-3)', 'tor: pełne capacity squadu'],
+];
 
 export function Capacity() {
   const [sprints, setSprints] = useState<Sprint[]>([]);
@@ -60,6 +65,11 @@ export function Capacity() {
   const totals = useMemo(() => caps.reduce((a, c) => ({ total: a.total + c.totalPersonDays, avail: a.avail + c.available }), { total: 0, avail: 0 }), [caps]);
   const collisions = useMemo(() => caps.flatMap((c) => c.keyRoleCollisions.map((k) => ({ squad: c.unit.name, ...k }))), [caps]);
   const maxTotal = Math.max(1, ...caps.map((c) => c.totalPersonDays));
+  // Skala osi Y: cztery równe kreski od zera do wielokrotności 5 nie mniejszej niż największe
+  // pełne capacity — etykiety są okrągłe, a najwyższy tor nie dotyka krawędzi.
+  const step = Math.max(5, Math.ceil(maxTotal / 4 / 5) * 5);
+  const axisMax = step * 4;
+  const ticks = [0, 1, 2, 3, 4].map((i) => i * step);
 
   return (
     <div style={{ maxWidth: 1180 }}>
@@ -124,25 +134,52 @@ export function Capacity() {
         </div>
       )}
 
-      {/* PODSUMOWANIE — dostępność per squad */}
+      {/* PODSUMOWANIE — dostępność per squad.
+          Zleceniodawca chce ten wykres wklejać do prezentacji, więc musi czytać się bez reszty strony:
+          oś Y w osobodniach, tor w kolorze --surface-3 to pełne capacity squadu, wypełnienie to
+          osobodni dostępne, legenda tłumaczy progi kolorów. Podpisy squadów stoją we własnym wierszu
+          siatki — wcześniej były pozycjonowane absolutnie względem pola wykresu i lądowały NA słupkach,
+          szare na zielonym. */}
       {caps.length > 0 && (
         <div style={{ ...card, padding: 22 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 18 }}>
             <h2 style={{ fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 15, color: 'var(--ink)', margin: 0 }}>Capacity w sprincie</h2>
             <span style={{ fontFamily: 'var(--font-sans)', fontSize: 13, color: 'var(--muted)' }}>Razem: <b style={{ color: 'var(--ink)', fontFamily: 'var(--font-mono)' }}>{totals.avail} / {totals.total}</b> os-dni</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 140, paddingBottom: 26, position: 'relative' }}>
-            {caps.map((c) => {
-              const h = Math.round((c.available / maxTotal) * 100);
-              const pct = c.totalPersonDays > 0 ? Math.round((c.available / c.totalPersonDays) * 100) : 0;
-              return (
-                <div key={c.unit.id} title={`${c.unit.name}: ${c.available}/${c.totalPersonDays} os-dni`} style={{ flex: 1, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', alignItems: 'center', gap: 6, position: 'relative' }}>
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--ink-2)' }}>{c.available}</span>
-                  <div style={{ width: '100%', maxWidth: 56, height: `${Math.max(4, h)}%`, background: availColor(pct), borderRadius: '5px 5px 0 0' }} />
-                  <span style={{ fontSize: 10.5, color: 'var(--muted)', position: 'absolute', bottom: 0, fontFamily: 'var(--font-sans)', textAlign: 'center', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.unit.name.replace('Squad ', '')}</span>
-                </div>
-              );
-            })}
+          {/* Rola img z pełnym opisem: wnętrze to sama grafika, a te same liczby stoją tekstem w kartach wyżej. */}
+          <div role="img" aria-label={`Capacity w sprincie — ${caps.map((c) => `${c.unit.name}: dostępne ${c.available} z ${c.totalPersonDays} os-dni`).join('; ')}`}
+            style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', columnGap: 8, rowGap: 6 }}>
+            {/* oś Y — cztery kreski do zaokrąglonego maksimum, 16 px marginesu nad nią na liczbę nad najwyższym torem */}
+            <div aria-hidden="true" style={{ position: 'relative', height: PLOT_H, marginTop: 16, width: 34, fontFamily: 'var(--font-mono)', fontSize: 10.5, color: 'var(--muted)' }}>
+              {ticks.map((t) => <span key={t} style={{ position: 'absolute', right: 0, bottom: `${(t / axisMax) * 100}%`, transform: 'translateY(50%)' }}>{t}</span>)}
+            </div>
+            <div aria-hidden="true" style={{ position: 'relative', height: PLOT_H, marginTop: 16, borderLeft: '1px solid var(--border-2)', borderBottom: '1px solid var(--border-2)' }}>
+              {ticks.slice(1).map((t) => <div key={t} style={{ position: 'absolute', left: 0, right: 0, bottom: `${(t / axisMax) * 100}%`, borderTop: '1px dashed var(--border)' }} />)}
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'flex-end', gap: 8, padding: '0 8px' }}>
+                {caps.map((c) => {
+                  const pct = c.totalPersonDays > 0 ? Math.round((c.available / c.totalPersonDays) * 100) : 0;
+                  return (
+                    <div key={c.unit.id} title={`${c.unit.name}: ${c.available}/${c.totalPersonDays} os-dni`} style={{ flex: 1, height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'flex-end' }}>
+                      <div style={{ position: 'relative', width: '100%', maxWidth: 56, height: `${(c.totalPersonDays / axisMax) * 100}%`, background: 'var(--surface-3)', borderRadius: '5px 5px 0 0' }}>
+                        <span style={{ position: 'absolute', bottom: '100%', left: 0, right: 0, marginBottom: 3, textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--ink-2)' }}>{c.available}</span>
+                        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: `${Math.min(100, pct)}%`, background: availColor(pct), borderRadius: '5px 5px 0 0' }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <div />
+            <div aria-hidden="true" style={{ display: 'flex', gap: 8, padding: '0 8px', borderLeft: '1px solid transparent' }}>
+              {caps.map((c) => <span key={c.unit.id} style={{ flex: 1, textAlign: 'center', fontFamily: 'var(--font-sans)', fontSize: 11.5, lineHeight: 1.3, color: 'var(--ink-2)', overflowWrap: 'anywhere' }}>{c.unit.name.replace('Squad ', '')}</span>)}
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border)', fontFamily: 'var(--font-sans)', fontSize: 12, color: 'var(--muted)' }}>
+            {LEGEND.map(([bg, txt]) => (
+              <span key={txt} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span aria-hidden="true" style={{ width: 12, height: 12, borderRadius: 3, background: bg, border: bg === 'var(--surface-3)' ? '1px solid var(--border-2)' : 'none' }} />{txt}
+              </span>
+            ))}
           </div>
         </div>
       )}

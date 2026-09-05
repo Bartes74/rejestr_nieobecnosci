@@ -4,7 +4,7 @@ import { api, type OrgUnit, type Sprint } from '../api';
 import { card } from '../design-system/surfaces';
 
 // FR-C4 — heatmapa pokrycia: natężenie nieobecności (% osobodni) per squad × sprint.
-// Kolor prowadzi od zielonego (spokojnie) po czerwony (≥50% — ryzyko niedoboru obsady).
+// Kolor prowadzi od zielonego (spokojnie) po czerwony (≥50% osobodni w sprincie — ryzyko niedoboru obsady).
 // Cała siatka schodzi jednym żądaniem `GET /capacity/matrix`; wcześniej było jedno na każdą parę.
 
 type Cell = { pct: number | null; title: string };
@@ -81,7 +81,7 @@ export function Heatmapa() {
   return (
     <div style={{ maxWidth: 1080 }}>
       <p style={{ fontFamily: 'var(--font-sans)', color: 'var(--muted)', fontSize: 13.5, margin: '0 0 20px', maxWidth: 680 }}>
-        Natężenie nieobecności w czasie — pozwala wcześnie wykryć tygodnie zagrożone niedoborem obsady.
+        Natężenie nieobecności w czasie — pozwala wcześnie wykryć sprinty zagrożone niedoborem obsady.
         Kolor prowadzi od zielonego (spokojnie) po czerwony (wymaga uwagi).
       </p>
 
@@ -153,7 +153,7 @@ export function Heatmapa() {
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontFamily: 'var(--font-sans)', fontSize: 12, color: 'var(--muted)' }}>
                 <span style={{ width: 18, height: 18, borderRadius: 'var(--radius-sm)', background: 'var(--heat-5)', boxShadow: '0 0 0 2px var(--surface), inset 0 0 0 2px var(--heat-5-ring)' }} />
-                Tydzień wysokiego ryzyka (≥50% nieobecnych)
+                Sprint wysokiego ryzyka (≥50% osobodni nieobecnych)
               </div>
             </div>
           </>
