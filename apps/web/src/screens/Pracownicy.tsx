@@ -87,7 +87,12 @@ export function Pracownicy() {
 
   const set = (k: keyof typeof form) => (e: { target: { value: string } }) => setForm((f) => ({ ...f, [k]: e.target.value }));
   const nameOf = (e: Employee) => `${e.firstName} ${e.lastName}`.trim();
-  const required = form.firstName.trim() && form.lastName.trim() && form.login.trim();
+  // E-mail jest wymagany: to jedyny kanał powiadomień, a docelowo konta zasila AD, więc każdy
+  // ma adres. Wcześniej UI mówił „opcjonalny", a serwer i baza wymagały — zleceniodawca dostał
+  // surowe „email must be an email" pod tabelą. Wzorzec sprawdza tylko kształt; resztę zna serwer.
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim());
+  const emailBad = form.email.trim() !== '' && !emailOk;
+  const required = form.firstName.trim() && form.lastName.trim() && form.login.trim() && emailOk;
 
   const add = () => run(async () => {
     await api.createEmployee(form);
@@ -170,9 +175,12 @@ export function Pracownicy() {
             <form onSubmit={(ev) => { ev.preventDefault(); add(); }} style={{ ...card, padding: 16, marginBottom: 14 }}>
               <div className="ds-form-row" style={{ gap: 10 }}>
                 {ADD_FIELDS.map((f) => (
-                  <Field key={f.key} label={`${f.label}${f.key !== 'email' ? ' *' : ''}`}>
-                    <input style={field} type={f.type ?? 'text'} autoComplete={f.autoComplete} required={f.key !== 'email'}
+                  <Field key={f.key} label={`${f.label} *`}>
+                    <input style={field} type={f.type ?? 'text'} autoComplete={f.autoComplete} required
+                      aria-invalid={f.key === 'email' && emailBad ? true : undefined} aria-describedby={f.key === 'email' && emailBad ? 'emp-email-err' : undefined}
                       value={form[f.key]} onChange={set(f.key)} />
+                    {/* Błąd przy polu, nie tylko w komunikacie na dole — jak w PasswordDialog. */}
+                    {f.key === 'email' && emailBad && <span id="emp-email-err" role="alert" style={{ fontFamily: 'var(--font-sans)', fontSize: 11.5, color: 'var(--danger)' }}>Podaj poprawny adres e-mail, np. jan.kowalski@firma.pl.</span>}
                   </Field>
                 ))}
                 <Field label="Forma">
@@ -200,6 +208,10 @@ export function Pracownicy() {
               </button>
             </div>
           )}
+
+          {/* Komunikat stoi NAD tabelą, tuż pod formularzem dodawania i importu: pod tabelą
+              z trzystoma osobami znikał poza ekranem i nie było wiadomo, dlaczego zapis nie przeszedł. */}
+          <Notice {...notice} />
 
           {/* Układ zostaje na CSS grid (kolumny muszą się zgadzać w pionie), ale role ARIA wiążą
               komórkę z nagłówkiem — bez nich czytnik ekranu czyta ciąg wartości bez kontekstu. */}
@@ -256,8 +268,6 @@ export function Pracownicy() {
               </div></div>
             )}
           </div>
-
-          <Notice {...notice} />
         </div>
       </div>
 

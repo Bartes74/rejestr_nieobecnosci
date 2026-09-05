@@ -39,6 +39,10 @@ body { margin: 0; font-family: var(--font-sans); color: var(--ink); background: 
 /* Pole złożone: obramowana ramka + ikona + natywna kontrolka w środku.
    Pierścień należy się ramce, nie samemu <input>, bo to ramkę widać jako pole. */
 .ds-field:focus-within { outline: 2px solid var(--brand); outline-offset: 2px; }
+/* Pole z błędem walidacji: ramka w kolorze błędu — także na ramce złożonej `.ds-field`, gdy błąd
+   ma kontrolka w jej środku. `aria-invalid` było dotąd tylko ogłaszane, nie pokazywane.
+   `!important` z tego samego powodu co przy stanach hover niżej. */
+[aria-invalid="true"], .ds-field:has([aria-invalid="true"]) { border-color: var(--danger) !important; }
 /* Wskaźnik kalendarza rysujemy sami (ikona marki po lewej, wg DESIGN.md), więc natywny
    znika — inaczej pole daty ma dwie ikony kalendarza obok siebie. */
 .ds-datefield::-webkit-calendar-picker-indicator { display: none; }

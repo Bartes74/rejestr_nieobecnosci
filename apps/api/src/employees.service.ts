@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { EmploymentType, PermissionScope, Role } from '@prisma/client';
 import { PrismaService } from './prisma.service';
 import { readSheet } from './xlsx';
@@ -45,23 +45,32 @@ export interface ImportResult {
 export class EmployeesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  create(dto: CreateEmployeeDto) {
-    return this.prisma.employee.create({
-      data: {
-        firstName: dto.firstName,
-        lastName: dto.lastName,
-        email: dto.email,
-        login: dto.login,
-        employmentType: dto.employmentType,
-        role: dto.role,
-        isKeyRole: dto.isKeyRole,
-        holidayCalendarId: dto.holidayCalendarId,
-        startDate: new Date(dto.startDate),
-        endDate: dto.endDate ? new Date(dto.endDate) : null,
-        passwordHash: dto.password ? hashPassword(dto.password) : null,
-      },
-      omit: HIDDEN_EMPLOYEE_FIELDS,
-    });
+  async create(dto: CreateEmployeeDto) {
+    try {
+      return await this.prisma.employee.create({
+        data: {
+          firstName: dto.firstName,
+          lastName: dto.lastName,
+          email: dto.email,
+          login: dto.login,
+          employmentType: dto.employmentType,
+          role: dto.role,
+          isKeyRole: dto.isKeyRole,
+          holidayCalendarId: dto.holidayCalendarId,
+          startDate: new Date(dto.startDate),
+          endDate: dto.endDate ? new Date(dto.endDate) : null,
+          passwordHash: dto.password ? hashPassword(dto.password) : null,
+        },
+        omit: HIDDEN_EMPLOYEE_FIELDS,
+      });
+    } catch (e) {
+      // Unikalności loginu i e-maila pilnuje baza; bez tłumaczenia duplikat wychodził jako 500
+      // „Internal server error", choć to błąd danych wejściowych. Treść ta sama co przy imporcie .xlsx.
+      if ((e as { code?: string }).code === 'P2002') {
+        throw new ConflictException(`Login lub e-mail już zajęty: "${dto.login}" / "${dto.email}".`);
+      }
+      throw e;
+    }
   }
 
   setPassword(id: string, password: string) {
