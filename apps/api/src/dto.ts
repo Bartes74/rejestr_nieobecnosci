@@ -84,13 +84,15 @@ export class GrantPermissionDto {
 }
 
 // FR-G5 — pracownicy
+// Komunikaty po polsku tam, gdzie formularz może realnie przepuścić złą wartość; class-validator
+// domyślnie mówi „email must be an email" i tak trafiało to na ekran administratora.
 export class CreateEmployeeDto {
   @IsString() firstName!: string;
   @IsString() lastName!: string;
-  @IsEmail() email!: string;
+  @IsEmail({}, { message: 'Podaj poprawny adres e-mail (np. jan.kowalski@firma.pl).' }) email!: string;
   @IsString() login!: string;
   @IsEnum(EmploymentType) employmentType!: EmploymentType;
-  @IsDateString() startDate!: string;
+  @IsDateString({}, { message: 'Data startu musi mieć postać RRRR-MM-DD.' }) startDate!: string;
   @IsOptional() @IsDateString() endDate?: string;
   @IsOptional() @IsEnum(Role) role?: Role;
   @IsOptional() @IsBoolean() isKeyRole?: boolean;

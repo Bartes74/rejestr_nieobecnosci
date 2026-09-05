@@ -8,7 +8,7 @@ const run = (f) => spawnSync(process.execPath, [f], { cwd: dir, stdio: 'inherit'
 // Kolejność jak w zweryfikowanych przebiegach (suity są niezależne — unikalne prefiksy loginów).
 const SUITES = [
   'verify-krok1.mjs', 'verify-krok2.mjs', 'verify-krok3.mjs', 'verify-krok4.mjs', 'verify-krok5.mjs', 'verify-krok6.mjs',
-  'verify-mvp-h4-j2.mjs', 'verify-faza2-niepelnedni.mjs', 'verify-faza2-zalega-lider.mjs', 'verify-faza2-email.mjs',
+  'verify-mvp-h4-j2.mjs', 'verify-faza2-niepelnedni.mjs', 'verify-faza2-zalega-lider.mjs', 'verify-faza2-email.mjs', 'verify-pracownik-email.mjs',
   'verify-faza2-l4-min.mjs', 'verify-faza2-proration.mjs', 'verify-faza2-b8.mjs', 'verify-faza2-i1.mjs', 'verify-faza2-f6.mjs',
   'verify-faza2-g7.mjs', 'verify-faza2-j3.mjs', 'verify-faza2-nfr.mjs', 'verify-faza3-zespol-import.mjs',
   'verify-faza3-scheduler.mjs', 'verify-faza3-bulk.mjs', 'verify-faza3-ical.mjs', 'verify-faza3-feed.mjs', 'verify-dlug-konfiguracja.mjs', 'verify-zakres-jednostek.mjs',
