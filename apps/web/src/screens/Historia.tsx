@@ -138,7 +138,13 @@ export function Historia() {
           return (
             <div key={a.id} role="row" className="ds-row" style={{ display: 'grid', gridTemplateColumns: COLS, padding: '15px 20px', borderTop: i === 0 ? 'none' : '1px solid var(--border)', alignItems: 'center', fontFamily: 'var(--font-sans)', fontSize: 13 }}>
               <div role="rowheader" style={{ fontWeight: 600, color: 'var(--ink)' }}>{rangeLabel(a)}<span style={{ color: 'var(--muted)', fontWeight: 400 }}>{part}</span></div>
-              <div role="cell" style={{ fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', color: 'var(--ink-2)' }}>{workdays(a.workingDays)}</div>
+              <div role="cell" style={{ fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', color: 'var(--ink-2)' }}>
+                {workdays(a.workingDays)}
+                {/* Reguła FR-B5 wypowiedziana przy liczbie: dzień z całodniowym L4 należy do L4, więc
+                    urlop na ten dzień pokazuje 0 i nic nie zabiera z puli. Serwer wysyła flagę tylko
+                    tam, gdzie widać sam typ L4 — dla lidera bez VIEW_L4 jest zawsze fałszywa. */}
+                {a.coveredBySick && <span style={{ display: 'block', width: 'fit-content', marginTop: 3, fontFamily: 'var(--font-sans)', fontSize: 11, color: 'var(--muted)', background: 'var(--surface-3)', padding: '1px 6px', borderRadius: 'var(--radius-sm)' }}>{a.workingDays === 0 ? 'przykryte L4' : 'częściowo przykryte L4'}</span>}
+              </div>
               <div role="cell" style={{ color: 'var(--ink-2)' }}>
                 {a.type.name}
                 {a.type.specialCategory && <span style={{ fontSize: 11, color: 'var(--muted)', background: 'var(--surface-3)', padding: '1px 6px', borderRadius: 'var(--radius-sm)', marginLeft: 6 }}>widoczne tylko dla Ciebie</span>}

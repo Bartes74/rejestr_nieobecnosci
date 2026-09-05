@@ -88,7 +88,7 @@ export interface Balance {
   period: { from: string; to: string; type: string; year: number };
   pool: number; carriedOver: number; used: number; remaining: number; minimumToLeave?: number;
 }
-export interface Absence { id: string; dateFrom: string; dateTo: string; dayPart: string; hourFrom?: string | null; hourTo?: string | null; type: AbsenceType; source?: string; workingDays: number }
+export interface Absence { id: string; dateFrom: string; dateTo: string; dayPart: string; hourFrom?: string | null; hourTo?: string | null; type: AbsenceType; source?: string; workingDays: number; coveredBySick?: boolean }
 export interface AdminSetting { key: string; value: number; label: string; ref: string }
 export interface Preview { workingDays: number; remaining: number; remainingAfter: number; minimumToLeave?: number; collision?: boolean; collisionFrom?: string | null; collisionTo?: string | null; returnedDays?: number }
 export interface CalEntry { employeeId: string; employee: string; dateFrom: string; dateTo: string; dayPart: string }
