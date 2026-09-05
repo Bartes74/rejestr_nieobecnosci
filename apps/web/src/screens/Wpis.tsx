@@ -170,11 +170,16 @@ export function Wpis() {
   // edycji, a nie efektem na stanie: zapis sam przestawia daty na dziś, więc efekt skasowałby
   // własne „Zapisano" chwilę po tym, jak je pokazał.
   const edit = <T,>(set: (v: T) => void) => (v: T) => { clear(); set(v); };
-  const editType = edit(setTypeId);
+  // Zmiana typu na wpis bez puli (L4) ściąga wymiar na cały dzień — patrz `fullDayOnly`.
+  const editType = (id: string) => { clear(); setTypeId(id); if (types.some((t) => t.id === id && !t.affectsPool)) setDayPart('FULL'); };
   const editFrom = edit(setFrom);
   const editTo = edit(setTo);
   const editPart = edit(setDayPart);
 
+  // Wpis bez puli (L4) przejmuje dzień w całości — ten sam predykat co `overrides` po stronie
+  // serwera, który tę regułę egzekwuje niezależnie. Lekarz nie wystawia zwolnienia na pół dnia,
+  // a licznik dni i tak liczy dzień z L4 raz, w całości.
+  const fullDayOnly = types.some((t) => t.id === typeId && !t.affectsPool);
   const partial = dayPart !== 'FULL';
   const effTo = partial ? from : to;
   const badRange = !partial && !!to && to < from;
@@ -221,6 +226,7 @@ export function Wpis() {
   // jednym Tabem (tabIndex −1 na nieaktywnych). Bez tego `role="radio"` obiecywało czytnikowi
   // ekranu zachowanie, którego kontrolka nie miała.
   const movePart = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (fullDayOnly) return;
     const step = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 0;
     if (!step) return;
     e.preventDefault();
@@ -232,7 +238,7 @@ export function Wpis() {
   };
 
 
-  const blocked = !typeId || !!preview?.collision || badRange || badHours;
+  const blocked = !typeId || !!preview?.collision || badRange || badHours || (fullDayOnly && dayPart !== 'FULL');
   const save = async () => {
     if (!current || blocked || saving) return;
     setSaving(true); clear();
@@ -285,15 +291,23 @@ export function Wpis() {
               Bez tego `role="radio"` obiecywało czytnikowi ekranu zachowanie, którego nie było. */}
           <div role="radiogroup" aria-label="Wymiar dnia">
             <div style={labelStyle}>Wymiar dnia</div>
-            <div style={{ display: 'flex', gap: 8, marginBottom: dayPart === 'HOURS' ? 14 : 24 }}>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
               {DAY_PARTS.map(([k, lbl]) => {
                 const active = dayPart === k;
-                return <button key={k} type="button" role="radio" data-part={k} aria-checked={active} tabIndex={active ? 0 : -1}
+                const off = fullDayOnly && k !== 'FULL';
+                return <button key={k} type="button" role="radio" data-part={k} aria-checked={active} tabIndex={active ? 0 : -1} disabled={off}
                   className={active ? undefined : 'ds-quiet'} onClick={() => editPart(k)} onKeyDown={movePart} style={{
-                    flex: 1, textAlign: 'center', borderRadius: 'var(--radius-md)', padding: 10, cursor: 'pointer', fontFamily: 'var(--font-sans)', fontSize: 12.5, fontWeight: 600,
+                    flex: 1, textAlign: 'center', borderRadius: 'var(--radius-md)', padding: 10, cursor: off ? 'not-allowed' : 'pointer', opacity: off ? 0.5 : 1, fontFamily: 'var(--font-sans)', fontSize: 12.5, fontWeight: 600,
                     border: active ? '1.5px solid var(--brand)' : '1px solid var(--border-2)', background: active ? 'var(--brand-tint)' : 'var(--surface)', color: active ? 'var(--brand)' : 'var(--ink-2)',
                   }}>{lbl}</button>;
               })}
+            </div>
+            {/* Podpowiedź zawsze obecna, żeby układ nie skakał przy zmianie wymiaru. Bez twardego
+                limitu godzin — zleceniodawca chce tylko wskazówki, kiedy sięgać po „Godziny". */}
+            <div style={{ fontFamily: 'var(--font-sans)', fontSize: 11.5, lineHeight: 1.5, color: 'var(--muted)', marginBottom: dayPart === 'HOURS' ? 14 : 24 }}>
+              {fullDayOnly ? 'Ten rodzaj nieobecności obejmuje zawsze cały dzień.'
+                : dayPart === 'HOURS' ? 'Godziny — dla nieobecności krótszych niż pół dnia. Podaj zakres godzin.'
+                  : 'Cały dzień to 8 godzin, pół dnia — 4. Krótszą nieobecność zapisz w godzinach.'}
             </div>
           </div>
           {dayPart === 'HOURS' && (

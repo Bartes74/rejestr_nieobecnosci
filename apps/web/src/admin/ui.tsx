@@ -27,8 +27,14 @@ export const num: CSSProperties = { ...td, fontFamily: 'var(--font-mono)', fontV
 // (nowy wpis, moja historia, zespół): ten sam wybór ma się wszędzie nazywać tak samo,
 // a rozjazd etykiet między ekranami czyta się jak różnica znaczenia.
 export const DAY_PARTS: readonly [string, string][] = [
-  ['FULL', 'Cały dzień'], ['AM', 'Przed poł. (AM)'], ['PM', 'Po poł. (PM)'], ['HOURS', 'Godziny'],
+  ['FULL', 'Cały dzień (8h)'], ['AM', 'Pół dnia (4h)'], ['HOURS', 'Godziny'],
 ];
+// ponytail: „Pół dnia" zapisuje się jako AM. PM zostaje w enumie i w bazie dla wpisów sprzed
+// zmiany — na ekranie oba pół-dnia nazywają się tak samo, a wejście w edycję przepisuje PM na AM.
+// Zleceniodawca: nieobecność opisuje się godzinami, nie połową dnia, więc rozróżnienie AM/PM
+// nie niosło informacji, której ktokolwiek by użył.
+export const dayPartLabel = (p: string) => (p === 'AM' || p === 'PM' ? 'pół dnia' : p === 'HOURS' ? 'godziny' : '');
+export const editableDayPart = (p: string) => (p === 'PM' ? 'AM' : p);
 
 export function Section({ title, children }: { title: string; children: ReactNode }) {
   return (

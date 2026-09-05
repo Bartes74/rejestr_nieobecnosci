@@ -3,7 +3,7 @@ import { count, plural } from '@nieobecnosci/core/plural';
 import { dateRange, todayIso } from '../format';
 import { api, type Absence, type AbsenceType, type Employee } from '../api';
 import { Button } from '../design-system/components/core/Button';
-import { ConfirmDialog, DAY_PARTS, Field, Section, Notice, field, th, td, useNotice } from '../admin/ui';
+import { ConfirmDialog, DAY_PARTS, Field, Section, Notice, editableDayPart, field, th, td, useNotice } from '../admin/ui';
 import { cardClipped } from '../design-system/surfaces';
 import { useIsNarrow } from '../viewport';
 
@@ -178,7 +178,7 @@ export function Zespol() {
                         </>
                       ) : (
                         <>
-                          <button type="button" disabled={busy} aria-label={`Edytuj wpis ${range(a)}`} onClick={() => setEdit({ id: a.id, from: a.dateFrom, to: a.dateTo, dayPart: a.dayPart, hourFrom: a.hourFrom ?? '09:00', hourTo: a.hourTo ?? '13:00' })} style={{ ...btn, marginRight: 6 }}>Edytuj</button>
+                          <button type="button" disabled={busy} aria-label={`Edytuj wpis ${range(a)}`} onClick={() => setEdit({ id: a.id, from: a.dateFrom, to: a.dateTo, dayPart: editableDayPart(a.dayPart), hourFrom: a.hourFrom ?? '09:00', hourTo: a.hourTo ?? '13:00' })} style={{ ...btn, marginRight: 6 }}>Edytuj</button>
                           <button type="button" disabled={busy} aria-label={`Usuń nieobecność ${range(a)}`} onClick={() => setConfirmDel(a)} style={{ ...btn, color: 'var(--danger)' }}>Usuń</button>
                         </>
                       )}
@@ -200,9 +200,8 @@ export function Zespol() {
               </Field>
               <Field label="Wymiar dnia">
                 <select style={field} value={add.dayPart} onChange={(e) => setAdd((a) => ({ ...a, dayPart: e.target.value }))}>
-                  <option value="FULL">Cały dzień</option>
-                  <option value="AM">Przedpołudnie (½)</option>
-                  <option value="PM">Popołudnie (½)</option>
+                  {/* bez „Godziny" — ten formularz nie ma pól godzin */}
+                  {DAY_PARTS.filter(([k]) => k !== 'HOURS').map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                 </select>
               </Field>
               <Field label={partial ? 'Data' : 'Data od'} width={170}>
@@ -253,9 +252,7 @@ export function Zespol() {
             </Field>
             <Field label="Wymiar dnia">
               <select style={field} value={bulk.dayPart} onChange={(e) => setBulk((b) => ({ ...b, dayPart: e.target.value }))}>
-                <option value="FULL">Cały dzień</option>
-                <option value="AM">Przedpołudnie (½)</option>
-                <option value="PM">Popołudnie (½)</option>
+                {DAY_PARTS.filter(([k]) => k !== 'HOURS').map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </select>
             </Field>
             <Field label={bulkPartial ? 'Data' : 'Data od'} width={170}>

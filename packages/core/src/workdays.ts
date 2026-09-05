@@ -1,5 +1,7 @@
 // FR-A2 / FR-G3 — liczenie dni roboczych: pomija weekendy i święta z kalendarza osoby.
-// FR-A3 — niepełne dni (AM/PM/godziny) jako ułamek dnia w systemie 8-godzinnym.
+// FR-A3 — niepełne dni (pół dnia / godziny) jako ułamek dnia w systemie 8-godzinnym.
+// AM i PM dają ten sam ułamek: od uwag zleceniodawcy UI oferuje jedno „Pół dnia" (zapisywane jako AM),
+// PM zostaje dla wpisów sprzed zmiany.
 
 export const isoDate = (d: Date): string => d.toISOString().slice(0, 10);
 

@@ -48,7 +48,7 @@ Do tego: wdrożenie **on-premise**, bez zależności od zewnętrznych usług —
 
 - **Hierarchia organizacyjna:** pion › departament › Tribe › chapter/squad › osoba. Jedna osoba może należeć do kilku jednostek jednocześnie, a jej dane agregują się we wszystkich (FR-G4). Widoczność bazowa to Tribe — wszyscy w Tribe widzą wszystkich, filtrowanie schodzi do squadu (FR-H1).
 - **Sprinty:** cykl planistyczny, zwykle 2 tygodnie, wg harmonogramu QBR. W MVP wgrywane ręcznie z .xlsx z konfigurowalnym mapowaniem kolumn (docelowo JIRA).
-- **Jednostka czasu:** system 8-godzinny. Wpisy całodniowe, półdniowe (AM/PM) i godzinowe, przeliczane na ułamek dnia w balansie i w capacity.
+- **Jednostka czasu:** system 8-godzinny. Wpisy całodniowe, półdniowe i godzinowe, przeliczane na ułamek dnia w balansie i w capacity.
 - **Kalendarze świąt:** wiele kalendarzy, przypisywanych per pracownik/lokalizacja (dla B2B/OUT z innych lokalizacji), plus dni dodatkowe z ustaleń organizacji, np. odbiory za święta wypadające w sobotę.
 - **Kanały wyjściowe:** e-mail (jedyny kanał powiadomień w MVP), subskrypcja iCal kalendarza zespołu, eksporty .xlsx dla raportów, wersjonowany schemat eksportu płacowego dla PMO.
 - **Środowisko pracy:** stacje robocze w godzinach pracy organizacji, sieć wewnętrzna, wdrożenie on-prem (Docker Compose + Caddy/TLS na jednej maszynie).
