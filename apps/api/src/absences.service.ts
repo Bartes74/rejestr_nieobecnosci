@@ -286,6 +286,8 @@ export class AbsencesService {
     // mu go edytować i usunąć, a posiadacz MODIFY_ABSENCE konwertował wpis dowolnej osoby
     // w firmie — także spoza swojego zasięgu.
     await this.assertCanActFor(existing.employeeId, user);
+    // Ta sama reguła co w `validate`: L4 obejmuje cały dzień, więc półdniowy wpis nie ma na co się zamienić.
+    if (existing.dayPart !== 'FULL') throw new BadRequestException('Na L4 można oznaczyć tylko wpis całodniowy.');
     // Kolejność jak wszędzie indziej: to, co administrator ustawił, potem alfabet. Bez tego
     // przy dwóch typach spełniających warunek wynik zależał od kolejności wierszy w bazie.
     const l4 = await this.prisma.absenceType.findFirst({
@@ -353,7 +355,7 @@ export class AbsencesService {
   ): Promise<void> {
     if (to < from) throw new BadRequestException('Data „do" jest wcześniejsza niż „od".');
     if (dayPart !== 'FULL' && from.getTime() !== to.getTime()) {
-      throw new BadRequestException('Niepełny dzień (AM/PM/godziny) dotyczy pojedynczej daty.');
+      throw new BadRequestException('Niepełny dzień (pół dnia / godziny) dotyczy pojedynczej daty.');
     }
     // Wpis godzinowy bez sensownego zakresu godzin daje ułamek dnia równy zeru — czyli
     // nieobecność widoczną w kalendarzu, która nie zabiera nic z puli. Formularz pilnował tego
@@ -372,6 +374,12 @@ export class AbsencesService {
 
     const type = await this.prisma.absenceType.findUnique({ where: { id: typeId } });
     if (!type) throw new BadRequestException('Nieznany typ nieobecności.');
+    // Wpis bez puli (L4) przejmuje dzień w całości — `countOverlaidDays` oddaje mu dzień tylko przy
+    // `fraction === 1`, a lekarz nie wystawia zwolnienia na pół dnia. Komunikat celowo neutralny:
+    // trafia też do lidera, który typu tego wpisu nie widzi (D2/H3) i nie ma się go stąd dowiedzieć.
+    if (!type.affectsPool && dayPart !== 'FULL') {
+      throw new BadRequestException('Ten rodzaj nieobecności obejmuje zawsze cały dzień — wybierz „Cały dzień".');
+    }
 
     const overlaps = await this.prisma.absence.findMany({
       where: { employeeId, id: excludeId ? { not: excludeId } : undefined, dateFrom: { lte: to }, dateTo: { gte: from } },

@@ -3,7 +3,7 @@ import { plural } from '@nieobecnosci/core/plural';
 import { dateRange, todayIso } from '../format';
 import { api, type Absence, type AbsenceType } from '../api';
 import { useAuth } from '../current-employee';
-import { ConfirmDialog, DAY_PARTS, Notice, field, useNotice } from '../admin/ui';
+import { ConfirmDialog, DAY_PARTS, Notice, dayPartLabel, editableDayPart, field, useNotice } from '../admin/ui';
 import { cardClipped } from '../design-system/surfaces';
 import { SegmentedControl } from '../design-system/components/forms/SegmentedControl';
 
@@ -53,6 +53,8 @@ export function Historia() {
   const editTo = editPartial ? edit!.dateFrom : edit?.dateTo ?? '';
   const editBadHours = !!edit && edit.dayPart === 'HOURS' && edit.hourTo <= edit.hourFrom;
   const editBadRange = !!edit && !editPartial && editTo < edit.dateFrom;
+  // Wpis bez puli (L4) obejmuje zawsze cały dzień — ten sam predykat co `overrides` na serwerze.
+  const editFullDayOnly = !!edit && types.some((t) => t.id === edit.typeId && !t.affectsPool);
 
   const saveEdit = () => {
     if (!edit || editBadHours || editBadRange) return;
@@ -110,16 +112,17 @@ export function Historia() {
         )}
         {filtered.map((a, i) => {
           const isUpcoming = a.dateTo >= todayIso();
-          const part = a.dayPart === 'AM' ? ' · AM' : a.dayPart === 'PM' ? ' · PM' : a.dayPart === 'HOURS' ? ' · godz.' : '';
+          const lbl = dayPartLabel(a.dayPart);
+          const part = lbl ? ` · ${lbl}` : '';
           if (edit && edit.id === a.id) {
             return (
               <div key={a.id} role="row" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 20px', borderTop: '1px solid var(--border)', flexWrap: 'wrap' }}>
-                <select style={field} aria-label="Typ nieobecności" value={edit.typeId} onChange={(e) => setEdit({ ...edit, typeId: e.target.value })}>{types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select>
+                <select style={field} aria-label="Typ nieobecności" value={edit.typeId} onChange={(e) => setEdit({ ...edit, typeId: e.target.value, dayPart: types.some((t) => t.id === e.target.value && !t.affectsPool) ? 'FULL' : edit.dayPart })}>{types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select>
                 <input type="date" style={field} aria-label="Data od" value={edit.dateFrom} onChange={(e) => setEdit({ ...edit, dateFrom: e.target.value })} />
                 {/* Przy niepełnym dniu data „do" znika zamiast być wyszarzona: pole, które i tak
                     nic nie zmienia, tylko każe się zastanawiać, dlaczego nie działa. */}
                 {!editPartial && <input type="date" style={field} aria-label="Data do" value={edit.dateTo} min={edit.dateFrom} onChange={(e) => setEdit({ ...edit, dateTo: e.target.value })} />}
-                <select style={field} aria-label="Wymiar dnia" value={edit.dayPart} onChange={(e) => setEdit({ ...edit, dayPart: e.target.value })}>
+                <select style={field} aria-label="Wymiar dnia" value={edit.dayPart} disabled={editFullDayOnly} title={editFullDayOnly ? 'Ten rodzaj nieobecności obejmuje zawsze cały dzień.' : undefined} onChange={(e) => setEdit({ ...edit, dayPart: e.target.value })}>
                   {DAY_PARTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                 </select>
                 {edit.dayPart === 'HOURS' && <>
@@ -146,7 +149,7 @@ export function Historia() {
               </div>
               <div role="cell" style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
                 {isUpcoming && <>
-                  <button type="button" className="ds-quiet" disabled={busy} aria-label={`Edytuj nieobecność ${rangeLabel(a)}`} onClick={() => setEdit({ id: a.id, typeId: a.type.id, dateFrom: a.dateFrom, dateTo: a.dateTo, dayPart: a.dayPart, hourFrom: a.hourFrom ?? '09:00', hourTo: a.hourTo ?? '13:00' })} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)', fontSize: 12.5, fontWeight: 600, color: 'var(--ink-2)', padding: '5px 7px', minHeight: 24, boxSizing: 'border-box', margin: '-5px -3px', borderRadius: 'var(--radius-sm)' }}>Edytuj</button>
+                  <button type="button" className="ds-quiet" disabled={busy} aria-label={`Edytuj nieobecność ${rangeLabel(a)}`} onClick={() => setEdit({ id: a.id, typeId: a.type.id, dateFrom: a.dateFrom, dateTo: a.dateTo, dayPart: editableDayPart(a.dayPart), hourFrom: a.hourFrom ?? '09:00', hourTo: a.hourTo ?? '13:00' })} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)', fontSize: 12.5, fontWeight: 600, color: 'var(--ink-2)', padding: '5px 7px', minHeight: 24, boxSizing: 'border-box', margin: '-5px -3px', borderRadius: 'var(--radius-sm)' }}>Edytuj</button>
                   <button type="button" className="ds-danger" disabled={busy} aria-label={`Wycofaj nieobecność ${rangeLabel(a)}`} onClick={() => setConfirmDel(a)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)', fontSize: 12.5, fontWeight: 600, color: 'var(--danger)', padding: '5px 7px', minHeight: 24, boxSizing: 'border-box', margin: '-5px -7px', borderRadius: 'var(--radius-sm)' }}>Wycofaj</button>
                 </>}
               </div>

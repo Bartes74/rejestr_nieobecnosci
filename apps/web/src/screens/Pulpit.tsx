@@ -4,6 +4,7 @@ import { ChevronRight, Info, Plus, TriangleAlert } from 'lucide-react';
 import { count } from '@nieobecnosci/core/plural';
 import { dateRange, dayMonth, dayOfMonth, todayIso, weekBounds } from '../format';
 import { api, type Absence, type Balance, type CalEntry, type Sprint } from '../api';
+import { dayPartLabel } from '../admin/ui';
 import { useAuth } from '../current-employee';
 import { useIsNarrow } from '../viewport';
 import { card, panel } from '../design-system/surfaces';
@@ -271,7 +272,8 @@ export function Pulpit() {
             {!loading && upcoming.length === 0 && <div style={{ fontFamily: 'var(--font-sans)', fontSize: 13.5, color: 'var(--muted)' }}>Brak zaplanowanych nieobecności.</div>}
             {!loading && upcoming.map((a) => {
               const from = a.dateFrom, to = a.dateTo;
-              const part = a.dayPart === 'AM' ? ' · pół dnia (AM)' : a.dayPart === 'PM' ? ' · pół dnia (PM)' : a.dayPart === 'HOURS' ? ' · godziny' : '';
+              const lbl = dayPartLabel(a.dayPart);
+              const part = lbl ? ` · ${lbl}` : '';
               return (
                 <div key={a.id} style={{ ...panel, display: 'flex', alignItems: 'center', gap: 13, padding: '12px 14px' }}>
                   <div style={{ textAlign: 'center', width: 42 }}>

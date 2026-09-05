@@ -99,6 +99,16 @@ ok(pay.schemaVersion === '1.1', 'eksport płacowy: wersja schematu podbita po zm
 ok(recUop.leaveDaysUsed === 2 && recUop.specialCategoryDays === 8,
   `eksport: dni rozdzielone bez dublowania (urlop ${recUop.leaveDaysUsed}, kategoria szczególna ${recUop.specialCategoryDays})`);
 
+// --- L4 wyłącznie całodniowe (uwaga zleceniodawcy: lekarz nie wystawia zwolnienia na pół dnia) ---
+const l4am = await post(aUop, { employeeId: uop.id, typeId: l4type.id, dateFrom: '2026-09-23', dateTo: '2026-09-23', dayPart: 'AM' });
+ok(l4am.status === 400, 'L4 na pół dnia → 400');
+ok(!/L4|lekarsk/i.test(await l4am.text()), 'komunikat o całym dniu nie zdradza rodzaju wpisu (trafia też do lidera bez VIEW_L4)');
+ok((await post(aUop, { employeeId: uop.id, typeId: l4type.id, dateFrom: '2026-09-23', dateTo: '2026-09-23', dayPart: 'HOURS', hourFrom: '09:00', hourTo: '11:00' })).status === 400, 'L4 godzinowe → 400');
+const l4full = await j(await post(aUop, { employeeId: uop.id, typeId: l4type.id, dateFrom: '2026-09-23', dateTo: '2026-09-23' }));
+ok((await aUop(`/absences/${l4full.id}`, { method: 'PATCH', body: JSON.stringify({ dayPart: 'AM' }) })).status === 400, 'edycja L4 na pół dnia → 400');
+const polDnia = await j(await post(aUop, { employeeId: uop.id, typeId: urlop.id, dateFrom: '2026-09-24', dateTo: '2026-09-24', dayPart: 'AM' }));
+ok((await aAdmin(`/absences/${polDnia.id}/convert-to-l4`, { method: 'POST' })).status === 400, 'konwersja półdniowej nieobecności na L4 → 400');
+
 await prisma.$disconnect();
 console.log(failures === 0 ? '\nNAKŁADKA L4 OK ✅' : `\n${failures} ASERCJI NIE PRZESZŁO ❌`);
 process.exit(failures === 0 ? 0 : 1);
