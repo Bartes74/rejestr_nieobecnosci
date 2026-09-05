@@ -62,13 +62,20 @@ export class AbsencesService {
   private async withWorkingDays<T extends { dateFrom: Date; dateTo: Date; dayPart: DayPart; hourFrom: string | null; hourTo: string | null; type: { affectsPool: boolean } }>(
     employeeId: string,
     rows: T[],
-  ): Promise<(Omit<T, 'dateFrom' | 'dateTo'> & { dateFrom: string; dateTo: string; workingDays: number })[]> {
+  ): Promise<(Omit<T, 'dateFrom' | 'dateTo'> & { dateFrom: string; dateTo: string; workingDays: number; coveredBySick: boolean })[]> {
     const holidays = await this.balance.holidaysFor(employeeId);
-    const sick = rows.filter(overrides).map((a) => ({ dateFrom: a.dateFrom, dateTo: a.dateTo }));
+    // Przykrywa wyłącznie wpis całodniowy — to samo kryterium, którym `countOverlaidDays` oddaje
+    // dzień wpisowi chorobowemu (`fraction === 1`). `subtractRanges` widzi daty, nie ułamki, więc
+    // bez tego filtra dwugodzinne L4 zerowało w historii cały dzień urlopu, a balans liczył go
+    // dalej jako wykorzystany: wiersze sumowały się do 11, licznik pokazywał 12.
+    const sick = rows.filter((a) => overrides(a) && fractionOf(a) === 1).map((a) => ({ dateFrom: a.dateFrom, dateTo: a.dateTo }));
     return rows.map((a) => {
       const visible = overrides(a) ? [{ dateFrom: a.dateFrom, dateTo: a.dateTo }] : subtractRanges(a, sick);
       const workingDays = visible.reduce((sum, r) => sum + countWorkingDays(r.dateFrom, r.dateTo, holidays), 0) * fractionOf(a);
-      return { ...isoRange(a), workingDays };
+      // Wiersz z liczbą mniejszą niż jego własny zakres mówi wprost, dlaczego: „0" bez słowa czytało
+      // się jak błąd wyliczenia (uwaga zleceniodawcy), a nie jak reguła FR-B5.
+      const coveredBySick = workingDays < countWorkingDays(a.dateFrom, a.dateTo, holidays) * fractionOf(a);
+      return { ...isoRange(a), workingDays, coveredBySick };
     });
   }
 
@@ -98,8 +105,10 @@ export class AbsencesService {
     // Projekcja liczy się PRZED maskowaniem — po nim wszystkie wpisy wyglądają tak samo, więc nie
     // dałoby się już powiedzieć, który przejmuje dzień, i suma wyszłaby zawyżona (13 zamiast 10).
     const counted = await this.withWorkingDays(employeeId, rows);
+    // `coveredBySick` też zamaskowane: flaga na jednym z dwóch nakładających się wpisów wskazywałaby
+    // palcem, który z nich jest L4.
     return counted.map((a) => ({
-      ...a, typeId: null,
+      ...a, typeId: null, coveredBySick: false,
       type: { id: null, name: 'Nieobecność', affectsPool: false, affectsCapacity: false, specialCategory: false },
     }));
   }
