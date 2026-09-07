@@ -81,6 +81,10 @@ async function main() {
 
   // wszyscy z zespołu w Squad A1 (lider/po też — żeby widzieli i liczyli się do capacity)
   await prisma.orgUnitMembership.createMany({ data: [lider, po, prac, anna, bartek, celina, ext, halina].map((e) => ({ employeeId: e.id, orgUnitId: squad.id })) });
+  // Liderzy jednostek (feedback002): Anna i Bartek są nieobecni w tym samym tygodniu (wt–śr wspólne),
+  // więc dyrektor widzi w kalendarzu kolizję liderów od pierwszego wejścia.
+  await prisma.orgUnit.update({ where: { id: dept.id }, data: { leaderId: anna.id } });
+  await prisma.orgUnit.update({ where: { id: tribe.id }, data: { leaderId: bartek.id } });
 
   // pracownik: zaległy urlop wpisany RĘCZNIE przez administratora — korekta wygrywa nad wyliczeniem.
   await prisma.leaveAllowance.create({ data: { employeeId: prac.id, periodYear: YEAR, baseDays: 26, carriedOver: 3 } });

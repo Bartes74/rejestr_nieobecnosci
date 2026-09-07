@@ -50,6 +50,10 @@ export class CreateMembershipDto {
   @IsString() employeeId!: string;
   @IsString() orgUnitId!: string;
 }
+/** Lider jednostki; `null` czyści wskazanie. `@IsOptional` przepuszcza null przy `whitelist: true`. */
+export class SetUnitLeaderDto {
+  @IsOptional() @IsString() leaderId?: string | null;
+}
 
 // FR-G2/B3/B6 — pula
 // Ujemną pulę odrzucał dotąd wyłącznie formularz; minimum formy (20 dla B2B/OUT) sprawdza kontroler
