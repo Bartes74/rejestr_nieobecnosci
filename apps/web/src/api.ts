@@ -104,9 +104,10 @@ export interface CapacityCell {
   available: number | null; memberCount: number | null;
   keyRoleCollisions: { dateFrom: string; dateTo: string; employees: [string, string] }[];
 }
-export interface UsageRow { employeeId: string; name: string; employmentType: string; pool: number; carriedOver: number; used: number; remaining: number }
-export interface UsageReport { unitId: string; rows: UsageRow[]; totals: { pool: number; used: number; remaining: number } }
-export interface ReportTreeNode { id: string; name: string; type: string; headcount: number; used: number; children: ReportTreeNode[] }
+export interface UsageRow { employeeId: string; name: string; employmentType: string; pool: number; carriedOver: number; used: number; realized: number; remaining: number }
+export interface UsageTotals { pool: number; carriedOver: number; used: number; realized: number; remaining: number }
+export interface UsageReport { unitId: string; rows: UsageRow[]; totals: UsageTotals }
+export interface ReportTreeNode extends UsageTotals { id: string; name: string; type: string; headcount: number; overdueCount: number; children: ReportTreeNode[] }
 /** `subjectId` — kogo zdarzenie dotyczy; `*Name` to identyfikatory rozwinięte przez API przy odczycie. */
 export interface AuditEntry { id: string; entity: string; entityId: string | null; action: string; userId: string | null; userName: string | null; subjectId: string | null; subjectName: string | null; description: string | null; timestamp: string }
 export interface Calendar { id: string; name: string; isDefault: boolean; _count?: { holidays: number } }
