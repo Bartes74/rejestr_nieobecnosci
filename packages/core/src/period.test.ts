@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { billingPeriodsBefore, resolveBillingPeriod } from './period.js';
+import { billingPeriodsBefore, periodForYear, resolveBillingPeriod } from './period.js';
 import { isoDate } from './workdays.js';
 
 describe('resolveBillingPeriod — FR-B1 (warunek akceptacji)', () => {
@@ -62,5 +62,21 @@ describe('billingPeriodsBefore — FR-B7 (łańcuch okresów do rolowania)', () 
 
   it('zatrudnienie po okresie docelowym → pusta lista, nie pętla', () => {
     expect(billingPeriodsBefore('UOP', new Date(Date.UTC(2030, 0, 1)), 2026)).toEqual([]);
+  });
+});
+
+describe('periodForYear — okres o danym numerze roku (przełącznik okresu)', () => {
+  it('UoP 2027 = cały rok kalendarzowy 2027', () => {
+    const p = periodForYear('UOP', 2027);
+    expect(isoDate(p.from)).toBe('2027-01-01');
+    expect(isoDate(p.to)).toBe('2027-12-31');
+    expect(p.year).toBe(2027);
+  });
+  it('B2B 2027 = grudzień 2026 – listopad 2027', () => {
+    const p = periodForYear('B2B', 2027);
+    expect(isoDate(p.from)).toBe('2026-12-01');
+    expect(isoDate(p.to)).toBe('2027-11-30');
+    expect(p.type).toBe('BUDGET');
+    expect(p.year).toBe(2027);
   });
 });

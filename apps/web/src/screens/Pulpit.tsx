@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, Info, Plus, TriangleAlert } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Info, Plus, TriangleAlert } from 'lucide-react';
 import { count } from '@nieobecnosci/core/plural';
 import { EMPLOYMENT_LABEL, dateRange, dayMonth, dayOfMonth, periodLabel, todayIso, weekBounds } from '../format';
 import { api, type Absence, type Balance, type CalEntry, type Sprint } from '../api';
@@ -10,6 +10,9 @@ import { useIsNarrow } from '../viewport';
 import { card, panel } from '../design-system/surfaces';
 import { AbsencePill } from '../design-system/components/data/AbsencePill';
 import { Avatar } from '../design-system/components/core/Avatar';
+
+// Ten sam kształt co przyciski miesięcy w mini-kalendarzu wpisu, w mniejszej skali chipa okresu.
+const periodBtn = { width: 22, height: 22, flex: 'none', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-2)', background: 'var(--surface)', color: 'var(--ink-2)', display: 'grid', placeItems: 'center', cursor: 'pointer', padding: 0 } as const;
 import { ProgressBar } from '../design-system/components/data/ProgressBar';
 
 const initialsOf = (name: string) => name.split(' ').map((w) => w[0] ?? '').slice(0, 2).join('').toUpperCase();
@@ -29,6 +32,9 @@ export function Pulpit() {
   const navigate = useNavigate();
   const narrow = useIsNarrow(); // NFR-6, wariant pośredni: pulpit i wpis działają na telefonie
   const [bal, setBal] = useState<Balance | null>(null);
+  // Okres inny niż bieżący (numer roku) — B2B/OUT planując grudzień, planują już następny rok
+  // budżetowy, a pulpit pokazywał tylko bieżący i „nic się nie zmieniało" (feedback002).
+  const [year, setYear] = useState<number | null>(null);
   const [week, setWeek] = useState<CalEntry[]>([]);
   const [mine, setMine] = useState<Absence[]>([]);
   const [sprints, setSprints] = useState<Sprint[]>([]);
@@ -52,7 +58,7 @@ export function Pulpit() {
     const fetchAll = (quiet: boolean) => {
       if (!quiet) setState('loading');
       return Promise.all([
-        api.balance(employeeId),
+        api.balance(employeeId, year ?? undefined),
         api.calendar(wf, wt),
         api.absences(employeeId),
         api.sprints().catch(() => [] as Sprint[]), // sprint to ozdobnik nagłówka, nie treść pulpitu
@@ -88,7 +94,7 @@ export function Pulpit() {
       window.removeEventListener('focus', refresh);
       document.removeEventListener('visibilitychange', refresh);
     };
-  }, [current?.id, attempt]);
+  }, [current?.id, attempt, year]);
 
   const dateLabel = useMemo(() => {
     const s = new Intl.DateTimeFormat('pl-PL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date());
@@ -176,8 +182,14 @@ export function Pulpit() {
               {bal
                 /* Forma i zakres miesięcy, nie sam rok: „Rok budżetowy 2026" nie mówiło, że to grudzień
                    2025 – listopad 2026 ani dlaczego (feedback002). Formy nikt wcześniej nie widział
-                   poza administratorem, choć od niej zależy i okres, i to, czy L4 zużywa pulę. */
-                ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--ink-2)', background: 'var(--surface-3)', padding: '3px 8px', borderRadius: 'var(--radius-sm)' }}>{forma} · {periodLabel(bal.period)}</span>
+                   poza administratorem, choć od niej zależy i okres, i to, czy L4 zużywa pulę.
+                   Strzałki przełączają okres (poprzedni/następny rok rozliczeniowy); „bieżący" wraca. */
+                ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <button type="button" className="ds-quiet" aria-label="Poprzedni okres rozliczeniowy" onClick={() => setYear(bal.period.year - 1)} style={periodBtn}><ChevronLeft size={13} aria-hidden="true" /></button>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--ink-2)', background: 'var(--surface-3)', padding: '3px 8px', borderRadius: 'var(--radius-sm)' }}>{forma} · {periodLabel(bal.period)}</span>
+                  <button type="button" className="ds-quiet" aria-label="Następny okres rozliczeniowy" onClick={() => setYear(bal.period.year + 1)} style={periodBtn}><ChevronRight size={13} aria-hidden="true" /></button>
+                  {year !== null && <button type="button" className="ds-quiet" onClick={() => setYear(null)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: 'var(--font-sans)', fontSize: 11.5, fontWeight: 600, color: 'var(--brand)', padding: '2px 4px' }}>bieżący</button>}
+                </span>
                 : <Skeleton w={150} h={19} />}
             </div>
             <button type="button" className="ds-primary" onClick={() => navigate('/wpis')} style={{ border: 'none', cursor: 'pointer', background: 'var(--brand)', color: 'var(--on-brand)', fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 13.5, padding: '10px 16px', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', gap: 7, boxShadow: 'var(--shadow-sm)' }}>

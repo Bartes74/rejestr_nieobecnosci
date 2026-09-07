@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CalendarDays, ChevronLeft, ChevronRight, RotateCcw, TriangleAlert } from 'lucide-react';
 import { count, plural } from '@nieobecnosci/core/plural';
-import { MONTHS, addDays, dateRange, mergeIsoRanges, todayIso } from '../format';
+import { MONTHS, addDays, currentPeriod, dateRange, mergeIsoRanges, periodLabel, todayIso } from '../format';
 import { api, type Absence, type AbsenceType, type Preview } from '../api';
 import { useAuth } from '../current-employee';
 import { useIsNarrow } from '../viewport';
@@ -350,7 +350,14 @@ export function Wpis() {
             </div>
             <Row label="Dni robocze w zakresie" value={preview ? nf(preview.workingDays) : '—'} />
             <Row label="Pominięto (weekend / święta)" value={partial ? '—' : String(skipped)} muted />
-            <Row label="Balans po zapisie" value={preview ? `${nf(preview.remaining)} → ${nf(preview.remainingAfter)}` : '—'} accent danger={overPool} last />
+            <Row label={`Balans po zapisie${preview?.period ? ` (${periodLabel(preview.period, { short: true })})` : ''}`} value={preview ? `${nf(preview.remaining)} → ${nf(preview.remainingAfter)}` : '—'} accent danger={overPool} last />
+            {/* Termin w innym okresie niż dzisiejszy: saldo powyżej dotyczy tamtego okresu, a pulpit po zapisie
+                nadal pokaże bieżący — bez tego zdania zapis „nic nie zmieniał" (feedback002). */}
+            {!!preview?.period && !!current && preview.period.year !== currentPeriod(current.employmentType).year && (
+              <div style={{ background: 'var(--surface-3)', borderRadius: 'var(--radius-sm)', padding: '10px 12px', marginTop: 10, fontFamily: 'var(--font-sans)', fontSize: 11.5, color: 'var(--ink-2)', lineHeight: 1.5 }}>
+                Ten termin należy do innego okresu rozliczeniowego niż dzisiejszy ({periodLabel(preview.period)}). Saldo powyżej dotyczy tamtego okresu; pulpit pokazuje bieżący, a tamten obejrzysz strzałkami przy etykiecie okresu.
+              </div>
+            )}
             {/* `&&` na liczbie renderuje samo „0", gdy minimum wynosi zero — stąd jawne porównanie. */}
             {!!preview && (preview.minimumToLeave ?? 0) > 0 && preview.remainingAfter >= 0 && preview.remainingAfter < (preview.minimumToLeave ?? 0) && (
               <div style={{ background: 'var(--surface-3)', borderRadius: 'var(--radius-sm)', padding: '10px 12px', marginTop: 10, fontFamily: 'var(--font-sans)', fontSize: 11.5, color: 'var(--amber)', lineHeight: 1.5 }}>Zejdziesz poniżej minimum do pozostawienia ({count(preview.minimumToLeave ?? 0, ['dzień', 'dni', 'dni'])}).</div>

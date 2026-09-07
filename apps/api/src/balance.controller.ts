@@ -1,4 +1,4 @@
-import { Controller, ForbiddenException, Get, Param } from '@nestjs/common';
+import { BadRequestException, Controller, ForbiddenException, Get, Param, Query } from '@nestjs/common';
 import { BalanceService } from './balance.service';
 import { OrgService } from './org.service';
 import { CurrentUser, type AuthUser } from './auth/current-user.decorator';
@@ -13,12 +13,15 @@ export class BalanceController {
     private readonly org: OrgService,
   ) {}
 
+  // `?year=` — okres o danym numerze roku zamiast bieżącego (przełącznik okresu na pulpicie).
   @Get()
-  async get(@Param('id') id: string, @CurrentUser() user: AuthUser) {
+  async get(@Param('id') id: string, @CurrentUser() user: AuthUser, @Query('year') year?: string) {
     if (id !== user.sub && !canModifyOthers(user) && !canViewL4(user)
       && !(user.role === 'LEADER' && (await this.org.tribePeers(user.sub)).includes(id))) {
       throw new ForbiddenException('Brak dostępu do salda urlopu tej osoby.');
     }
-    return this.balance.current(id);
+    const y = year === undefined || year === '' ? undefined : Number(year);
+    if (y !== undefined && !Number.isInteger(y)) throw new BadRequestException('Parametr „year" musi być rokiem, np. 2027.');
+    return this.balance.current(id, y);
   }
 }

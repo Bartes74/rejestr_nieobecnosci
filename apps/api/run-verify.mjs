@@ -13,7 +13,7 @@ const SUITES = [
   'verify-faza2-g7.mjs', 'verify-faza2-j3.mjs', 'verify-faza2-nfr.mjs', 'verify-faza3-zespol-import.mjs',
   'verify-faza3-scheduler.mjs', 'verify-faza3-bulk.mjs', 'verify-faza3-ical.mjs', 'verify-faza3-feed.mjs', 'verify-dlug-konfiguracja.mjs', 'verify-zakres-jednostek.mjs',
   'verify-l4-nakladka.mjs', 'verify-l4-godzinowe-historia.mjs', 'verify-l4-forma-zatrudnienia.mjs', 'verify-pula-formy-swieta.mjs', 'verify-format-dat.mjs',
-  'verify-b7-rolowanie.mjs',
+  'verify-b7-rolowanie.mjs', 'verify-okres-wpisu.mjs',
   // Regresje po przeglądzie kodu — każda odtwarza konkretną lukę, nie funkcję.
   'verify-godziny-walidacja.mjs', 'verify-rodo-feedtoken.mjs', 'verify-sesja-uniewaznienie.mjs',
   'verify-przypomnienia-zalegle.mjs', 'verify-wyscig-puli.mjs',

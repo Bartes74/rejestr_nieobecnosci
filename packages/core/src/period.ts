@@ -28,6 +28,15 @@ export function resolveBillingPeriod(employmentType: EmploymentType, date: Date)
 }
 
 /**
+ * Okres rozliczeniowy o danym numerze roku. 1 stycznia należy do roku `year` w obu wariantach
+ * (kalendarzowy: cały rok; budżetowy: grudzień year−1 – listopad year), więc nie trzeba powtarzać
+ * reguły przesunięcia. Używane przez przełącznik okresu na pulpicie (`?year=`).
+ */
+export function periodForYear(employmentType: EmploymentType, year: number): BillingPeriod {
+  return resolveBillingPeriod(employmentType, utc(year, 0, 1));
+}
+
+/**
  * FR-B7 — okresy rozliczeniowe od zatrudnienia do (bez) okresu docelowego, rosnąco.
  *
  * Zaległy urlop nie bierze się z jednego przełomu, tylko z przejścia przez wszystkie wcześniejsze
