@@ -86,6 +86,7 @@ model Employee {
   holidayCalendar   HolidayCalendar? @relation(fields: [holidayCalendarId], references: [id])
 
   memberships        OrgUnitMembership[]
+  leadsUnits         OrgUnit[]    @relation("UnitLeader")
   absences           Absence[]    @relation("AbsenceEmployee")
   createdAbsences    Absence[]    @relation("AbsenceCreatedBy")
   allowances         LeaveAllowance[]
@@ -105,8 +106,14 @@ model OrgUnit {
   children OrgUnit[]   @relation("OrgTree")
   members  OrgUnitMembership[]
   sprints  Sprint[]
+  // Lider jednostki (feedback002): dyrektor śledzi nakładające się nieobecności liderów Tribe'ów.
+  // Rola konta LEADER jest globalna i nie mówi, czyim liderem ktoś jest — to pole mówi.
+  // Wskazuje go ADMIN albo DIRECTOR; osoba musi należeć do poddrzewa jednostki.
+  leaderId String?
+  leader   Employee?   @relation("UnitLeader", fields: [leaderId], references: [id], onDelete: SetNull)
 
   @@index([parentId]) // NFR-1 — przechodzenie drzewa organizacji
+  @@index([leaderId])
 }
 
 // FR-G4 — jedna osoba może należeć do wielu jednostek jednocześnie.

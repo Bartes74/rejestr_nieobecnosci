@@ -1,7 +1,7 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
 import { PrismaService } from './prisma.service';
 import { OrgService } from './org.service';
-import { CreateMembershipDto, CreateOrgUnitDto } from './dto';
+import { CreateMembershipDto, CreateOrgUnitDto, SetUnitLeaderDto } from './dto';
 import { Roles } from './auth/decorators';
 import { CurrentUser, type AuthUser } from './auth/current-user.decorator';
 import { canModifyOthers } from './auth/rbac';
@@ -53,5 +53,27 @@ export class OrgController {
   @Post('memberships')
   addMember(@Body() dto: CreateMembershipDto) {
     return this.prisma.orgUnitMembership.create({ data: dto });
+  }
+
+  // Lider jednostki wskazuje ADMIN albo DIRECTOR (feedback002) — dyrektor nie ma Konfiguracji,
+  // a to on planuje wokół nieobecności liderów. `assertUnitInScope` dla porządku: obie role są
+  // org-wide, ale kontrakt „jednostka w zasięgu pytającego" ma obowiązywać każdego, kto tu trafi.
+  @Roles('ADMIN', 'DIRECTOR')
+  @Patch('units/:id/leader')
+  async setLeader(@Param('id') id: string, @Body() dto: SetUnitLeaderDto, @CurrentUser() user: AuthUser) {
+    await this.org.assertUnitInScope(user, id);
+    return this.org.setLeader(id, dto.leaderId ?? null, user);
+  }
+
+  // Kandydaci na lidera: członkowie poddrzewa jednostki. Zwraca tylko to, co potrzebne do selecta.
+  @Get('units/:id/members')
+  async members(@Param('id') id: string, @CurrentUser() user: AuthUser) {
+    await this.org.assertUnitInScope(user, id);
+    const ids = await this.org.employeeIdsInUnit(id);
+    return this.prisma.employee.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, firstName: true, lastName: true },
+      orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+    });
   }
 }

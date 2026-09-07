@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import type { Role } from '@prisma/client';
 import { PrismaService } from './prisma.service';
 import type { AuthUser } from './auth/current-user.decorator';
@@ -122,5 +122,24 @@ export class OrgService {
     const ids = await this.subtreeUnitIds(rootId);
     const memberships = await this.prisma.orgUnitMembership.findMany({ where: { orgUnitId: { in: ids } } });
     return [...new Set(memberships.map((m) => m.employeeId))];
+  }
+
+  /**
+   * Lider jednostki (feedback002). Musi należeć do poddrzewa jednostki — lider Tribe'u spoza tego
+   * Tribe'u to pomyłka w formularzu, nie decyzja organizacyjna. `null` czyści wskazanie.
+   * Wpis w audycie: to zmiana struktury, nie dana osobowa, ale ma być wiadomo kto i kiedy.
+   */
+  async setLeader(unitId: string, leaderId: string | null, user: AuthUser) {
+    const unit = await this.prisma.orgUnit.findUnique({ where: { id: unitId } });
+    if (!unit) throw new NotFoundException('Jednostka nie istnieje.');
+    if (leaderId && !(await this.employeeIdsInUnit(unitId)).includes(leaderId)) {
+      throw new BadRequestException('Lider musi należeć do tej jednostki albo jednostki w jej poddrzewie.');
+    }
+    const updated = await this.prisma.orgUnit.update({ where: { id: unitId }, data: { leaderId } });
+    await this.prisma.auditLog.create({
+      data: { entity: 'OrgUnit', entityId: unitId, subjectId: leaderId, action: 'UNIT_LEADER_SET', userId: user.sub,
+        description: leaderId ? `Wskazanie lidera jednostki „${unit.name}".` : `Usunięcie lidera jednostki „${unit.name}".` },
+    });
+    return updated;
   }
 }
