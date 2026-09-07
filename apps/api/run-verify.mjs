@@ -7,12 +7,12 @@ const run = (f) => spawnSync(process.execPath, [f], { cwd: dir, stdio: 'inherit'
 
 // Kolejność jak w zweryfikowanych przebiegach (suity są niezależne — unikalne prefiksy loginów).
 const SUITES = [
-  'verify-krok1.mjs', 'verify-krok2.mjs', 'verify-krok3.mjs', 'verify-krok4.mjs', 'verify-krok5.mjs', 'verify-krok6.mjs',
+  'verify-krok1.mjs', 'verify-krok2.mjs', 'verify-krok3.mjs', 'verify-krok4.mjs', 'verify-krok5.mjs', 'verify-krok6.mjs', 'verify-raport-jednostki.mjs',
   'verify-mvp-h4-j2.mjs', 'verify-faza2-niepelnedni.mjs', 'verify-faza2-zalega-lider.mjs', 'verify-faza2-email.mjs', 'verify-pracownik-email.mjs',
   'verify-faza2-l4-min.mjs', 'verify-faza2-proration.mjs', 'verify-faza2-b8.mjs', 'verify-faza2-i1.mjs', 'verify-faza2-f6.mjs',
   'verify-faza2-g7.mjs', 'verify-faza2-j3.mjs', 'verify-faza2-nfr.mjs', 'verify-faza3-zespol-import.mjs',
-  'verify-faza3-scheduler.mjs', 'verify-faza3-bulk.mjs', 'verify-faza3-ical.mjs', 'verify-faza3-feed.mjs', 'verify-dlug-konfiguracja.mjs', 'verify-zakres-jednostek.mjs',
-  'verify-l4-nakladka.mjs', 'verify-l4-godzinowe-historia.mjs', 'verify-l4-forma-zatrudnienia.mjs', 'verify-pula-formy-swieta.mjs', 'verify-format-dat.mjs',
+  'verify-faza3-scheduler.mjs', 'verify-faza3-bulk.mjs', 'verify-faza3-ical.mjs', 'verify-faza3-feed.mjs', 'verify-dlug-konfiguracja.mjs', 'verify-zakres-jednostek.mjs', 'verify-lider-jednostki.mjs',
+  'verify-l4-nakladka.mjs', 'verify-l4-godzinowe-historia.mjs', 'verify-l4-forma-zatrudnienia.mjs', 'verify-pula-formy-swieta.mjs', 'verify-swieta-domyslne.mjs', 'verify-format-dat.mjs',
   'verify-b7-rolowanie.mjs', 'verify-okres-wpisu.mjs',
   // Regresje po przeglądzie kodu — każda odtwarza konkretną lukę, nie funkcję.
   'verify-godziny-walidacja.mjs', 'verify-rodo-feedtoken.mjs', 'verify-sesja-uniewaznienie.mjs',

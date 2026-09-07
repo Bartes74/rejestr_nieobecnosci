@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { carriedOverInto, consumesPool, minPoolFor, usedLeaveDays, balance, proratePool } from './balance.js';
+import { carriedOverInto, consumesPool, minPoolFor, usedLeaveDays, usedLeaveDaysUntil, balance, proratePool } from './balance.js';
 
 const d = (y: number, m: number, day: number) => new Date(Date.UTC(y, m, day));
 const period = { from: d(2026, 0, 1), to: d(2026, 11, 31) };
@@ -125,5 +125,18 @@ describe('minPoolFor — minimum puli dla form w roku budżetowym', () => {
     expect(minPoolFor('B2B')).toBe(20);
     expect(minPoolFor('OUT')).toBe(20);
     expect(minPoolFor('UOP')).toBe(0);
+  });
+});
+
+describe('usedLeaveDaysUntil — zrealizowano do dnia (raport dyrektora)', () => {
+  const spans = [{ dateFrom: d(2026, 5, 22), dateTo: d(2026, 5, 26), affectsPool: true }]; // pon–pt 22–26.06
+  it('do środy liczy trzy dni', () => {
+    expect(usedLeaveDaysUntil(spans, period, d(2026, 5, 24))).toBe(3);
+  });
+  it('przed okresem — zero', () => {
+    expect(usedLeaveDaysUntil(spans, period, d(2025, 11, 31))).toBe(0);
+  });
+  it('po okresie — tyle samo, co całe wykorzystanie', () => {
+    expect(usedLeaveDaysUntil(spans, period, d(2027, 0, 1))).toBe(usedLeaveDays(spans, period));
   });
 });

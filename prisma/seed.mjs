@@ -2,6 +2,10 @@
 // Idempotentny. Uruchom: `pnpm db:seed`.
 import { PrismaClient } from '@prisma/client';
 import { randomBytes, scryptSync } from 'node:crypto';
+// Rdzeń kompiluje się do CommonJS; import nazwany działa dzięki `exports.polishHolidays = …`
+// (ten sam wzorzec co w apps/api/demo-seed.mjs). Wymaga zbudowanego `packages/core/dist`.
+import { polishHolidays } from '../packages/core/dist/holidays-pl.js';
+import { todayUtc } from '../packages/core/dist/today.js';
 
 const prisma = new PrismaClient();
 
@@ -56,8 +60,14 @@ async function main() {
     }
   }
 
-  if (!(await prisma.holidayCalendar.findFirst({ where: { isDefault: true } }))) {
-    await prisma.holidayCalendar.create({ data: { name: 'Polska', isDefault: true } });
+  // FR-G3/G7 — kalendarz domyślny ze świętami ustawowymi na bieżący i następny rok. Wcześniej seed
+  // tworzył kalendarz pusty, a import był ręczny per rok — osoba bez kalendarza liczyła 11 listopada
+  // jako dzień pracy. Idempotentne: unikalność (calendarId, date); scheduler dopisuje kolejne lata.
+  const cal = (await prisma.holidayCalendar.findFirst({ where: { isDefault: true } }))
+    ?? (await prisma.holidayCalendar.create({ data: { name: 'Polska', isDefault: true } }));
+  const year = todayUtc().getUTCFullYear();
+  for (const y of [year, year + 1]) {
+    await prisma.holiday.createMany({ data: polishHolidays(y).map((h) => ({ ...h, calendarId: cal.id })), skipDuplicates: true });
   }
 
   // FR-J3 — rejestr czynności przetwarzania (RODO, art. 30).

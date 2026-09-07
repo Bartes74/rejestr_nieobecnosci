@@ -59,10 +59,23 @@ export class CalendarController {
     @CurrentUser() user: AuthUser,
     @Query('from') from: string,
     @Query('to') to: string,
+    @Query('unitId') unitId?: string,
+    @Query('leadersOnly') leadersOnly?: string,
   ) {
     const fromD = new Date(`${from}T00:00:00.000Z`);
     const toD = new Date(`${to}T00:00:00.000Z`);
-    const peers = await this.org.visiblePeers(user);
+    let peers = await this.org.visiblePeers(user);
+    // Filtry dyrektora (feedback002): jedna jednostka (przecięcie z zasięgiem, nigdy poszerzenie)
+    // i „tylko liderzy" — osoby wskazane jako liderzy jakiejkolwiek widocznej jednostki.
+    if (unitId) {
+      await this.org.assertUnitInScope(user, unitId);
+      const inUnit = new Set(await this.org.employeeIdsInUnit(unitId));
+      peers = peers.filter((id) => inUnit.has(id));
+    }
+    const ledUnits = await this.prisma.orgUnit.findMany({ where: { leaderId: { in: peers } }, select: { leaderId: true, name: true }, orderBy: { name: 'asc' } });
+    const leaderOf = new Map<string, string[]>();
+    for (const u of ledUnits) (leaderOf.get(u.leaderId!) ?? leaderOf.set(u.leaderId!, []).get(u.leaderId!)!).push(u.name);
+    if (leadersOnly === 'true') peers = peers.filter((id) => leaderOf.has(id));
 
     const [employees, memberships, absences] = await Promise.all([
       this.prisma.employee.findMany({
@@ -96,6 +109,7 @@ export class CalendarController {
         initials: `${e.firstName[0] ?? ''}${e.lastName[0] ?? ''}`.toUpperCase(),
         squad: squadOf.get(e.id)?.name ?? null,
         keyRole: e.isKeyRole,
+        leaderOf: leaderOf.get(e.id) ?? [],
       })),
       absences: absences.map((a) => ({
         employeeId: a.employeeId,

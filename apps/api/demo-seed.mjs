@@ -1,6 +1,7 @@
 // Dane demo: jeden login na rolę + zespół z nieobecnościami, sprintem i zaległym urlopem.
 import { PrismaClient } from '@prisma/client';
 import { hashPassword } from './dist/auth/auth.service.js';
+import { polishHolidays } from '../../packages/core/dist/holidays-pl.js';
 
 const prisma = new PrismaClient();
 const D = (s) => new Date(s);
@@ -39,7 +40,10 @@ async function main() {
 
   // konfiguracja
   await prisma.adminSetting.createMany({ data: [{ key: 'leavePool.default', value: '26' }, { key: 'leavePool.B2B', value: '20' }, { key: 'leavePool.OUT', value: '20' }] });
-  await prisma.holidayCalendar.create({ data: { name: 'Polska', isDefault: true } });
+  // Kalendarz domyślny ze świętami PL na bieżący i następny rok — pracownicy demo nie mają własnego
+  // kalendarza, więc bez tego 11 listopada liczył się jako dzień pracy (uwaga zleceniodawcy).
+  const cal = await prisma.holidayCalendar.create({ data: { name: 'Polska', isDefault: true } });
+  await prisma.holiday.createMany({ data: [YEAR, YEAR + 1].flatMap((y) => polishHolidays(y).map((h) => ({ ...h, calendarId: cal.id }))) });
   const urlop = await prisma.absenceType.create({ data: { name: 'Nieobecność' } });
   const l4 = await prisma.absenceType.create({ data: { name: 'L4', affectsPool: false, specialCategory: true } });
   await prisma.processingActivity.createMany({ data: [
@@ -77,6 +81,10 @@ async function main() {
 
   // wszyscy z zespołu w Squad A1 (lider/po też — żeby widzieli i liczyli się do capacity)
   await prisma.orgUnitMembership.createMany({ data: [lider, po, prac, anna, bartek, celina, ext, halina].map((e) => ({ employeeId: e.id, orgUnitId: squad.id })) });
+  // Liderzy jednostek (feedback002): Anna i Bartek są nieobecni w tym samym tygodniu (wt–śr wspólne),
+  // więc dyrektor widzi w kalendarzu kolizję liderów od pierwszego wejścia.
+  await prisma.orgUnit.update({ where: { id: dept.id }, data: { leaderId: anna.id } });
+  await prisma.orgUnit.update({ where: { id: tribe.id }, data: { leaderId: bartek.id } });
 
   // pracownik: zaległy urlop wpisany RĘCZNIE przez administratora — korekta wygrywa nad wyliczeniem.
   await prisma.leaveAllowance.create({ data: { employeeId: prac.id, periodYear: YEAR, baseDays: 26, carriedOver: 3 } });
@@ -98,7 +106,8 @@ async function main() {
   // z puli 26. Zakresy liczone od poniedziałków, więc dni robocze wychodzą tak samo w każdym roku.
   await prisma.absence.createMany({ data: [
     ...[2, 6, 9].map((miesiac) => { const p = monday(PREV, miesiac); return { employeeId: halina.id, typeId: urlop.id, dateFrom: p, dateTo: plus(p, 4) }; }),
-    (() => { const p = monday(PREV, 4); return { employeeId: halina.id, typeId: urlop.id, dateFrom: p, dateTo: plus(p, 2) }; })(),
+    // Luty, nie maj: w pierwszym tygodniu maja bywa 1 lub 3 maja, a od tego seeda święta są w kalendarzu.
+    (() => { const p = monday(PREV, 1); return { employeeId: halina.id, typeId: urlop.id, dateFrom: p, dateTo: plus(p, 2) }; })(),
   ] });
 
   // sprint obejmujący bieżący tydzień

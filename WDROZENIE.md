@@ -372,11 +372,12 @@ więc jej nie wymyśla.
 | --- | --- |
 | konto administratora `admin` / `admin` | pracowników |
 | typy nieobecności: **Nieobecność** i **L4** | struktury organizacyjnej (piony, Tribe'y, squady) |
-| domyślną pulę urlopu: **26 dni** (UoP) i **20 dni** (B2B, OUT) | kalendarza świąt |
-| | sprintów |
+| domyślną pulę urlopu: **26 dni** (UoP) i **20 dni** (B2B, OUT) | sprintów |
+| domyślny kalendarz świąt **Polska** ze świętami ustawowymi na bieżący i następny rok | |
 
 Resztę wprowadzasz sam — patrz [8.4](#84-wprowadź-dane-organizacji). Świąt nie trzeba wpisywać
-ręcznie: aplikacja wylicza je sama, bez połączenia z internetem.
+ręcznie: aplikacja wylicza je sama, bez połączenia z internetem, i co noc dopisuje kolejny rok
+do kalendarza domyślnego. Pracownik bez własnego kalendarza korzysta z domyślnego.
 
 Seed jest **idempotentny** — wolno go uruchomić ponownie kiedykolwiek. Nie zdubluje typów, nie
 skasuje danych i **nie nadpisze zmienionego hasła administratora**. Warto go powtórzyć po
@@ -547,8 +548,9 @@ W zakładce **Konfiguracja** (widocznej tylko dla administratora) uzupełnij w t
 1. **Typy nieobecności** — sprawdź, czy dwa domyślne wystarczają; kolejność ustawiasz strzałkami.
 2. **Pula nieobecności** — domyślna liczba dni urlopu; osobno dla UoP, B2B i OUT, jeśli się różnią.
 3. **Struktura organizacyjna** — piony, departamenty, Tribe'y i squady.
-4. **Święta i dni wolne** — załóż kalendarz i użyj przycisku **Wczytaj święta w Polsce**
-   (działa bez internetu, wylicza je aplikacja).
+4. **Święta i dni wolne** — kalendarz **Polska** ze świętami ustawowymi już istnieje i uzupełnia się
+   sam. Dodaj tu tylko dni dodatkowe (np. odbiory za święta w sobotę) albo osobne kalendarze dla
+   innych lokalizacji — przycisk **Wczytaj święta w Polsce** działa bez internetu.
 5. **Sprinty** — jeśli korzystacie z widoku pokrycia sprintów.
 
 Pracowników dodaj pojedynczo (**Pracownicy → Dodaj**) albo wczytaj z pliku `.xlsx`
