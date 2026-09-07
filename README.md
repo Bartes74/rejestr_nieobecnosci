@@ -24,7 +24,7 @@ Rdzeń wyliczeń jest celowo oddzielony od frameworka: **UoP** rozliczany w roku
 urlop zaległy (nie przepadają) — **automatycznie**, bez działania administratora: brak wiersza puli
 w nowym okresie oznacza „policz z poprzednich", nie „zero" (FR-B7). Ręczna korekta administratora
 nadpisuje wyliczenie i staje się podstawą kolejnych okresów.
-L4 nie obniża puli urlopu, ale zmniejsza capacity.
+Na UoP L4 nie obniża puli urlopu (poza UoP dzień choroby obciąża tę samą pulę, FR-B5); capacity zmniejsza zawsze.
 
 ## Uruchomienie (dev)
 
@@ -33,7 +33,8 @@ pnpm install
 pnpm db:up                          # PostgreSQL w dockerze (port 5440)
 cp .env.example .env
 pnpm db:migrate                     # migracje schematu
-pnpm db:seed                        # admin/admin + typy + kalendarz świąt (idempotentny)
+pnpm -F @nieobecnosci/core build    # seed importuje z rdzenia święta ustawowe
+pnpm db:seed                        # admin/admin + typy + kalendarz świąt PL na ten i następny rok (idempotentny)
 
 pnpm -F @nieobecnosci/api build
 PORT=3100 node apps/api/dist/main.js     # API na http://localhost:3100/api
