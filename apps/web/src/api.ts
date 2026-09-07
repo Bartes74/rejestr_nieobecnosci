@@ -93,10 +93,10 @@ export interface AdminSetting { key: string; value: number; label: string; ref: 
 export interface Preview { workingDays: number; period?: { from: string; to: string; type: string; year: number }; remaining: number; remainingAfter: number; minimumToLeave?: number; collision?: boolean; collisionFrom?: string | null; collisionTo?: string | null; returnedDays?: number }
 export interface CalEntry { employeeId: string; employee: string; dateFrom: string; dateTo: string; dayPart: string }
 /** Skład Tribe na osi czasu. Pusty wiersz to informacja („dostępna"), nie brak danych. */
-export interface TeamPerson { id: string; name: string; initials: string; squad: string | null; keyRole: boolean }
+export interface TeamPerson { id: string; name: string; initials: string; squad: string | null; keyRole: boolean; leaderOf: string[] }
 export interface TeamGrid { people: TeamPerson[]; absences: { employeeId: string; dateFrom: string; dateTo: string; dayPart: string }[] }
 export interface Sprint { id: string; name: string; dateFrom: string; dateTo: string; squad?: { id: string; name: string } | null }
-export interface OrgUnit { id: string; name: string; type: string }
+export interface OrgUnit { id: string; name: string; type: string; parentId?: string | null; leaderId?: string | null }
 /** Komórka siatki pokrycia. `null` oznacza brak pomiaru (nie ma sprintu albo jednostki), nie zero. */
 export interface CapacityCell {
   sprintId: string; unitId: string;
@@ -156,7 +156,15 @@ export const api = {
   deleteAbsence: (id: string) => req<void>(`/absences/${id}`, { method: 'DELETE' }),
   calendar: (from: string, to: string) => req<CalEntry[]>(`/calendar?from=${from}&to=${to}`),
   /** Siatka zespołu: skład Tribe plus nieobecności w oknie — jedno żądanie na widok osi czasu. */
-  calendarTeam: (from: string, to: string) => req<TeamGrid>(`/calendar/team?from=${from}&to=${to}`),
+  // `unitId` zawęża do poddrzewa jednostki (zawsze w obrębie zasięgu), `leadersOnly` zostawia liderów jednostek.
+  calendarTeam: (from: string, to: string, opts?: { unitId?: string; leadersOnly?: boolean }) => {
+    const q = new URLSearchParams({ from, to });
+    if (opts?.unitId) q.set('unitId', opts.unitId);
+    if (opts?.leadersOnly) q.set('leadersOnly', 'true');
+    return req<TeamGrid>(`/calendar/team?${q}`);
+  },
+  unitMembers: (unitId: string) => req<{ id: string; firstName: string; lastName: string }[]>(`/org/units/${unitId}/members`),
+  setUnitLeader: (unitId: string, leaderId: string | null) => req<OrgUnit>(`/org/units/${unitId}/leader`, { method: 'PATCH', body: JSON.stringify({ leaderId }) }),
   feedToken: (regenerate = false) => req<{ token: string }>(`/me/feed-token${regenerate ? '?regenerate=true' : ''}`),
   sprints: () => req<Sprint[]>('/sprints'),
   orgUnits: () => req<OrgUnit[]>('/org/units'),

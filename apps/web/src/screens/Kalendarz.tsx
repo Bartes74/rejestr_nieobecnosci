@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
 import { count } from '@nieobecnosci/core/plural';
 import { addDays, currentYearMonth, dateRange, dayMonth, mergeIsoRanges, todayIso, weekBounds } from '../format';
-import { api, type Sprint, type TeamGrid, type TeamPerson } from '../api';
+import { api, type OrgUnit, type Sprint, type TeamGrid, type TeamPerson } from '../api';
+import { useAuth } from '../current-employee';
+import { Notice, field, useNotice } from '../admin/ui';
 import { card } from '../design-system/surfaces';
 import { SegmentedControl } from '../design-system/components/forms/SegmentedControl';
 
@@ -44,8 +46,23 @@ function daysBetween(from: string, to: string): string[] {
   return out;
 }
 
+// Panel „Liderzy" dotyczy jednostek, wokół których planuje dyrektor. ponytail: bez PION (nikt nie
+// planuje wokół szefa pionu) i bez CHAPTER/SQUAD (za drobno); dopisać, gdy ktoś o to poprosi.
+const LEAD_TYPES = new Set(['DEPARTAMENT', 'TRIBE']);
+const pill = { fontFamily: 'var(--font-mono)', fontSize: 9.5, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', color: 'var(--brand)', background: 'var(--brand-tint)', padding: '1px 5px', borderRadius: 'var(--radius-sm)', flex: 'none' } as const;
+
 export function Kalendarz() {
+  const { current } = useAuth();
+  const canLead = current?.role === 'ADMIN' || current?.role === 'DIRECTOR';
   const [range, setRange] = useState<RangeKind>('week');
+  // Filtry dyrektora (feedback002): jedna jednostka i „tylko liderzy". Dostępne dla każdego —
+  // lider widzi w selekcie wyłącznie swoje poddrzewo, bo /org/units zgadza się z assertUnitInScope.
+  const [unitId, setUnitId] = useState('');
+  const [leadersOnly, setLeadersOnly] = useState(false);
+  const [units, setUnits] = useState<OrgUnit[]>([]);
+  const [members, setMembers] = useState<Record<string, { id: string; firstName: string; lastName: string }[]>>({});
+  const [reload, setReload] = useState(0);
+  const { notice, busy, run } = useNotice();
   const [ym, setYm] = useState(currentYearMonth);
   const [weekAnchor, setWeekAnchor] = useState(todayIso);
   const [sprints, setSprints] = useState<Sprint[]>([]);
@@ -89,11 +106,34 @@ export function Kalendarz() {
   useEffect(() => {
     let live = true;
     setState('loading');
-    api.calendarTeam(from, to)
+    api.calendarTeam(from, to, { unitId: unitId || undefined, leadersOnly })
       .then((g) => { if (live) { setGrid(g); setState('ready'); } })
       .catch(() => { if (live) { setGrid(null); setState('error'); } });
     return () => { live = false; };
-  }, [from, to]);
+  }, [from, to, unitId, leadersOnly, reload]);
+
+  useEffect(() => {
+    let live = true;
+    api.orgUnits().then((u) => { if (live) setUnits(u); }).catch(() => {});
+    return () => { live = false; };
+  }, [reload]);
+
+  // Kandydaci na lidera per jednostka — tylko gdy panel jest widoczny; jedno żądanie na jednostkę.
+  const leadUnits = useMemo(() => units.filter((u) => LEAD_TYPES.has(u.type)), [units]);
+  useEffect(() => {
+    if (!canLead || leadUnits.length === 0) return undefined;
+    let live = true;
+    Promise.all(leadUnits.map((u) => api.unitMembers(u.id).then((m) => [u.id, m] as const).catch(() => [u.id, []] as const)))
+      .then((pairs) => { if (live) setMembers(Object.fromEntries(pairs)); });
+    return () => { live = false; };
+  }, [canLead, leadUnits]);
+
+  const setLeader = (u: OrgUnit, leaderId: string) => run(async () => {
+    await api.setUnitLeader(u.id, leaderId || null);
+    setReload((n) => n + 1);
+    const who = members[u.id]?.find((m) => m.id === leaderId);
+    return who ? `Lider jednostki „${u.name}": ${who.firstName} ${who.lastName}.` : `Jednostka „${u.name}" bez lidera.`;
+  });
 
   const shift = (dir: -1 | 1) => {
     if (range === 'week') return setWeekAnchor((a) => addDays(a, dir * 7));
@@ -133,6 +173,23 @@ export function Kalendarz() {
 
   const absentCount = useMemo(() => new Set(grid?.absences.map((a) => a.employeeId) ?? []).size, [grid]);
 
+  // Per dzień: ilu nieobecnych i ilu z nich to liderzy. Dwóch liderów naraz to kolizja, o którą
+  // pyta dyrektor (feedback002) — pokazana w nagłówku dnia, słowem i kolorem, nie samym kolorem.
+  const dayStats = useMemo(() => {
+    const out = new Map<string, { total: number; leaders: number }>();
+    const people = groups.flatMap((g) => g.people);
+    for (const d of days) {
+      let total = 0, leaders = 0;
+      for (const p of people) {
+        if (!p.ranges.some((x) => d >= x.from && d <= x.to)) continue;
+        total++;
+        if (p.leaderOf.length > 0) leaders++;
+      }
+      out.set(d, { total, leaders });
+    }
+    return out;
+  }, [groups, days]);
+
   // FR-F4 — link subskrypcji kalendarza zespołu (iCal/webcal). Kanał jednolity (bez typu, L4-safe).
   const subscribe = async () => {
     setFeedMsg('');
@@ -166,12 +223,42 @@ export function Kalendarz() {
           </button>
         </div>
         <SegmentedControl label="Zakres osi czasu" value={range} onChange={(v) => setRange(v as RangeKind)} options={[...options]} />
+        <select aria-label="Jednostka" value={unitId} onChange={(e) => setUnitId(e.target.value)} style={{ ...field, maxWidth: 260 }}>
+          <option value="">Wszystkie widoczne jednostki</option>
+          {units.map((u) => <option key={u.id} value={u.id}>{u.type} · {u.name}</option>)}
+        </select>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 7, fontFamily: 'var(--font-sans)', fontSize: 13, fontWeight: 600, color: 'var(--ink-2)', cursor: 'pointer' }}>
+          <input type="checkbox" aria-label="Tylko liderzy jednostek" checked={leadersOnly} onChange={(e) => setLeadersOnly(e.target.checked)} /> tylko liderzy
+        </label>
         <div style={{ flex: 1 }} />
         <button type="button" className="ds-quiet" onClick={subscribe}
           style={{ display: 'flex', alignItems: 'center', gap: 7, border: '1px solid var(--border-2)', background: 'var(--surface)', color: 'var(--ink-2)', fontFamily: 'var(--font-sans)', fontWeight: 600, fontSize: 13, padding: '8px 13px', borderRadius: 'var(--radius-md)', cursor: 'pointer' }}>
           <CalendarDays size={15} aria-hidden="true" /> Subskrybuj (iCal)
         </button>
       </div>
+
+      {/* Lidera wskazuje się tam, gdzie się na niego patrzy: dyrektor nie ma Konfiguracji, a to on
+          planuje wokół nieobecności liderów (feedback002). Kandydaci = członkowie poddrzewa. */}
+      {canLead && leadUnits.length > 0 && (
+        <div style={{ ...card, padding: '14px 18px', marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 10 }}>
+            <h2 style={{ fontFamily: 'var(--font-sans)', fontSize: 14, fontWeight: 700, color: 'var(--ink)', margin: 0 }}>Liderzy jednostek</h2>
+            <span style={{ fontFamily: 'var(--font-sans)', fontSize: 12, color: 'var(--muted)' }}>Osoby, których nieobecności śledzi dyrektor. Lider musi należeć do jednostki albo jej poddrzewa.</span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10 }}>
+            {leadUnits.map((u) => (
+              <label key={u.id} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <span style={{ fontFamily: 'var(--font-sans)', fontSize: 11.5, fontWeight: 600, color: 'var(--ink-2)' }}>{u.type} · {u.name}</span>
+                <select style={field} value={u.leaderId ?? ''} disabled={busy} onChange={(e) => setLeader(u, e.target.value)}>
+                  <option value="">— bez lidera —</option>
+                  {(members[u.id] ?? []).map((m) => <option key={m.id} value={m.id}>{m.lastName} {m.firstName}</option>)}
+                </select>
+              </label>
+            ))}
+          </div>
+          <Notice {...notice} />
+        </div>
+      )}
 
       <div role="status" aria-live="polite">
         {feedMsg && (
@@ -195,7 +282,9 @@ export function Kalendarz() {
         )}
         {state === 'ready' && grid && grid.people.length === 0 && (
           <div style={{ padding: 20, color: 'var(--muted)', fontFamily: 'var(--font-sans)', fontSize: 14 }}>
-            Nie widzisz tu nikogo — nie należysz jeszcze do żadnego Tribe. Struktura zespołu jest ustawiana w Konfiguracji przez administratora.
+            {leadersOnly ? 'Brak liderów w tym zakresie — liderów jednostek wskazuje dyrektor albo administrator w panelu nad siatką.'
+              : unitId ? 'W tej jednostce nie ma nikogo.'
+                : 'Nie widzisz tu nikogo — nie należysz jeszcze do żadnego Tribe. Struktura zespołu jest ustawiana w Konfiguracji przez administratora.'}
           </div>
         )}
 
@@ -207,14 +296,18 @@ export function Kalendarz() {
               </div>
               {days.map((d) => {
                 const we = isWeekend(d), now = d === today;
+                const st = dayStats.get(d) ?? { total: 0, leaders: 0 };
+                const clash = st.leaders >= 2;
                 return (
-                  <div key={d} role="columnheader" style={{
-                    textAlign: 'center', padding: '7px 0 9px', borderLeft: '1px solid var(--border)',
-                    background: we ? 'var(--surface-3)' : 'transparent',
+                  <div key={d} role="columnheader" title={clash ? `Kolizja liderów: ${st.leaders} nieobecnych jednocześnie` : undefined} style={{
+                    textAlign: 'center', padding: '7px 0 6px', borderLeft: '1px solid var(--border)',
+                    background: clash ? 'var(--amber-tint)' : we ? 'var(--surface-3)' : 'transparent',
                   }}>
                     <div style={{ fontFamily: 'var(--font-sans)', fontSize: 10, color: now ? 'var(--brand)' : 'var(--muted)' }}>{WD[(new Date(`${d}T00:00:00.000Z`).getUTCDay() + 6) % 7]}</div>
                     <div style={{ fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: now ? 700 : 600, fontVariantNumeric: 'tabular-nums', color: now ? 'var(--brand)' : 'var(--ink)' }}>{Number(d.slice(8, 10))}</div>
-                    <span className="ds-sr">{dayMonth(d)}{now ? ' — dziś' : ''}</span>
+                    {/* Licznik nieobecnych tego dnia — planista czyta kolumnę, nie liczy pasków. */}
+                    <div aria-hidden="true" style={{ fontFamily: 'var(--font-mono)', fontSize: 10, minHeight: 12, color: clash ? 'var(--amber)' : 'var(--muted)', fontWeight: clash ? 700 : 400 }}>{st.total > 0 ? st.total : ''}</div>
+                    <span className="ds-sr">{dayMonth(d)}{now ? ' — dziś' : ''}{st.total > 0 ? `, ${count(st.total, ['nieobecny', 'nieobecnych', 'nieobecnych'])}` : ''}{clash ? `, kolizja liderów: ${st.leaders}` : ''}</span>
                   </div>
                 );
               })}
@@ -237,6 +330,7 @@ export function Kalendarz() {
                           {p.name}
                           {/* Kropka to sygnał czysto wizualny — nazwa idzie do czytnika osobno. */}
                           {p.keyRole && <><span aria-hidden="true" style={{ width: 6, height: 6, flex: 'none', borderRadius: '50%', background: 'var(--amber)' }} /><span className="ds-sr">rola kluczowa</span></>}
+                          {p.leaderOf.length > 0 && <><span aria-hidden="true" title={`Lider: ${p.leaderOf.join(', ')}`} style={pill}>lider</span><span className="ds-sr">lider: {p.leaderOf.join(', ')}</span></>}
                         </span>
                         <span style={{ display: 'block', fontFamily: 'var(--font-sans)', fontSize: 10.5, color: 'var(--muted)' }}>
                           {p.ranges.length === 0 ? 'dostępna cały zakres' : p.ranges.map((r) => dateRange(r.from, r.to)).join(', ')}
@@ -277,6 +371,12 @@ export function Kalendarz() {
         </span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
           <span aria-hidden="true" style={{ width: 22, height: 13, borderRadius: 4, background: 'var(--surface-3)', border: '1px solid var(--border)' }} />Weekend
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+          <span aria-hidden="true" style={pill}>lider</span>Lider jednostki
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+          <span aria-hidden="true" style={{ width: 22, height: 13, borderRadius: 4, background: 'var(--amber-tint)', border: '1px solid var(--amber)' }} />Kolizja liderów (≥ 2 nieobecnych tego dnia)
         </span>
         {state === 'ready' && <span style={{ marginLeft: 'auto' }}>Nieobecnych w tym zakresie: {absentCount}. Prezentacja jednolita — bez rozróżnienia typu.</span>}
       </div>
