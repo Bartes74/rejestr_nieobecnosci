@@ -7,6 +7,9 @@ import {
 } from '@nieobecnosci/core';
 import { PrismaService } from './prisma.service';
 
+/** Zbiór dni „RRRR-MM-DD" z wierszy Holiday — jedna postać dla licznika, raportów i capacity. */
+export const holidaySet = (rows: readonly { date: Date }[]): Set<string> => new Set(rows.map((h) => isoDate(h.date)));
+
 export const POOL_KEY_PREFIX = 'leavePool.';
 export const DEFAULT_POOL_KEY = `${POOL_KEY_PREFIX}default`;
 export type PoolsByType = Record<EmploymentType, number>;
@@ -102,12 +105,26 @@ export class BalanceService {
     return poolAndCarry(emp, period, allowances, absences, holidays, defaults[emp.employmentType]);
   }
 
+  // FR-G7 — święta organizacji. Osoba bez własnego kalendarza (własny mają np. B2B/OUT z innej
+  // lokalizacji) korzysta z kalendarza domyślnego. Wcześniej brak przypisania znaczył „tylko
+  // weekendy", a ekran Pracownicy nie daje przypisania — więc 11 listopada liczył się każdemu
+  // jako dzień pracy (uwaga zleceniodawcy: 5 dni urlopu zamiast 4).
+  async defaultHolidays(): Promise<Set<string>> {
+    const cal = await this.prisma.holidayCalendar.findFirst({ where: { isDefault: true }, include: { holidays: true } });
+    return holidaySet(cal?.holidays ?? []);
+  }
+
+  /** Święta osoby: własny kalendarz, a bez niego `fallback` (kalendarz domyślny pobrany raz na całą listę). */
+  holidaysOf(emp: { holidayCalendar: { holidays: { date: Date }[] } | null }, fallback: Set<string>): Set<string> {
+    return emp.holidayCalendar ? holidaySet(emp.holidayCalendar.holidays) : fallback;
+  }
+
   async holidaysFor(employeeId: string): Promise<Set<string>> {
     const emp = await this.prisma.employee.findUnique({
       where: { id: employeeId },
       include: { holidayCalendar: { include: { holidays: true } } },
     });
-    return new Set((emp?.holidayCalendar?.holidays ?? []).map((h) => isoDate(h.date)));
+    return emp?.holidayCalendar ? holidaySet(emp.holidayCalendar.holidays) : this.defaultHolidays();
   }
 
   // FR-B2 — licznik w bieżącym okresie rozliczeniowym pracownika.
