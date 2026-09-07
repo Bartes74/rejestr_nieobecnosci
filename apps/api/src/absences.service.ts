@@ -236,9 +236,11 @@ export class AbsencesService {
     const holidays = await this.balance.holidaysFor(employeeId);
     const fraction = dayFraction(dayPart, hourFrom, hourTo);
     const workingDays = to < from ? 0 : countWorkingDays(from, to, holidays) * fraction;
-    const current = await this.balance.current(employeeId);
     const type = typeId ? await this.prisma.absenceType.findUnique({ where: { id: typeId } }) : null;
-    const emp = await this.prisma.employee.findUnique({ where: { id: employeeId }, select: { employmentType: true } });
+    const emp = await this.prisma.employee.findUnique({
+      where: { id: employeeId },
+      select: { id: true, employmentType: true, startDate: true, endDate: true, minimumToLeave: true },
+    });
     if (!emp) throw new NotFoundException('Pracownik nie istnieje.');
 
     // FR-A9 — kolizja widoczna przed zapisem, tą samą regułą co przy zapisie, żeby podgląd nie
@@ -267,12 +269,20 @@ export class AbsencesService {
     // Zwrot to FAKTYCZNY zysk na saldzie, nie sama część wspólna: poza UoP dzień przejęty przez
     // L4 dalej obciąża pulę, tyle że jako inny rodzaj, więc nic nie wraca i wychodzi zero.
     const returnedDays = Math.max(0, usedNow - usedAfter);
+    // Saldo OKRESU WPISU, nie dzisiejszego: B2B/OUT planując grudzień, planują już następny rok
+    // budżetowy. Wcześniej „Balans po zapisie" brał saldo z okresu dzisiejszego i odejmował koszt
+    // z okresu wpisu — a po zapisie pulpit „nic nie zmieniał" (feedback002). Klient nazywa okres
+    // po polu `period` i ostrzega, gdy różni się od dzisiejszego.
+    // ponytail: effectivePool czyta święta drugi raz — dwa zapytania na podgląd, nie warto splatać.
+    const { pool, carriedOver } = await this.balance.effectivePool(emp, period);
+    const available = pool + carriedOver;
 
     return {
       workingDays,
-      remaining: current.remaining,
-      remainingAfter: current.remaining + usedNow - usedAfter,
-      minimumToLeave: current.minimumToLeave,
+      period: { from: isoDate(period.from), to: isoDate(period.to), type: period.type, year: period.year },
+      remaining: available - usedNow,
+      remainingAfter: available - usedAfter,
+      minimumToLeave: emp.minimumToLeave,
       collision: !!overlap,
       collisionFrom: overlap ? isoDate(overlap.dateFrom) : null,
       collisionTo: overlap ? isoDate(overlap.dateTo) : null,

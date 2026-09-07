@@ -3,7 +3,7 @@ import type { DayPart, EmploymentType } from '@prisma/client';
 import type { BillingPeriod } from '@nieobecnosci/core';
 import {
   balance, billingPeriodsBefore, carriedOverInto, consumesPool, dayFraction, isoDate,
-  proratePool, resolveBillingPeriod, todayUtc, usedLeaveDays,
+  periodForYear, proratePool, resolveBillingPeriod, todayUtc, usedLeaveDays,
 } from '@nieobecnosci/core';
 import { PrismaService } from './prisma.service';
 
@@ -127,14 +127,15 @@ export class BalanceService {
     return emp?.holidayCalendar ? holidaySet(emp.holidayCalendar.holidays) : this.defaultHolidays();
   }
 
-  // FR-B2 — licznik w bieżącym okresie rozliczeniowym pracownika.
-  async current(employeeId: string) {
+  // FR-B2 — licznik w okresie rozliczeniowym pracownika: bieżącym albo wskazanym numerem roku
+  // (przełącznik na pulpicie — B2B/OUT planując grudzień, planują już następny rok budżetowy).
+  async current(employeeId: string, year?: number) {
     const emp = await this.prisma.employee.findUnique({ where: { id: employeeId } });
     if (!emp) throw new NotFoundException('Pracownik nie istnieje.');
     // `todayUtc()`, nie `new Date()`: o 23:30 UTC 31 grudnia w Warszawie jest już 1 stycznia,
     // a surowe „teraz" sięgnęłoby po pulę poprzedniego roku. Dwa okresy rozliczeniowe są
     // warunkiem akceptacji projektu (FR-B1), więc granica roku musi trafiać co do dnia.
-    const period = resolveBillingPeriod(emp.employmentType, todayUtc());
+    const period = year ? periodForYear(emp.employmentType, year) : resolveBillingPeriod(emp.employmentType, todayUtc());
     // Jedno pobranie wpisów obsługuje i wykorzystanie w bieżącym okresie, i łańcuch zaległych
     // z okresów wcześniejszych — dlatego bez filtra dat.
     const [allowances, absences, holidays, defaults] = await Promise.all([

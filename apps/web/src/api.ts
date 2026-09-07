@@ -90,7 +90,7 @@ export interface Balance {
 }
 export interface Absence { id: string; dateFrom: string; dateTo: string; dayPart: string; hourFrom?: string | null; hourTo?: string | null; type: AbsenceType; source?: string; workingDays: number; coveredBySick?: boolean }
 export interface AdminSetting { key: string; value: number; label: string; ref: string }
-export interface Preview { workingDays: number; remaining: number; remainingAfter: number; minimumToLeave?: number; collision?: boolean; collisionFrom?: string | null; collisionTo?: string | null; returnedDays?: number }
+export interface Preview { workingDays: number; period?: { from: string; to: string; type: string; year: number }; remaining: number; remainingAfter: number; minimumToLeave?: number; collision?: boolean; collisionFrom?: string | null; collisionTo?: string | null; returnedDays?: number }
 export interface CalEntry { employeeId: string; employee: string; dateFrom: string; dateTo: string; dayPart: string }
 /** Skład Tribe na osi czasu. Pusty wiersz to informacja („dostępna"), nie brak danych. */
 export interface TeamPerson { id: string; name: string; initials: string; squad: string | null; keyRole: boolean }
@@ -135,7 +135,8 @@ export const api = {
   me: () => req<Me | null>('/auth/me'),
   employees: () => req<Employee[]>('/employees'),
   types: () => req<AbsenceType[]>('/absence-types'),
-  balance: (id: string) => req<Balance>(`/employees/${id}/balance`),
+  // `year` — okres o danym numerze roku zamiast bieżącego (przełącznik okresu na pulpicie).
+  balance: (id: string, year?: number) => req<Balance>(`/employees/${id}/balance${year ? `?year=${year}` : ''}`),
   absences: (employeeId: string) => req<Absence[]>(`/absences?employeeId=${employeeId}`),
   preview: (employeeId: string, from: string, to: string, dayPart = 'FULL', hourFrom?: string, hourTo?: string, typeId?: string) => {
     const q = new URLSearchParams({ employeeId, from, to, dayPart });
