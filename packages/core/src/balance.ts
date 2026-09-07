@@ -66,6 +66,21 @@ export function usedLeaveDays(
   );
 }
 
+/**
+ * Dni wykorzystane w okresie do dnia `until` włącznie — „zrealizowano do dziś". Raport dyrektora
+ * (feedback002) stawia to obok „zaplanowano" (`usedLeaveDays` — cały okres, także przyszłość),
+ * bo sama suma nie mówi, ile z niej już się odbyło.
+ */
+export function usedLeaveDaysUntil(
+  absences: readonly AbsenceSpan[],
+  period: PeriodRange,
+  until: Date,
+  holidays: ReadonlySet<string> = new Set(),
+): number {
+  if (until < period.from) return 0;
+  return usedLeaveDays(absences, { from: period.from, to: until < period.to ? until : period.to }, holidays);
+}
+
 export interface Balance {
   pool: number;
   carriedOver: number;

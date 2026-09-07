@@ -8,6 +8,7 @@ import { StatCard } from '../design-system/components/data/StatCard';
 import { num, td, th } from '../admin/ui';
 
 type OverdueRow = { employeeId: string; name: string; employmentType: string; carriedOver: number; remaining: number; zalega: boolean };
+const pctOf = (used: number, entitled: number) => (entitled > 0 ? Math.round((used / entitled) * 100) : 0);
 
 
 function TreeRows({ node, depth = 0 }: { node: ReportTreeNode; depth?: number }) {
@@ -30,8 +31,7 @@ export function Raporty() {
   const [unitId, setUnitId] = useState('');
   const [usage, setUsage] = useState<UsageReport | null>(null);
   const [tree, setTree] = useState<ReportTreeNode | null>(null);
-  const [overdue, setOverdue] = useState<{ rows: OverdueRow[] } | null>(null);
-  const [pool, setPool] = useState<number | null>(null);
+  const [overdue, setOverdue] = useState<{ threshold: number; rows: OverdueRow[] } | null>(null);
   const [err, setErr] = useState('');
   // Dotąd ekran po prostu nic nie pokazywał do czasu odpowiedzi — ani kart, ani informacji,
   // że coś się dzieje. Przy raporcie dla całego pionu to kilka sekund pustej strony.
@@ -39,9 +39,6 @@ export function Raporty() {
 
   useEffect(() => {
     api.orgUnits().then((u) => { setUnits(u); setUnitId((p) => p || u[0]?.id || ''); }).catch(() => {});
-    // Skala wykresu: pula wspólna, a gdy jej nie ustawiono — pula UoP jako forma dominująca.
-    // Jednostka bywa mieszana, więc to i tak przybliżenie; bez żadnej z nich słupki idą względne.
-    api.poolDefault().then((d) => setPool(d.value ?? d.byType.UOP)).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -61,17 +58,16 @@ export function Raporty() {
     const used = usage.rows.reduce((a, r) => a + r.used, 0);
     return { pct: entitle > 0 ? Math.round((used / entitle) * 100) : 0, used, people: usage.rows.length };
   }, [usage]);
-  const overdueRows = useMemo(() => (overdue?.rows ?? []).filter((r) => r.zalega).sort((a, b) => b.carriedOver - a.carriedOver), [overdue]);
+  // Zalega = pozostało ≥ próg z Konfiguracji („Próg zalegania"); serwer już przefiltrował i posortował.
+  const overdueRows = useMemo(() => overdue?.rows ?? [], [overdue]);
 
-  // wykres: wykorzystanie wg bezpośrednich jednostek podrzędnych (% puli, jeśli znana, inaczej względnie)
-  const bars = useMemo(() => {
-    const kids = tree?.children ?? [];
-    const maxUsed = Math.max(1, ...kids.map((k) => k.used));
-    return kids.map((k, i) => {
-      const pct = pool && k.headcount > 0 ? Math.min(100, Math.round((k.used / (k.headcount * pool)) * 100)) : Math.round((k.used / maxUsed) * 100);
-      return { name: k.name, used: k.used, pct, color: i % 2 === 0 ? 'var(--brand)' : 'var(--blue)' };
-    });
-  }, [tree, pool]);
+  // wykres: wykorzystanie wg bezpośrednich jednostek podrzędnych — realny % ich puli z zaległymi,
+  // nie przybliżenie „liczebność × pula globalna" (jednostki bywają mieszane UoP/B2B/OUT).
+  const bars = useMemo(() => (tree?.children ?? []).map((k, i) => ({
+    name: k.name, used: k.used, pct: Math.min(100, pctOf(k.used, k.pool + k.carriedOver)), color: i % 2 === 0 ? 'var(--brand)' : 'var(--blue)',
+  })), [tree]);
+  // Tabela jednostek (feedback002): dzieci wybranej jednostki + RAZEM, czyli ona sama.
+  const unitRows = useMemo(() => (tree ? [...tree.children, { ...tree, name: `RAZEM · ${tree.name}`, total: true }] : []), [tree]);
 
   const exportXlsx = async () => {
     try {
@@ -109,7 +105,39 @@ export function Raporty() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16, marginBottom: 18 }}>
           <StatCard label="Śr. wykorzystanie urlopu" value={stats.pct} unit="%" sub={`w jednostce · ${count(stats.people, ['osoba', 'osoby', 'osób'])}`} />
           <StatCard label="Wykorzystany urlop" value={stats.used} unit="dni" sub="wszystkie typy obniżające pulę" />
-          <StatCard label="Zalega z urlopem" value={overdueRows.length} unit={plural(overdueRows.length, ['osoba', 'osoby', 'osób'])} sub="powyżej progu zaległości" accent={overdueRows.length > 0 ? 'var(--amber)' : 'var(--ink)'} />
+          <StatCard label="Zalega z urlopem" value={overdueRows.length} unit={plural(overdueRows.length, ['osoba', 'osoby', 'osób'])} sub={overdue ? `pozostało ≥ ${overdue.threshold} dni (próg z Konfiguracji)` : 'pozostało ≥ próg z Konfiguracji'} accent={overdueRows.length > 0 ? 'var(--amber)' : 'var(--ink)'} />
+        </div>
+      )}
+
+      {/* TABELA JEDNOSTEK (feedback002) — Tribe'y/zespoły obok siebie i departament jako suma. Liczby
+          z tych samych wierszy per osoba co tabela szczegółowa, więc RAZEM równa się jej sumie. */}
+      {tree && unitRows.length > 1 && (
+        <div style={{ ...card, overflow: 'hidden', marginBottom: 18 }}>
+          <h2 style={{ padding: '16px 16px 6px', fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 14.5, color: 'var(--ink)', margin: 0 }}>Wykorzystanie wg jednostek</h2>
+          <div style={{ padding: '0 16px 10px', fontFamily: 'var(--font-sans)', fontSize: 12, color: 'var(--muted)' }}>Zaplanowano = wszystkie dni w bieżącym okresie, także przyszłe; zrealizowano = do dziś; % = zaplanowano / (pula + zaległe).</div>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 760 }}>
+              <thead><tr>
+                <th scope="col" style={th}>Jednostka</th><th scope="col" style={{ ...th, textAlign: 'right' }}>Osoby</th><th scope="col" style={{ ...th, textAlign: 'right' }}>Pula+zaległe</th>
+                <th scope="col" style={{ ...th, textAlign: 'right' }}>Zaplanowano</th><th scope="col" style={{ ...th, textAlign: 'right' }}>Zrealizowano</th><th scope="col" style={{ ...th, textAlign: 'right' }}>% wykorzystania</th>
+                <th scope="col" style={{ ...th, textAlign: 'right' }}>Pozostało</th><th scope="col" style={{ ...th, textAlign: 'right' }}>Zalega (osób)</th>
+              </tr></thead>
+              <tbody>
+                {unitRows.map((u) => {
+                  const bold = 'total' in u ? { fontWeight: 700 } : {};
+                  return (
+                    <tr key={u.id + ('total' in u ? '-total' : '')} style={'total' in u ? { borderTop: '2px solid var(--border-2)' } : undefined}>
+                      <td style={{ ...td, ...bold }}><span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--muted)', marginRight: 8 }}>{u.type}</span>{u.name}</td>
+                      <td style={{ ...num, ...bold }}>{u.headcount}</td><td style={{ ...num, ...bold }}>{u.pool + u.carriedOver}</td>
+                      <td style={{ ...num, ...bold }}>{u.used}</td><td style={{ ...num, ...bold }}>{u.realized}</td><td style={{ ...num, ...bold }}>{pctOf(u.used, u.pool + u.carriedOver)}%</td>
+                      <td style={{ ...num, ...bold, color: 'var(--brand)' }}>{u.remaining}</td>
+                      <td style={{ ...num, ...bold, color: u.overdueCount > 0 ? 'var(--amber)' : 'var(--ink-2)' }}>{u.overdueCount}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
@@ -122,7 +150,7 @@ export function Raporty() {
               {bars.map((b) => (
                 <div key={b.name}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5, fontFamily: 'var(--font-sans)', fontSize: 12.5, color: 'var(--ink-2)' }}>
-                    <span>{b.name}</span><span style={{ fontFamily: 'var(--font-mono)', color: 'var(--muted)' }}>{b.used} dni{pool ? ` · ${b.pct}%` : ''}</span>
+                    <span>{b.name}</span><span style={{ fontFamily: 'var(--font-mono)', color: 'var(--muted)' }}>{b.used} dni · {b.pct}%</span>
                   </div>
                   <ProgressBar value={b.pct} color={b.color} height={9} />
                 </div>
@@ -135,21 +163,21 @@ export function Raporty() {
         <div style={{ ...card, overflow: 'hidden' }}>
           <div style={{ padding: '18px 20px 12px' }}>
             <h2 style={{ fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 14.5, color: 'var(--ink)', margin: 0 }}>Kto zalega z urlopem</h2>
-            <div style={{ fontFamily: 'var(--font-sans)', fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>Osoby z zaległym / niewybranym urlopem</div>
+            <div style={{ fontFamily: 'var(--font-sans)', fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>{overdue ? `Pozostało co najmniej ${count(overdue.threshold, ['dzień', 'dni', 'dni'])} — próg ustawia administrator w Konfiguracji.` : 'Osoby z dużym niewybranym saldem.'}</div>
           </div>
           {/* Ostatnia siatka w aplikacji, która udawała tabelę bez ról — czytnik ekranu czytał
               ciąg nazwisk i liczb bez informacji, która liczba jest zaległością, a która resztą.
               Wersaliki robi teraz CSS, nie treść: „OSOBA" bywa literowane głoska po głosce. */}
           <div role="table" aria-label="Osoby zalegające z urlopem">
             <div role="row" style={{ display: 'grid', gridTemplateColumns: '1.7fr .9fr 1fr', padding: '8px 20px', background: 'var(--surface-2)', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', fontFamily: 'var(--font-mono)', fontSize: 10.5, fontWeight: 700, color: 'var(--muted)', letterSpacing: '.04em', textTransform: 'uppercase' }}>
-              <div role="columnheader">Osoba</div><div role="columnheader">Zalega</div><div role="columnheader" style={{ textAlign: 'right' }}>Pozostało</div>
+              <div role="columnheader">Osoba</div><div role="columnheader">Pozostało</div><div role="columnheader" style={{ textAlign: 'right' }}>w tym zaległe</div>
             </div>
             {overdueRows.length === 0 && <div role="row"><div role="cell" style={{ padding: '16px 20px', fontFamily: 'var(--font-sans)', fontSize: 13, color: 'var(--muted)' }}>Nikt nie zalega w tej jednostce.</div></div>}
             {overdueRows.map((r, i) => (
               <div key={r.employeeId} role="row" style={{ display: 'grid', gridTemplateColumns: '1.7fr .9fr 1fr', padding: '12px 20px', borderBottom: i < overdueRows.length - 1 ? '1px solid var(--border)' : 'none', alignItems: 'center', fontSize: 13 }}>
                 <div role="rowheader" style={{ fontFamily: 'var(--font-sans)', fontWeight: 600, color: 'var(--ink)' }}>{r.name}</div>
-                <div role="cell" style={{ fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: r.carriedOver >= 7 ? 'var(--danger)' : 'var(--amber)' }}>{count(r.carriedOver, ['dzień', 'dni', 'dni'])}</div>
-                <div role="cell" style={{ fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', color: 'var(--ink-2)', textAlign: 'right' }}>{r.remaining}</div>
+                <div role="cell" style={{ fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: 'var(--amber)' }}>{count(r.remaining, ['dzień', 'dni', 'dni'])}</div>
+                <div role="cell" style={{ fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', color: r.carriedOver > 0 ? 'var(--ink-2)' : 'var(--muted)', textAlign: 'right' }}>{r.carriedOver}</div>
               </div>
             ))}
           </div>
@@ -160,18 +188,18 @@ export function Raporty() {
       {usage && (
         <div style={{ ...card, overflow: 'hidden', marginBottom: 18 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead><tr><th scope="col" style={th}>Pracownik</th><th scope="col" style={th}>Forma</th><th scope="col" style={{ ...th, textAlign: 'right' }}>Pula+zaległe</th><th scope="col" style={{ ...th, textAlign: 'right' }}>Wykorzystano</th><th scope="col" style={{ ...th, textAlign: 'right' }}>Pozostało</th></tr></thead>
+            <thead><tr><th scope="col" style={th}>Pracownik</th><th scope="col" style={th}>Forma</th><th scope="col" style={{ ...th, textAlign: 'right' }}>Pula+zaległe</th><th scope="col" style={{ ...th, textAlign: 'right' }}>Zaplanowano</th><th scope="col" style={{ ...th, textAlign: 'right' }}>Zrealizowano</th><th scope="col" style={{ ...th, textAlign: 'right' }}>Pozostało</th></tr></thead>
             <tbody>
               {usage.rows.map((r) => (
                 <tr key={r.employeeId}>
                   <td style={td}>{r.name}</td><td style={td}>{r.employmentType}</td>
-                  <td style={num}>{r.pool + r.carriedOver}</td><td style={num}>{r.used}</td>
+                  <td style={num}>{r.pool + r.carriedOver}</td><td style={num}>{r.used}</td><td style={num}>{r.realized}</td>
                   <td style={{ ...num, color: 'var(--brand)', fontWeight: 600 }}>{r.remaining}</td>
                 </tr>
               ))}
               <tr>
                 <td style={{ ...td, fontWeight: 700 }}>RAZEM</td><td style={td} />
-                <td style={{ ...num, fontWeight: 700 }}>{usage.totals.pool}</td><td style={{ ...num, fontWeight: 700 }}>{usage.totals.used}</td><td style={{ ...num, fontWeight: 700 }}>{usage.totals.remaining}</td>
+                <td style={{ ...num, fontWeight: 700 }}>{usage.totals.pool + usage.totals.carriedOver}</td><td style={{ ...num, fontWeight: 700 }}>{usage.totals.used}</td><td style={{ ...num, fontWeight: 700 }}>{usage.totals.realized}</td><td style={{ ...num, fontWeight: 700 }}>{usage.totals.remaining}</td>
               </tr>
             </tbody>
           </table>

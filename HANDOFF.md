@@ -20,7 +20,7 @@ STAN: MVP + Faza 2 (16 pozycji) + część Fazy 3 — zbudowane i zweryfikowane.
 stan każdej odnotowuje kolumna „Stan wdrożenia" w Backlog - aplikacja nieobecnosci.xlsx (wersja śledzona;
 .docx to pierwotne wydanie bez tej kolumny). Wg przeglądu kodu z 10.08.2026 backlog NIE zawyża stanu:
 realnie otwarta jest jedna historyjka (US-N9, interfejs EN) i jedna częściowa (US-N2, progi/alerty).
-Ostatni pełny przebieg (11.08.2026, po przeglądzie kodu): silnik 86/86 testów, 35 suit integracyjnych, build+typecheck+lint
+Ostatni pełny przebieg (08.09.2026, po drugiej rundzie uwag zleceniodawcy): silnik 93/93 testów, 42 suity integracyjne, build+typecheck+lint
 czysto, audyt zależności bez podatności „high", test obciążeniowy 300 użytkowników w budżecie NFR-1,
 audyt axe bez naruszeń, test odtworzenia backupu OK.
 Działa m.in.: wpis/edycja/undo (≤3 kliknięcia), kalendarz Tribe (jednolity, bez typów), RBAC 6 ról,
