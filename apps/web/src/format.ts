@@ -11,9 +11,39 @@
 
 // „Dziś" liczy pakiet współdzielony, w strefie organizacji — ta sama odpowiedź po obu stronach.
 // Reeksport, żeby ekrany miały jedno miejsce, z którego biorą wszystko, co dotyczy dat.
-import { todayIso } from '@nieobecnosci/core/today';
+import { todayIso, todayUtc } from '@nieobecnosci/core/today';
 import { mergeRanges } from '@nieobecnosci/core/overlay';
+import { resolveBillingPeriod, type EmploymentType } from '@nieobecnosci/core/period';
 export { todayIso, ORG_TIMEZONE } from '@nieobecnosci/core/today';
+
+// Mianownik, bo to etykieta okresu albo nagłówek miesiąca, a nie data — „SIERPNIA 2026" czyta się
+// jak urwane zdanie. Jedna lista dla mini-kalendarza wpisu i etykiet okresu rozliczeniowego.
+export const MONTHS = ['styczeń', 'luty', 'marzec', 'kwiecień', 'maj', 'czerwiec', 'lipiec', 'sierpień', 'wrzesień', 'październik', 'listopad', 'grudzień'];
+
+/** Forma zatrudnienia tak, jak nazywa ją administrator w Konfiguracji i Pracownikach. */
+export const EMPLOYMENT_LABEL: Record<string, string> = { UOP: 'UoP', B2B: 'B2B', OUT: 'OUT' };
+
+export interface PeriodLike { from: string; to: string; type: string; year: number }
+
+/**
+ * Etykieta okresu rozliczeniowego. Sam rok („Rok budżetowy 2026") nie mówił, że chodzi o grudzień
+ * 2025 – listopad 2026, więc zleceniodawca planujący grudzień nie rozumiał, dlaczego pula się nie
+ * zmienia (feedback002). `short` dla miejsc, gdzie zakres miesięcy by nie zmieścił się w wierszu.
+ */
+export function periodLabel(p: PeriodLike, opts?: { short?: boolean }): string {
+  const kind = p.type === 'CALENDAR' ? 'rok kalendarzowy' : 'rok budżetowy';
+  if (opts?.short) return `${kind} ${p.year}`;
+  const month = (iso: string) => MONTHS[Number(iso.slice(5, 7)) - 1];
+  const fy = p.from.slice(0, 4), ty = p.to.slice(0, 4);
+  const range = fy === ty ? `${month(p.from)} – ${month(p.to)} ${ty}` : `${month(p.from)} ${fy} – ${month(p.to)} ${ty}`;
+  return `${kind}: ${range}`;
+}
+
+/** Bieżący okres rozliczeniowy osoby o danej formie — liczony tak samo jak na serwerze, w strefie organizacji. */
+export function currentPeriod(employmentType: string): PeriodLike {
+  const p = resolveBillingPeriod(employmentType as EmploymentType, todayUtc());
+  return { from: p.from.toISOString().slice(0, 10), to: p.to.toISOString().slice(0, 10), type: p.type, year: p.year };
+}
 
 /** `3.08` — dzień i miesiąc. Dla zakresów w obrębie znanego roku (kalendarz, pigułki). */
 export const dayMonth = (iso: string) => `${Number(iso.slice(8, 10))}.${iso.slice(5, 7)}`;
