@@ -42,11 +42,12 @@ export class ReportsService {
   // Liczone wsadowo (kilka zapytań na cały zbiór), nie po jednym na osobę.
   async usage(unitId: string): Promise<{ unitId: string; rows: UsageRow[]; totals: { pool: number; used: number; remaining: number } }> {
     const memberIds = await this.org.employeeIdsInUnit(unitId);
-    const [employees, allowances, absences, defaultPools] = await Promise.all([
+    const [employees, allowances, absences, defaultPools, defaultHolidays] = await Promise.all([
       this.prisma.employee.findMany({ where: { id: { in: memberIds } }, include: { holidayCalendar: { include: { holidays: true } } } }),
       this.prisma.leaveAllowance.findMany({ where: { employeeId: { in: memberIds } } }),
       this.prisma.absence.findMany({ where: { employeeId: { in: memberIds } }, include: { type: true } }),
       this.balance.defaultPools(),
+      this.balance.defaultHolidays(),
     ]);
 
     // Wszystkie okresy osoby, nie tylko bieżący: urlop zaległy wynika z okresów wcześniejszych.
@@ -58,7 +59,7 @@ export class ReportsService {
     const now = todayUtc(); // dzień w strefie organizacji — patrz komentarz w balance.service
     const rows: UsageRow[] = employees.map((e) => {
       const period = resolveBillingPeriod(e.employmentType, now);
-      const holidays = new Set((e.holidayCalendar?.holidays ?? []).map((h) => isoDate(h.date)));
+      const holidays = this.balance.holidaysOf(e, defaultHolidays);
       // Pula i zaległe (FR-B3/B7/B9) tą samą funkcją co licznik na pulpicie — raport pokazujący
       // inną liczbę zaległych dni niż pulpit byłby gorszy niż brak raportu.
       const { pool, carriedOver } = poolAndCarry(
@@ -150,9 +151,10 @@ export class ReportsService {
   // dni kategorii szczególnej (L4) dołączane wyłącznie dla uprawnionych (VIEW_L4/admin).
   async payrollExport(unitId: string, user: AuthUser) {
     const memberIds = await this.org.employeeIdsInUnit(unitId);
-    const [employees, absences] = await Promise.all([
+    const [employees, absences, defaultHolidays] = await Promise.all([
       this.prisma.employee.findMany({ where: { id: { in: memberIds } }, include: { holidayCalendar: { include: { holidays: true } } } }),
       this.prisma.absence.findMany({ where: { employeeId: { in: memberIds } }, include: { type: true } }),
+      this.balance.defaultHolidays(),
     ]);
     const absByEmp = new Map<string, typeof absences>();
     for (const a of absences) (absByEmp.get(a.employeeId) ?? absByEmp.set(a.employeeId, []).get(a.employeeId)!).push(a);
@@ -171,7 +173,7 @@ export class ReportsService {
     const now = todayUtc();
     const records = employees.map((e) => {
       const period = resolveBillingPeriod(e.employmentType, now);
-      const holidays = new Set((e.holidayCalendar?.holidays ?? []).map((h) => isoDate(h.date)));
+      const holidays = this.balance.holidaysOf(e, defaultHolidays);
       const inPeriod = (absByEmp.get(e.id) ?? []).filter((a) => a.dateFrom <= period.to && a.dateTo >= period.from);
       // Kubełki liczone przez atrybucję dnia, nie każdy osobno: dzień pokryty i urlopem, i L4
       // należy wyłącznie do L4, więc trafia do jednej kolumny. Sumowane osobno dałyby te same

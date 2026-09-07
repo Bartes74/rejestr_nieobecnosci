@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { plural } from '@nieobecnosci/core/plural';
-import { dateRange, todayIso } from '../format';
+import { currentPeriod, dateRange, periodLabel, todayIso } from '../format';
 import { api, type Absence, type AbsenceType } from '../api';
 import { useAuth } from '../current-employee';
 import { ConfirmDialog, DAY_PARTS, Notice, dayPartLabel, editableDayPart, field, useNotice } from '../admin/ui';
@@ -95,7 +95,9 @@ export function Historia() {
         <SegmentedControl label="Filtr wpisów" value={filter} onChange={(v) => setFilter(v as typeof filter)}
           options={[{ value: 'all', label: 'Wszystkie' }, { value: 'upcoming', label: 'Nadchodzące' }, { value: 'done', label: 'Zrealizowane' }]} />
         <div style={{ flex: 1 }} />
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12.5, color: 'var(--muted)' }}>{new Date().getFullYear()} · rok rozliczeniowy</span>
+        {/* Okres osoby, nie rok z zegara przeglądarki: na B2B/OUT grudzień należy już do następnego roku
+            budżetowego, a etykieta mówiła „2026 · rok rozliczeniowy" niezależnie od formy. */}
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12.5, color: 'var(--muted)' }}>{current ? periodLabel(currentPeriod(current.employmentType)) : ''}</span>
       </div>
       <Notice {...notice} />
 

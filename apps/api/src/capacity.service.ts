@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { dayFraction, isoDate, sprintCapacity } from '@nieobecnosci/core';
 import type { DayPart } from '@prisma/client';
 import { PrismaService } from './prisma.service';
+import { BalanceService } from './balance.service';
 
 const maxDate = (...d: Date[]) => d.reduce((a, b) => (a > b ? a : b));
 const minDate = (...d: Date[]) => d.reduce((a, b) => (a < b ? a : b));
@@ -16,7 +17,7 @@ export interface KeyRoleCollision {
 
 @Injectable()
 export class CapacityService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly balance: BalanceService) {}
 
   // FR-D2 — capacity squadu w sprincie + FR-D3 — kolizje kluczowych ról.
   // FR-G7 — dni robocze liczone wg kalendarza świąt właściwego dla każdej osoby.
@@ -31,11 +32,10 @@ export class CapacityService {
       include: { employee: { include: { holidayCalendar: { include: { holidays: true } } } } },
     });
 
-    // kalendarz świąt per osoba (FR-G7); brak kalendarza → tylko weekendy
+    // kalendarz świąt per osoba (FR-G7); brak kalendarza → kalendarz domyślny organizacji
+    const defaultHolidays = await this.balance.defaultHolidays();
     const holidaysByEmp = new Map<string, Set<string>>();
-    for (const m of members) {
-      holidaysByEmp.set(m.employeeId, new Set((m.employee.holidayCalendar?.holidays ?? []).map((h) => isoDate(h.date))));
-    }
+    for (const m of members) holidaysByEmp.set(m.employeeId, this.balance.holidaysOf(m.employee, defaultHolidays));
 
     const memberIds = members.map((m) => m.employeeId);
     const absences = await this.prisma.absence.findMany({

@@ -20,6 +20,10 @@
     "./balance": {
       "types": "./dist/balance.d.ts",
       "default": "./dist/balance.js"
+    },
+    "./period": {
+      "types": "./dist/period.d.ts",
+      "default": "./dist/period.js"
     }
   },
   "files": [

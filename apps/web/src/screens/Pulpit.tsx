@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight, Info, Plus, TriangleAlert } from 'lucide-react';
 import { count } from '@nieobecnosci/core/plural';
-import { dateRange, dayMonth, dayOfMonth, todayIso, weekBounds } from '../format';
+import { EMPLOYMENT_LABEL, dateRange, dayMonth, dayOfMonth, periodLabel, todayIso, weekBounds } from '../format';
 import { api, type Absence, type Balance, type CalEntry, type Sprint } from '../api';
 import { dayPartLabel } from '../admin/ui';
 import { useAuth } from '../current-employee';
@@ -25,6 +25,7 @@ const Skeleton = ({ w, h = 13, mt = 0 }: { w: number | string; h?: number; mt?: 
 
 export function Pulpit() {
   const { current } = useAuth();
+  const forma = current ? (EMPLOYMENT_LABEL[current.employmentType] ?? current.employmentType) : '';
   const navigate = useNavigate();
   const narrow = useIsNarrow(); // NFR-6, wariant pośredni: pulpit i wpis działają na telefonie
   const [bal, setBal] = useState<Balance | null>(null);
@@ -173,7 +174,10 @@ export function Pulpit() {
             <div>
               <div style={{ fontFamily: 'var(--font-sans)', fontSize: 13, color: 'var(--muted)', fontWeight: 600, marginBottom: 3 }}>Twój urlop · pozostało do rozplanowania</div>
               {bal
-                ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--ink-2)', background: 'var(--surface-3)', padding: '3px 8px', borderRadius: 'var(--radius-sm)' }}>Rok {bal.period.type === 'CALENDAR' ? 'kalendarzowy' : 'budżetowy'} {bal.period.year}</span>
+                /* Forma i zakres miesięcy, nie sam rok: „Rok budżetowy 2026" nie mówiło, że to grudzień
+                   2025 – listopad 2026 ani dlaczego (feedback002). Formy nikt wcześniej nie widział
+                   poza administratorem, choć od niej zależy i okres, i to, czy L4 zużywa pulę. */
+                ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--ink-2)', background: 'var(--surface-3)', padding: '3px 8px', borderRadius: 'var(--radius-sm)' }}>{forma} · {periodLabel(bal.period)}</span>
                 : <Skeleton w={150} h={19} />}
             </div>
             <button type="button" className="ds-primary" onClick={() => navigate('/wpis')} style={{ border: 'none', cursor: 'pointer', background: 'var(--brand)', color: 'var(--on-brand)', fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 13.5, padding: '10px 16px', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', gap: 7, boxShadow: 'var(--shadow-sm)' }}>
@@ -221,6 +225,17 @@ export function Pulpit() {
                 </div>
               </div>
             ) : null}
+            {/* FR-B5 poza UoP: dzień choroby obciąża tę samą pulę co urlop i nic nie wraca. Formularz
+                wpisu mówi to tylko na UoP („Dni wrócą do puli"), a na B2B/OUT milczy — zleceniodawca
+                uznał brak zwrotu za błąd (feedback002). Zdanie stoi tu na stałe, nie przy wpisie. */}
+            {!loading && current && current.employmentType !== 'UOP' && (
+              <div style={{ ...panel, display: 'flex', gap: 11, alignItems: 'flex-start', padding: '12px 13px' }}>
+                <Info size={17} color="var(--blue)" style={{ flex: 'none', marginTop: 1 }} aria-hidden="true" />
+                <div style={{ fontFamily: 'var(--font-sans)', fontSize: 12.8, lineHeight: 1.45, color: 'var(--ink-2)' }}>
+                  Na {forma} zwolnienie lekarskie również pomniejsza pulę: dzień choroby liczy się jak dzień nieobecności i nie wraca do puli, także gdy przykrywa zaplanowany urlop.
+                </div>
+              </div>
+            )}
             {/* Treść mówiła wcześniej o zbliżającym się końcu okresu rozliczeniowego niezależnie
                 od daty i od tego, że w tym produkcie urlop nie przepada (PRODUCT.md). */}
             {!loading && (
@@ -287,6 +302,8 @@ export function Pulpit() {
                       {/* Ten sam znacznik, co w historii — typ z kategorii szczególnej widzi
                           wyłącznie właściciel wpisu i ma o tym wiedzieć na każdym ekranie. */}
                       {a.type?.specialCategory && <span style={{ marginLeft: 6, padding: '1px 6px', borderRadius: 'var(--radius-sm)', background: 'var(--surface-3)' }}>widoczne tylko dla Ciebie</span>}
+                      {/* Jak w historii: urlop pod L4 nie jest dublem, tylko wpisem, którego dni należą do L4 (FR-B5). */}
+                      {a.coveredBySick && <span style={{ marginLeft: 6, padding: '1px 6px', borderRadius: 'var(--radius-sm)', background: 'var(--surface-3)' }}>{a.workingDays === 0 ? 'przykryte L4' : 'częściowo przykryte L4'}</span>}
                     </div>
                   </div>
                 </div>
