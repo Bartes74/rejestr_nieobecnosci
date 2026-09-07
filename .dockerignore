@@ -32,7 +32,6 @@ apps/api/run-verify.mjs
 apps/api/loadtest.mjs
 apps/api/demo-seed.mjs
 
-# Materiały robocze i plany, nieużywane przy budowaniu.
+# Materiały robocze, nieużywane przy budowaniu.
 .claude
 .impeccable
-NAPRAWY-PO-REVIEW.md
