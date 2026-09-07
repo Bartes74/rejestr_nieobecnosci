@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CalendarDays, ChevronLeft, ChevronRight, RotateCcw, TriangleAlert } from 'lucide-react';
 import { count, plural } from '@nieobecnosci/core/plural';
-import { addDays, dateRange, mergeIsoRanges, todayIso } from '../format';
+import { MONTHS, addDays, dateRange, mergeIsoRanges, todayIso } from '../format';
 import { api, type Absence, type AbsenceType, type Preview } from '../api';
 import { useAuth } from '../current-employee';
 import { useIsNarrow } from '../viewport';
@@ -21,8 +21,6 @@ const inputEl = { flex: 1, border: 'none', outline: 'none', background: 'transpa
 const navBtn = { width: 32, height: 32, flex: 'none', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-2)', background: 'var(--surface)', color: 'var(--ink-2)', display: 'grid', placeItems: 'center', cursor: 'pointer' } as const;
 
 const WD = ['P', 'W', 'Ś', 'C', 'P', 'S', 'N'];
-// Mianownik, bo to nagłówek miesiąca, a nie data — „SIERPNIA 2026" czyta się jak urwane zdanie.
-const MONTHS = ['styczeń', 'luty', 'marzec', 'kwiecień', 'maj', 'czerwiec', 'lipiec', 'sierpień', 'wrzesień', 'październik', 'listopad', 'grudzień'];
 
 /** Pole daty: ikona marki po lewej otwiera natywny wybór, natywny wskaźnik jest ukryty (patrz styles.css). */
 function DateField({ label, value, min, disabled, invalid, onChange }: {
